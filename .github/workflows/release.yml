@@ -50,6 +50,8 @@ jobs:
 
           # Add this release to the index. A rerun of the same commit replaces its own entry.
           curl -sS "$SUPABASE_URL/storage/v1/object/public/client/lib/index.json" -o out/old.json --fail || echo '{"versions":[]}' > out/old.json
+          # An index that can't be parsed is replaced instead of failing the release.
+          jq -e '.versions | type == "array"' out/old.json > /dev/null 2>&1 || echo '{"versions":[]}' > out/old.json
           jq --arg version "$version" --argjson host "$host_api" --arg path "lib/$version/$zip" \
              --arg sha "$(sha256sum "out/$zip" | cut -d' ' -f1)" \
              '.versions = ([{version: $version, requires_host: $host, path: $path, sha256: $sha}] + [.versions[] | select(.version != $version)])[:20]' \
