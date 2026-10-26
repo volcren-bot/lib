@@ -1150,6 +1150,24 @@ local now = Host.clock()
 print("it's", math.floor(now // 3600), "o'clock")
 ```
 
+
+## Host.report_stats
+
+Definition:
+```luau
+Host.report_stats: (experience: number, gold: number, custom: { number }?) -> ()
+```
+Tells Volcren what the script gained since the last call. The loader adds these up and sends them with its next heartbeat, and they end up in the script's and your own totals on the website. Experience must be 0 or more, gold can be negative, and `custom` holds the gains of the script's custom trackers in order. Numbers are rounded to whole numbers.
+
+Send gains, not totals, and not too often: once a minute is plenty. `Utils.StatsReport` does the bookkeeping for you. The time the script has run is measured by the loader, you can't report it. Each script has limits per minute of runtime, and a report outside them is refused, so don't send made up numbers. Outside a store run (a script run from the editor) the numbers are dropped.
+
+Example:
+```luau
+local Host = require("../host")
+
+Host.report_stats(1250, 0)
+```
+
 ## Host.menu_open
 
 Definition:

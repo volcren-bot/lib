@@ -452,4 +452,5 @@ return {
 	sleep = g.sleep :: (ms: number) -> (),
 	time = g.time :: () -> number,
 	clock = g.clock :: () -> number,
+	report_stats = g.report_stats :: (experience: number, gold: number, custom: { number }?) -> (),
 }
