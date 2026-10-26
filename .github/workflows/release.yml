@@ -32,6 +32,10 @@ jobs:
             echo "Set the SUPABASE_URL repository variable and the SUPABASE_SERVICE_KEY secret." >&2
             exit 1
           fi
+          # A secret pasted with a trailing newline would end the request headers early and turn the rest
+          # of them into the start of the uploaded file, so only ever send the key without whitespace.
+          SUPABASE_URL="$(printf %s "$SUPABASE_URL" | tr -d '[:space:]')"
+          SUPABASE_SERVICE_KEY="$(printf %s "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')"
           version="$(TZ=UTC git show -s --format=%cd --date=format-local:%Y.%m.%d HEAD)-$(git rev-parse --short=7 HEAD)"
           host_api="$(tr -d '[:space:]' < HOST_API)"
           case "$host_api" in ''|*[!0-9]*) echo "HOST_API must be a whole number." >&2; exit 1;; esac
@@ -58,3 +62,9 @@ jobs:
              out/old.json > out/index.json
           cat out/index.json
           upload out/index.json lib/index.json application/json max-age=60
+
+          # What was just published must be the index itself, nothing else.
+          sleep 2
+          curl -sS --fail "$SUPABASE_URL/storage/v1/object/public/client/lib/index.json?check=$version" -o out/check.json
+          jq -e --arg version "$version" '.versions[0].version == $version' out/check.json > /dev/null \
+            || { echo "The published lib/index.json is not the index that was uploaded." >&2; exit 1; }
