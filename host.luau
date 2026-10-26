@@ -15,6 +15,36 @@ export type Skill = {
 	xp: number,
 }
 
+-- Something a script counts: `value` is its total since the script started. The loader works out the rest.
+export type Counter = {
+	id: string,
+	label: string,
+	value: number,
+	-- shown per hour of the run, unless false
+	hourly: boolean?,
+	-- the `id` of a counter to divide by, shown as "per" it
+	per: string?,
+	-- the `id` of a counter this is a share of, shown as a percent
+	percent_of: string?,
+}
+
+export type PlannedBreak = {
+	remaining: number,
+	length: number,
+	at: number?,
+}
+
+export type ActiveBreak = {
+	kind: "break" | "sleep",
+	remaining: number,
+}
+
+export type BreakPlan = {
+	breaks: { PlannedBreak },
+	sleeps: { PlannedBreak },
+	active: ActiveBreak?,
+}
+
 export type LoginLayout = {
 	screen: number,
 	panel_x: number,
@@ -452,5 +482,7 @@ return {
 	sleep = g.sleep :: (ms: number) -> (),
 	time = g.time :: () -> number,
 	clock = g.clock :: () -> number,
+	report_counters = g.report_counters :: (counters: { Counter }) -> (),
+	report_breaks = g.report_breaks :: (plan: BreakPlan) -> (),
 	report_stats = g.report_stats :: (experience: number, gold: number, custom: { number }?) -> (),
 }

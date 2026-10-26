@@ -1151,6 +1151,51 @@ print("it's", math.floor(now // 3600), "o'clock")
 ```
 
 
+## Host.report_counters
+
+Definition:
+```luau
+Host.report_counters: (counters: { Counter }) -> ()
+```
+Tells the loader what the script counts, to show in its XP Tracker tab under the skills. Send the totals since the script started, not the changes; each call replaces the last, so send them again when a number changes. The loader keeps the latest totals and works out the rest against the run's clock, so there's nothing to compute or format.
+
+A counter is `{ id, label, value, hourly?, per?, percent_of? }`:
+- `id` is what other counters refer to it by, `label` is what the tab shows, `value` is the total.
+- It's shown per hour of the run unless `hourly` is `false`.
+- `per` is the `id` of another counter to divide by, shown as "750 per Games".
+- `percent_of` is the `id` of a counter this is a share of, shown as "75% of Games".
+
+Works in any run, and needs no store session. Values must be finite numbers.
+
+Example:
+```luau
+local Host = require("../host")
+
+Host.report_counters({
+	{ id = "games", label = "Games", value = 12 },
+	{ id = "wins", label = "Wins", value = 9, percent_of = "games" },
+	{ id = "points", label = "Points", value = 9000, per = "games" },
+})
+```
+
+## Host.report_breaks
+
+Definition:
+```luau
+Host.report_breaks: (plan: BreakPlan) -> ()
+```
+Shows the breaks and sleeps the script has scheduled in the loader's Breaks tab. Every time is in milliseconds, and the loader counts the times down itself, so send the plan when it changes, not every second. `breaks` and `sleeps` hold `{ remaining, length, at? }` (`at` is the time of day of a sleep, in seconds since local midnight), and `active` says which one is being taken right now and how long is left of it. `Antiban` sends this for you. Works in any run, and needs no store session.
+
+Example:
+```luau
+local Host = require("../host")
+
+Host.report_breaks({
+	breaks = { { remaining = 600000, length = 120000 } },
+	sleeps = {},
+})
+```
+
 ## Host.report_stats
 
 Definition:

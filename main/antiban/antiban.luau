@@ -118,6 +118,34 @@ local function around(interval: number, std_var: number): number
 	return math.abs(Random.gauss(interval, interval * std_var))
 end
 
+local PUBLISH_MS = 30 * Antiban.SECOND
+local last_published = -PUBLISH_MS
+
+-- Sends the schedule to the loader's Breaks tab, which counts the times down itself, so unless `force` is set
+-- (the schedule changed) it goes out at most every `PUBLISH_MS`.
+local function publish(force: boolean?, active: Host.ActiveBreak?)
+	local now = Host.time()
+	if not force and now - last_published < PUBLISH_MS then
+		return
+	end
+	last_published = now
+	local running = running_ms()
+	local clock = Host.clock()
+	local breaks: { Host.PlannedBreak } = {}
+	for _, task in Antiban.breaks do
+		table.insert(breaks, { remaining = math.max(0, task.next - running), length = task.length })
+	end
+	local sleeps: { Host.PlannedBreak } = {}
+	for _, task in Antiban.sleeps do
+		local remaining = math.max(0, task.next - running)
+		table.insert(
+			sleeps,
+			{ remaining = remaining, length = task.length, at = (clock + remaining / Antiban.SECOND) % SECONDS_PER_DAY }
+		)
+	end
+	Host.report_breaks({ breaks = breaks, sleeps = sleeps, active = active })
+end
+
 local function format_ms(ms: number): string
 	local total = math.max(0, math.floor(ms / Antiban.SECOND + 0.5))
 	return string.format("%02d:%02d:%02d", total // 3600, total % 3600 // 60, total % 60)
@@ -216,6 +244,7 @@ function Antiban.add_break(interval: number, length: number, randomness: number?
 		logout_chance = logout_chance or 0.33,
 		next = running_ms() + around(interval, std_var),
 	})
+	publish(true)
 end
 
 function Antiban.add_sleep(time: string, length: number, randomness: number?, logout_chance: number?)
@@ -227,6 +256,7 @@ function Antiban.add_sleep(time: string, length: number, randomness: number?, lo
 		logout_chance = logout_chance or 0.5,
 		next = Antiban.time_running_at_clock(time, std_var),
 	})
+	publish(true)
 end
 
 function Antiban.lose_focus(): boolean
@@ -286,6 +316,7 @@ function Antiban.take_break(task: Break)
 		local countdown: Countdown =
 			{ finish = Host.time() + math.floor(math.abs(Random.gauss(task.length, task.length * task.std_var))) }
 		Log.log("Antiban", `Taking a break for {format_ms(countdown.finish - Host.time())}`)
+		publish(true, { kind = "break", remaining = countdown.finish - Host.time() })
 
 		if Antiban.on_start_break then
 			Antiban.on_start_break(task)
@@ -323,6 +354,7 @@ function Antiban.take_break(task: Break)
 		end
 
 		task.next = running_ms() + around(task.interval, task.std_var)
+		publish(true)
 	end)
 end
 
@@ -331,6 +363,7 @@ function Antiban.take_sleep(task: Sleep)
 		local countdown: Countdown =
 			{ finish = Host.time() + math.floor(math.abs(Random.gauss(task.length, task.length * task.std_var))) }
 		Log.log("Antiban", `Sleeping for {format_ms(countdown.finish - Host.time())}`)
+		publish(true, { kind = "sleep", remaining = countdown.finish - Host.time() })
 
 		if Antiban.on_start_sleep then
 			Antiban.on_start_sleep(task)
@@ -367,10 +400,12 @@ function Antiban.take_sleep(task: Sleep)
 		end
 
 		task.next = Antiban.time_running_at_clock(task.time, task.std_var)
+		publish(true)
 	end)
 end
 
 function Antiban.do_break(): boolean
+	publish()
 	local taken = false
 	for _, task in Antiban.breaks do
 		if running_ms() > task.next then
@@ -382,6 +417,7 @@ function Antiban.do_break(): boolean
 end
 
 function Antiban.do_sleep(): boolean
+	publish()
 	local taken = false
 	for _, task in Antiban.sleeps do
 		if running_ms() > task.next then
@@ -394,6 +430,7 @@ end
 
 -- Whether a break or a sleep is due, so the next `do_antiban` would take it.
 function Antiban.break_due(): boolean
+	publish()
 	local now = running_ms()
 	for _, list in { Antiban.breaks, Antiban.sleeps } do
 		for _, task in list do
