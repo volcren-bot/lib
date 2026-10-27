@@ -545,6 +545,24 @@ local function walk_scene(to: Tile, opts: WalkOptions): boolean
 	end
 end
 
+-- whether the world path finds a way to `to` or to a tile around it, `near` away at most: the tile itself may be one
+-- nothing can stand on (the one a bank chest is on, say), which isn't a closed door in the way
+local function has_way(from: Tile, to: Tile, near: number): boolean
+	if find_path(from, to) ~= nil then
+		return true
+	end
+	for _, d in ipairs({ 1, math.max(near, 1) }) do
+		for dx = -1, 1 do
+			for dy = -1, 1 do
+				if (dx ~= 0 or dy ~= 0) and find_path(from, { x = to.x + dx * d, y = to.y + dy * d }) ~= nil then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
 function Walker.walk(to: Tile, options: WalkOptions?): boolean
 	local opts: WalkOptions = options or {}
 	if opts.plane ~= nil and opts.plane ~= Player.plane() then
@@ -558,7 +576,7 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 		local here = Player.plane()
 		if from and here then
 			local route = scene_route(from, to)
-			if not (route and route.reached) and find_path(from, to) == nil then
+			if not (route and route.reached) and not has_way(from, to, opts.near or 2) then
 				Log.log("Walker", "no way found: planning through the doors")
 				return require("./planewalker").walk(to, here, opts)
 			end
