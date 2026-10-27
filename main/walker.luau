@@ -551,6 +551,19 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 		-- required here because the plane walker needs the walker, and objects need it too
 		return require("./planewalker").walk(to, opts.plane, opts)
 	end
+	if opts.doors ~= false and not opts.straight then
+		-- a way the planner can't find before the first step is a closed door in it (the live scene sees open ones, the
+		-- world path takes them for walls): go through the doors of the map without walking up to it to find out
+		local from = Walker.position()
+		local here = Player.plane()
+		if from and here then
+			local route = scene_route(from, to)
+			if not (route and route.reached) and find_path(from, to) == nil then
+				Log.log("Walker", "no way found: planning through the doors")
+				return require("./planewalker").walk(to, here, opts)
+			end
+		end
+	end
 	local walked = walk_scene(to, opts)
 	if walked or not blocked or opts.doors == false or opts.straight then
 		return walked
