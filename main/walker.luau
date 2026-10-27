@@ -365,10 +365,17 @@ export type WalkOptions = {
 	before_click: ((target: Tile, here: Tile) -> boolean?)?,
 	-- a menu entry besides "Walk here" that may sit on the tile: what we walk up to use
 	accept: ((entry: Host.MenuEntry) -> boolean)?,
+	-- the plane `to` is on, when not the one we are on: ladders and stairs from `Transports` take us there
+	plane: number?,
+	-- when the walk can't get closer, plan again through the doors of the map (default true)
+	doors: boolean?,
 }
 
-function Walker.walk(to: Tile, options: WalkOptions?): boolean
-	local opts: WalkOptions = options or {}
+-- set by a walk that gave up because the way is blocked (not because it timed out or was stopped)
+local blocked = false
+
+local function walk_scene(to: Tile, opts: WalkOptions): boolean
+	blocked = false
 	local near = opts.near or 2
 	local timeout = opts.timeout_ms or 60000
 	local me = Walker.position()
@@ -453,6 +460,7 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 				stuck += 1
 				if stuck >= 2 then
 					Log.log("Walker", `couldn't get closer to {to.x}, {to.y} than {Walker.distance(here, to)} tiles`)
+					blocked = true
 					return false
 				end
 			else
@@ -528,12 +536,33 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 				failures += 1
 				if failures >= 5 then
 					Log.log("Walker", `couldn't click the way to {to.x}, {to.y} on the minimap`)
+					blocked = true
 					return false
 				end
 			end
 		end
 		sleep(100)
 	end
+end
+
+function Walker.walk(to: Tile, options: WalkOptions?): boolean
+	local opts: WalkOptions = options or {}
+	if opts.plane ~= nil and opts.plane ~= Player.plane() then
+		-- required here because the plane walker needs the walker, and objects need it too
+		return require("./planewalker").walk(to, opts.plane, opts)
+	end
+	local walked = walk_scene(to, opts)
+	if walked or not blocked or opts.doors == false or opts.straight then
+		return walked
+	end
+	-- the doors of the map are closed to the planner until the walk is there to see them, so a way that is blocked may
+	-- have one in it
+	local here = Player.plane()
+	if here == nil then
+		return false
+	end
+	Log.log("Walker", "blocked: planning through the doors")
+	return require("./planewalker").walk(to, here, opts)
 end
 
 return Walker

@@ -25,6 +25,8 @@ The data the functions below hand back. Each one is a plain table, so you read i
 | `ItemSlot` | One slot of an item container: `slot`, item `id` and `quantity`. |
 | `Npc` / `PlayerInfo` | A character near you: `index`, `name`, world tile and local tile. An NPC also has `animation`, the id of the animation it is playing (-1 for none). |
 | `NpcModel` | The outline of a character or object as drawn this frame (box corners, outline and triangles). |
+| `CacheLoc` | A world object as the game cache places it on the map (`name`, `x`, `y`, `plane`, `size_x`, `size_y`, `shape`, `rotation`, `actions`), loaded or not. |
+| `CacheLocFilter` | What `Host.cache_locs` keeps: a `plane`, `names` (part of the name) and `actions` (whole menu options). |
 | `Loc` | A world object (door, tree, wall...) with its tile, size, shape and whether it can be clicked. |
 | `GroundItem` | An item lying on the ground. |
 | `ChatMessage` | A message of the chat history as the game keeps it: `uid` (counts up), `kind` (the message type), `name` (who said it, with icon tags), `sender` (the channel it came from), `text`, when it was added (`time` in ms since 1970, `age` in ms ago, `cycle`) and the game's own `time_utc`/`time_local` ("HH:MM"). |
@@ -458,6 +460,30 @@ for _, loc in ipairs(Host.locs() or {}) do
 end
 ```
 
+## Host.cache_locs
+
+Definition:
+```luau
+Host.cache_locs: (area: Corners, filter: CacheLocFilter?) -> { CacheLoc }?
+```
+Lists the world objects the game cache places on the map inside an area (`x1`, `y1`, `x2`, `y2`, both corners included), on every plane, whether or not that part of the map is loaded: where `Host.locs` only has your floor of the loaded scene. Each one has its name and menu `actions`. The filter keeps the objects on a `plane`, with any of the `names` in their name (any case) and any of the `actions` as a whole option (any case). The area covers at most 64 map squares (64 x 64 tiles each). It is what the cache says about the map: not what changed since (doors that are open, objects that came or went), and objects that transform into others (by a varbit) show as their first form. An 80 x 80 tile area takes about 50 ms.
+
+Example:
+```luau
+local Host = require("../host")
+
+local me = Host.game_state().position
+if me then
+	local stairs = Host.cache_locs(
+		{ x1 = me.x - 40, y1 = me.y - 40, x2 = me.x + 40, y2 = me.y + 40 },
+		{ actions = { "Climb-up", "Climb-down" } }
+	)
+	for _, loc in ipairs(stairs or {}) do
+		print(loc.name, loc.x, loc.y, "plane", loc.plane, table.concat(loc.actions, ", "))
+	end
+end
+```
+
 ## Host.loc_model
 
 Definition:
@@ -581,9 +607,9 @@ end
 
 Definition:
 ```luau
-Host.find_path: (from: Tile, to: Tile, plane: number?) -> { Tile }?
+Host.find_path: (from: Tile, to: Tile, plane: number?, max_tiles: number?) -> { Tile }?
 ```
-Finds a walking route between two tiles, both included. It knows the walls and blocked tiles of the whole map, but not stairs or other shortcuts. The first call after a game update takes about ten seconds while the map is prepared.
+Finds a walking route between two tiles of a plane (yours by default), both included. It knows the walls and blocked tiles of the whole map, but not stairs or other shortcuts, and it takes closed doors for walls. `max_tiles` limits how many tiles the search looks at: a target that can't be reached otherwise makes it search every tile that can be. The first call after a game update takes about ten seconds while the map is prepared.
 
 Example:
 ```luau

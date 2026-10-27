@@ -186,6 +186,8 @@ Walks to a tile of any distance with minimap clicks. It plans the way the game i
 - `straight`: walk in a straight line, letting the server find the way.
 - `randomize`: plan a different route each walk (default true, never for `straight`): `Host.scene_route` with a seed picked per walk, so planning again keeps the same route. Sometimes (`Walker.SHORTER_CHANCE`, up to `Walker.SHORTER_MAX` tiles) it also clicks short of the farthest tile it could.
 - `before_click`: called with the tile about to be clicked and your tile before each minimap click; returning `false` stops the walk (it then returns `false, "stopped"`). Use it with `Walker.route` to look at the way ahead, for example for something to avoid.
+- `plane`: the plane `to` is on. When it isn't the one the player is on, the walk goes through the ladders and staircases added to `Transports` (see `PlaneWalker.walk`); the other options apply to each walk on a plane.
+- `doors`: when the walk finds the way blocked, plan it again through the doors of the map (default true). The planner takes every door closed; the walk reads the real one once it is there, opens it if it is closed and goes through (`PlaneWalker.cross`). Pass `false` to leave doors to the caller.
 
 Returns `false` with a reason when it times out, can't click the way on the minimap, or the player stops getting closer (the target can't be reached, for example a tile in the water).
 

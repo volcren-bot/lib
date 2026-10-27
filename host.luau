@@ -292,6 +292,29 @@ export type Loc = {
 	clickable: boolean,
 }
 
+-- A loc the game cache places on the map, whether or not its map square is loaded; `actions` are its menu options in order
+export type CacheLoc = {
+	id: number,
+	name: string,
+	x: number,
+	y: number,
+	plane: number,
+	size_x: number,
+	size_y: number,
+	shape: number,
+	rotation: number,
+	actions: { string },
+}
+
+-- what `cache_locs` keeps; every field is optional
+export type CacheLocFilter = {
+	plane: number?,
+	-- part of the name, any case
+	names: { string }?,
+	-- the whole menu option, any case: a loc with any of them is kept
+	actions: { string }?,
+}
+
 export type GroundItem = {
 	id: number,
 	quantity: number,
@@ -422,11 +445,12 @@ return {
 	npcs = g.npcs :: () -> { Npc }?,
 	npc_model = g.npc_model :: (index: number) -> NpcModel?,
 	locs = g.locs :: () -> { Loc }?,
+	cache_locs = g.cache_locs :: (area: Corners, filter: CacheLocFilter?) -> { CacheLoc }?,
 	ground_items = g.ground_items :: () -> { GroundItem }?,
 	map_regions = g.map_regions :: () -> { { number } }?,
 	in_instance = g.in_instance :: () -> boolean?,
 	chat_messages = g.chat_messages :: () -> { ChatMessage }?,
-	find_path = g.find_path :: (from: Tile, to: Tile, plane: number?) -> { Tile }?,
+	find_path = g.find_path :: (from: Tile, to: Tile, plane: number?, max_tiles: number?) -> { Tile }?,
 	scene_route = g.scene_route :: (from: Tile, to: Tile, options: SceneRouteOptions?) -> SceneRoute?,
 	loc_model = g.loc_model :: (loc: Loc) -> NpcModel?,
 	players = g.players :: () -> { PlayerInfo }?,
