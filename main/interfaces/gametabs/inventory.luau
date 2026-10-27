@@ -697,7 +697,7 @@ function Inventory.shift_drop_slots(slots: { number }, attempts: number?): boole
 		if boxes == nil then
 			return false
 		end
-		Keyboard.key_down(Keyboard.keys.SHIFT)
+		Keyboard.key_down(Keyboard.keys.LSHIFT)
 		Random.sleep(95, 170, "left")
 		local ok, pass_err = pcall(function()
 			for _, slot in ipairs(left :: { number }) do
@@ -713,7 +713,7 @@ function Inventory.shift_drop_slots(slots: { number }, attempts: number?): boole
 				end
 			end
 		end)
-		Keyboard.key_up(Keyboard.keys.SHIFT)
+		Keyboard.key_up(Keyboard.keys.LSHIFT)
 		if not ok then
 			error(pass_err, 0)
 		end
