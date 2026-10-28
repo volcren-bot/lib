@@ -13,9 +13,9 @@ local Circle = Geometry.Circle
 type Point = Geometry.Point
 local Projection = require("../projection/projection")
 type Tile = Projection.Tile
+local Log = require("../../utils/log")
 local Mouse = require("../../utils/input/mouse")
 local Random = require("../../utils/math/random")
-local Log = require("../../utils/log")
 
 local Minimap = {}
 

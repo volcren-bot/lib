@@ -4,11 +4,11 @@ local game_state = Host.game_state
 local sleep = Host.sleep
 type ClientState = Host.ClientState
 local GameState = require("../../game_state")
+local Log = require("../../../utils/log")
+local Mouse = require("../../../utils/input/mouse")
+local RecommendSurvey = require("../chatbox/recommend_survey")
 local TitleScreen = require("./titlescreen")
 local WelcomeScreen = require("./welcome_screen")
-local RecommendSurvey = require("../chatbox/recommend_survey")
-local Mouse = require("../../../utils/input/mouse")
-local Log = require("../../../utils/log")
 
 local Login = {}
 

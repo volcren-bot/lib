@@ -9,8 +9,8 @@ type NpcModel = Host.NpcModel
 type Tile = Host.Tile
 local Geometry = require("../../utils/math/geometry")
 type Point = Geometry.Point
-local Mouse = require("../../utils/input/mouse")
 local Clickbox = require("../clickbox")
+local Mouse = require("../../utils/input/mouse")
 local Projection = require("../projection/projection")
 type Clickbox = Clickbox.Clickbox
 

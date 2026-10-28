@@ -6,9 +6,9 @@ local menu = Host.menu
 local sleep = Host.sleep
 type Widget = Host.Widget
 local Chatbox = require("./chatbox")
-local Widgets = require("../widgets")
-local Mouse = require("../../../utils/input/mouse")
 local Log = require("../../../utils/log")
+local Mouse = require("../../../utils/input/mouse")
+local Widgets = require("../widgets")
 
 local RecommendSurvey = {
 	GROUP = Chatbox.RECOMMEND_SURVEY,

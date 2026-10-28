@@ -8,12 +8,12 @@ local game_state = Host.game_state
 local sleep = Host.sleep
 type Widget = Host.Widget
 type ChatMessage = Host.ChatMessage
-local Varbits = require("../../varbits")
-local Player = require("../../player")
-local Widgets = require("../widgets")
 local Keyboard = require("../../../utils/input/keyboard")
-local Random = require("../../../utils/math/random")
 local Log = require("../../../utils/log")
+local Player = require("../../player")
+local Random = require("../../../utils/math/random")
+local Varbits = require("../../varbits")
+local Widgets = require("../widgets")
 
 local Chat = {}
 

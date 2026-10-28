@@ -1,13 +1,13 @@
 --!strict
 local Host = require("../../../host")
 local sleep = Host.sleep
-local Mouse = require("../../../utils/input/mouse")
-local Geometry = require("../../../utils/math/geometry")
-local Chatbox = require("./chatbox")
 local Chat = require("./chat")
+local Chatbox = require("./chatbox")
+local Geometry = require("../../../utils/math/geometry")
 local Interact = require("../../interact")
-local Minimenu = require("../minimenu")
 local Log = require("../../../utils/log")
+local Minimenu = require("../minimenu")
+local Mouse = require("../../../utils/input/mouse")
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
 type Box = Geometry.Box

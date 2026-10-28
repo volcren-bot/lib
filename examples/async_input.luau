@@ -1,10 +1,10 @@
 --!strict
 -- Checks async keys, the middle button and the wheel against a live client, with the camera as the witness. Needs the viewport free of interfaces.
-local Host = require("../host")
 local Camera = require("../main/camera")
+local Geometry = require("../utils/math/geometry")
+local Host = require("../host")
 local Keyboard = require("../utils/input/keyboard")
 local Mouse = require("../utils/input/mouse")
-local Geometry = require("../utils/math/geometry")
 
 local Point = Geometry.Point
 local keys = Keyboard.keys

@@ -6,12 +6,12 @@ local sub_interfaces = Host.sub_interfaces
 local varp = Host.varp
 local sleep = Host.sleep
 type Widget = Host.Widget
+local Biometrics = require("../../antiban/biometrics")
 local GameState = require("../../game_state")
-local SidePanels = require("./side_panels")
+local Log = require("../../../utils/log")
 local Mouse = require("../../../utils/input/mouse")
 local Random = require("../../../utils/math/random")
-local Biometrics = require("../../antiban/biometrics")
-local Log = require("../../../utils/log")
+local SidePanels = require("./side_panels")
 
 local Logout = {
 	GROUP = 182,

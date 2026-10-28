@@ -8,9 +8,9 @@ type World = Host.World
 type WorldSelect = Host.WorldSelect
 local GameState = require("../../game_state")
 local Geometry = require("../../../utils/math/geometry")
-local Random = require("../../../utils/math/random")
-local Mouse = require("../../../utils/input/mouse")
 local Log = require("../../../utils/log")
+local Mouse = require("../../../utils/input/mouse")
+local Random = require("../../../utils/math/random")
 local Box = Geometry.Box
 type Box = Geometry.Box
 

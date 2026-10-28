@@ -374,6 +374,16 @@ export type SceneRoute = {
 	reached: boolean,
 }
 
+-- Part of the loaded scene's collision map: the flags of tile (x + i, y + j) are at `flags[i * height + j + 1]`.
+export type Collision = {
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	plane: number,
+	flags: { number },
+}
+
 -- A tile and the plane it is on.
 export type NavTile = {
 	x: number,
@@ -493,6 +503,7 @@ return {
 	selected_widget = g.selected_widget :: () -> SelectedWidget?,
 	npcs = g.npcs :: () -> { Npc }?,
 	npc_model = g.npc_model :: (index: number) -> NpcModel?,
+	npc_sizes = g.npc_sizes :: (indices: { number }) -> { [number]: number }?,
 	locs = g.locs :: (plane: number?) -> { Loc }?,
 	cache_locs = g.cache_locs :: (area: Corners, filter: CacheLocFilter?) -> { CacheLoc }?,
 	ground_items = g.ground_items :: () -> { GroundItem }?,
@@ -500,6 +511,7 @@ return {
 	in_instance = g.in_instance :: () -> boolean?,
 	chat_messages = g.chat_messages :: () -> { ChatMessage }?,
 	find_path = g.find_path :: (from: Tile, to: Tile, plane: number?, max_tiles: number?) -> { Tile }?,
+	collision = g.collision :: (area: Corners?) -> Collision?,
 	scene_route = g.scene_route :: (from: Tile, to: Tile, options: SceneRouteOptions?) -> SceneRoute?,
 	nav_plan = g.nav_plan :: (from: Tile | NavTile, to: Tile | NavTile, options: NavOptions?) -> (NavPlan?, string?),
 	loc_model = g.loc_model :: (loc: Loc) -> NpcModel?,

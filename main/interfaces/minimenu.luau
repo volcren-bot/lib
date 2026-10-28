@@ -9,10 +9,10 @@ local game_state = Host.game_state
 local connection = Host.connection
 type MenuEntry = Host.MenuEntry
 type MenuClick = Host.MenuClick
-local Mouse = require("../../utils/input/mouse")
 local Geometry = require("../../utils/math/geometry")
-local Random = require("../../utils/math/random")
 local Log = require("../../utils/log")
+local Mouse = require("../../utils/input/mouse")
+local Random = require("../../utils/math/random")
 
 local Minimenu = {}
 

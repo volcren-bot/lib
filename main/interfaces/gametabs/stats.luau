@@ -3,10 +3,10 @@ local Host = require("../../../host")
 local game_state = Host.game_state
 local widget = Host.widget
 type Skill = Host.Skill
-local SidePanels = require("./side_panels")
-local Mouse = require("../../../utils/input/mouse")
 local Geometry = require("../../../utils/math/geometry")
 local Log = require("../../../utils/log")
+local Mouse = require("../../../utils/input/mouse")
+local SidePanels = require("./side_panels")
 local Box = Geometry.Box
 local Stats = {}
 

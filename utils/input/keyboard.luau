@@ -1,7 +1,7 @@
 --!strict
 local Host = require("../../host")
-local Random = require("../math/random")
 local Log = require("../log")
+local Random = require("../math/random")
 local key_down = Host.key_down
 local key_up = Host.key_up
 local type_text = Host.type_text

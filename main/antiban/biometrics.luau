@@ -2,11 +2,11 @@
 local Host = require("../../host")
 local sleep = Host.sleep
 local sleep_async = Host.sleep_async
-local Random = require("../../utils/math/random")
-local Mouse = require("../../utils/input/mouse")
 local Geometry = require("../../utils/math/geometry")
-local Player = require("../player")
 local Log = require("../../utils/log")
+local Mouse = require("../../utils/input/mouse")
+local Player = require("../player")
+local Random = require("../../utils/math/random")
 
 local Biometrics = {}
 

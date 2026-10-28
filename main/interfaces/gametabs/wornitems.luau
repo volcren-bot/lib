@@ -7,9 +7,9 @@ type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
 local Item = require("../../../utils/item")
 type Item = Item.Item
+local Interact = require("../../interact")
 local Inv = require("../inv")
 local SidePanels = require("./side_panels")
-local Interact = require("../../interact")
 
 local CONTAINER = 94
 local SIZE = 14

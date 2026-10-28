@@ -6,13 +6,13 @@ local sleep = Host.sleep
 local time = Host.time
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
-local Chatbox = require("./chatbox")
-local Chat = require("./chat")
-local Interact = require("../../interact")
 local Biometrics = require("../../antiban/biometrics")
+local Chat = require("./chat")
+local Chatbox = require("./chatbox")
+local Interact = require("../../interact")
 local Keyboard = require("../../../utils/input/keyboard")
-local Random = require("../../../utils/math/random")
 local Log = require("../../../utils/log")
+local Random = require("../../../utils/math/random")
 
 local ChatOptions = {}
 

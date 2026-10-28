@@ -4,8 +4,8 @@ local OPTION = "Talk-to"
 
 local Host = require("../host")
 local sleep = Host.sleep
-local Draw = require("../utils/draw")
 local Clickbox = require("../main/clickbox")
+local Draw = require("../utils/draw")
 local Npcs = require("../main/entities/npcs")
 local Walker = require("../main/walker")
 

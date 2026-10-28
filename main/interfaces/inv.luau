@@ -8,14 +8,14 @@ type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
 local Item = require("../../utils/item")
 type Item = Item.Item
-local Random = require("../../utils/math/random")
 local Geometry = require("../../utils/math/geometry")
+local Random = require("../../utils/math/random")
 type Point = Geometry.Point
 local Mouse = require("../../utils/input/mouse")
 type Button = Mouse.Button
-local Minimenu = require("./minimenu")
 local Interact = require("../interact")
 local Log = require("../../utils/log")
+local Minimenu = require("./minimenu")
 
 export type Slot = {
 	slot: number,

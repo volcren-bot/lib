@@ -3,8 +3,8 @@
 local NAMES = { "Captain Pudi", "Gita Prymes", "Mr McGroot", "Aggy", "Rocky", "Phoenix", "Taiman" }
 local MAX_MENUS = 12
 
-local Host = require("../host")
 local ChatOptions = require("../main/interfaces/chatbox/chat_options")
+local Host = require("../host")
 local Npcs = require("../main/entities/npcs")
 local Walker = require("../main/walker")
 

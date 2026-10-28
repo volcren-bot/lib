@@ -5,13 +5,13 @@ local widget = Host.widget
 local varc = Host.varc
 local sleep = Host.sleep
 type Widget = Host.Widget
-local GameState = require("../../game_state")
-local Mouse = require("../../../utils/input/mouse")
-local Keyboard = require("../../../utils/input/keyboard")
 local Biometrics = require("../../antiban/biometrics")
-local Random = require("../../../utils/math/random")
+local GameState = require("../../game_state")
 local GameVal = require("../../../utils/game_val")
+local Keyboard = require("../../../utils/input/keyboard")
 local Log = require("../../../utils/log")
+local Mouse = require("../../../utils/input/mouse")
+local Random = require("../../../utils/math/random")
 
 local SidePanels = {}
 

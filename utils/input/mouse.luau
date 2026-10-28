@@ -1,8 +1,8 @@
 --!strict
-local Host = require("../../host")
-local Random = require("../math/random")
 local Geometry = require("../math/geometry")
+local Host = require("../../host")
 local Log = require("../log")
+local Random = require("../math/random")
 local connection = Host.connection
 local move = Host.move
 local wind_mouse = Host.wind_mouse

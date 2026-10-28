@@ -1,10 +1,10 @@
 --!strict
 local Host = require("../host")
 local sleep = Host.sleep
-local Mouse = require("../utils/input/mouse")
-local Minimenu = require("./interfaces/minimenu")
-local Player = require("./player")
 local Log = require("../utils/log")
+local Minimenu = require("./interfaces/minimenu")
+local Mouse = require("../utils/input/mouse")
+local Player = require("./player")
 type Target = Mouse.Target
 type MenuClick = Host.MenuClick
 

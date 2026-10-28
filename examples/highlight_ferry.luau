@@ -7,9 +7,9 @@ local Host = require("../host")
 local time = Host.time
 local sleep = Host.sleep
 local Draw = require("../utils/draw")
+local Geometry = require("../utils/math/geometry")
 local Objects = require("../main/entities/objects")
 local Walker = require("../main/walker")
-local Geometry = require("../utils/math/geometry")
 type Point = Geometry.Point
 
 local me = assert(Walker.position())

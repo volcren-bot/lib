@@ -1,7 +1,7 @@
 --!strict
 -- Loops forever, drawing the bounds of the open minimenu and its submenus plus the hover and keep-out areas.
-local Host = require("../host")
 local Draw = require("../utils/draw")
+local Host = require("../host")
 local Minimenu = require("../main/interfaces/minimenu")
 local sleep = Host.sleep
 local clear_overlay = Host.clear_overlay

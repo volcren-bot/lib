@@ -4,8 +4,8 @@ local OPTION = "Use"
 
 local Host = require("../host")
 local sleep = Host.sleep
-local Draw = require("../utils/draw")
 local Clickbox = require("../main/clickbox")
+local Draw = require("../utils/draw")
 local Objects = require("../main/entities/objects")
 local Walker = require("../main/walker")
 

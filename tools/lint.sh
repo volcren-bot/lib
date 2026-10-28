@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # Format check (StyLua) and lint (luau-analyze) for the Luau code.
+#   tools/lint.sh           check only; fails on format diffs or lint warnings
+#   tools/lint.sh --fix     format in place first
+#   tools/lint.sh --types   also report type errors (noisy: the sandbox's API is not known to luau-analyze)
 set -euo pipefail
-cd "$(dirname "$0")/.."
+
+cd "$(dirname -- "${BASH_SOURCE[0]}")/.."
+config=tools/stylua.toml
 
 dirs=(.)
 fix=0 types=0
@@ -14,9 +19,9 @@ for arg in "$@"; do
 done
 
 if ((fix)); then
-	stylua "${dirs[@]}"
+	stylua --config-path "$config" "${dirs[@]}"
 else
-	stylua --check "${dirs[@]}"
+	stylua --config-path "$config" --check "${dirs[@]}"
 fi
 
 out=$(luau-analyze "${dirs[@]}" 2>&1 || true)

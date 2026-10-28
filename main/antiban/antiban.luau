@@ -1,14 +1,14 @@
 --!strict
 local Host = require("../../host")
 local sleep = Host.sleep
-local Random = require("../../utils/math/random")
-local Mouse = require("../../utils/input/mouse")
-local GameState = require("../game_state")
-local Camera = require("../camera")
 local Biometrics = require("./biometrics")
+local Camera = require("../camera")
+local GameState = require("../game_state")
+local Log = require("../../utils/log")
 local Login = require("../interfaces/login/login")
 local Logout = require("../interfaces/gametabs/logout")
-local Log = require("../../utils/log")
+local Mouse = require("../../utils/input/mouse")
+local Random = require("../../utils/math/random")
 
 local Antiban = {}
 

@@ -25,6 +25,7 @@ The data the functions below hand back. Each one is a plain table, so you read i
 | `ItemSlot` | One slot of an item container: `slot`, item `id` and `quantity`. |
 | `Npc` / `PlayerInfo` | A character near you: `index`, `name`, world tile and local tile. An NPC also has `animation`, the id of the animation it is playing (-1 for none). |
 | `NpcModel` | The outline of a character or object as drawn this frame (box corners, outline and triangles). |
+| `Collision` | Part of the scene's collision map (`Host.collision`): its corner `x`, `y`, `width`, `height`, `plane` and the `flags` of each tile. |
 | `CacheLoc` | A world object as the game cache places it on the map (`name`, `x`, `y`, `plane`, `size_x`, `size_y`, `shape`, `rotation`, `actions`), loaded or not. |
 | `CacheLocFilter` | What `Host.cache_locs` keeps: a `plane`, `names` (part of the name) and `actions` (whole menu options). |
 | `Loc` | A world object (door, tree, wall...) with its tile, size, shape and whether it can be clicked. |
@@ -441,6 +442,29 @@ if npcs[1] then
 end
 ```
 
+## Host.npc_sizes
+
+Definition:
+```luau
+Host.npc_sizes: (indices: { number }) -> { [number]: number }?
+```
+The size in tiles (the side of the square it stands on) of the NPCs with these `index`es, from their definitions, keyed by index. NPCs that are gone are left out. [SafeSpot](main/safespot.md) needs them: an NPC paths from its south-west tile, and its position is drawn in the middle of its tiles.
+
+Example:
+```luau
+local Host = require("../host")
+
+local all = Host.npcs() or {}
+local indices = {}
+for _, npc in ipairs(all) do
+	table.insert(indices, npc.index)
+end
+local sizes = Host.npc_sizes(indices) or {}
+for _, npc in ipairs(all) do
+	print(npc.name, sizes[npc.index])
+end
+```
+
 ## Host.locs
 
 Definition:
@@ -683,6 +707,28 @@ if me then
 	local route = Host.scene_route({ x = me.x, y = me.y }, { x = me.x + 8, y = me.y - 4 })
 	if route then
 		print(#route.tiles - 1, "steps, reaches the tile:", route.reached)
+	end
+end
+```
+
+## Host.collision
+
+Definition:
+```luau
+Host.collision: (area: Corners?) -> Collision?
+```
+The collision flags the game client keeps for your plane of the loaded scene, as it is now (opened doors, instances, spawned objects): the whole scene, or the part of it inside `area` (corners included). The flags of tile (`x + i`, `y + j`) are at `flags[i * height + j + 1]`; [SafeSpot](main/safespot.md) names them (`SafeSpot.FLAG`) and reads them for you. The scene's outer ring of tiles has every flag set. It takes about 2 ms.
+
+Example:
+```luau
+local Host = require("../host")
+
+local me = Host.game_state().position
+if me then
+	local c = Host.collision({ x1 = me.x - 1, y1 = me.y - 1, x2 = me.x + 1, y2 = me.y + 1 })
+	if c then
+		local north = c.flags[(me.x - c.x) * c.height + (me.y + 1 - c.y) + 1]
+		print(string.format("flags north of you: %x", north))
 	end
 end
 ```

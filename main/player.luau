@@ -5,9 +5,9 @@ local sleep = Host.sleep
 local time = Host.time
 type Tile = Host.Tile
 local GameState = require("./game_state")
+local Log = require("../utils/log")
 local Position = require("./position")
 local Varps = require("./varps")
-local Log = require("../utils/log")
 
 local Player = {}
 

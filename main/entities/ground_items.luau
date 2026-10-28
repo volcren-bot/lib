@@ -7,8 +7,8 @@ type GroundItem = Host.GroundItem
 type MenuEntry = Host.MenuEntry
 type NpcModel = Host.NpcModel
 type Tile = Host.Tile
-local Mouse = require("../../utils/input/mouse")
 local Clickbox = require("../clickbox")
+local Mouse = require("../../utils/input/mouse")
 local Projection = require("../projection/projection")
 type Clickbox = Clickbox.Clickbox
 

@@ -4,9 +4,9 @@ local NAME = "Captain Pudi"
 local FIRST = "tell me more"
 local LAST = "Goodbye"
 
-local Host = require("../host")
 local Chat = require("../main/interfaces/chatbox/chat")
 local ChatOptions = require("../main/interfaces/chatbox/chat_options")
+local Host = require("../host")
 local Npcs = require("../main/entities/npcs")
 local Walker = require("../main/walker")
 

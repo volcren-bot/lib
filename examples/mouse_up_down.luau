@@ -1,7 +1,7 @@
 --!strict
+local Geometry = require("../utils/math/geometry")
 local Host = require("../host")
 local Mouse = require("../utils/input/mouse")
-local Geometry = require("../utils/math/geometry")
 local Point = Geometry.Point
 
 local conn = assert(Host.connection())

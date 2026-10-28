@@ -4,9 +4,9 @@ local widget = Host.widget
 local varc = Host.varc
 local sleep = Host.sleep
 local Chat = require("./chat")
-local Widgets = require("../widgets")
 local Interact = require("../../interact")
 local Log = require("../../../utils/log")
+local Widgets = require("../widgets")
 
 local ChatTabs = {}
 

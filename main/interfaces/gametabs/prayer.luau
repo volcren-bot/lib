@@ -6,13 +6,13 @@ local sub_interfaces = Host.sub_interfaces
 local sleep = Host.sleep
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
-local Varbits = require("../../varbits")
+local Interact = require("../../interact")
+local Log = require("../../../utils/log")
+local Mouse = require("../../../utils/input/mouse")
 local Player = require("../../player")
 local SidePanels = require("./side_panels")
 local Stats = require("./stats")
-local Interact = require("../../interact")
-local Mouse = require("../../../utils/input/mouse")
-local Log = require("../../../utils/log")
+local Varbits = require("../../varbits")
 
 local Prayer = {}
 

@@ -2,10 +2,10 @@
 local Host = require("../../../host")
 local widget_children = Host.widget_children
 type Widget = Host.Widget
-local Inv = require("../inv")
-local Toplevel = require("./toplevel")
 local BankpinKeypad = require("./bankpin_keypad")
+local Inv = require("../inv")
 local Log = require("../../../utils/log")
+local Toplevel = require("./toplevel")
 
 local CONTAINER = 95
 -- The frame the close button is in, and the button's index in it (like the deposit box's frame).
