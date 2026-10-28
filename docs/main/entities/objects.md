@@ -193,9 +193,14 @@ end
 
 Definition:
 ```luau
-function Objects.interact(loc: Loc, option: string, walk_timeout_ms: (number | false)?): boolean
+function Objects.interact(
+	loc: Loc,
+	option: string | { string },
+	walk_timeout_ms: (number | false)?,
+	face: boolean?
+): boolean
 ```
-Picks an option (such as `"Chop down"` or `"Open"`) on the object. Retries if the wrong thing got clicked, and waits for you to arrive if it made you walk. `false` skips the wait.
+Picks an option (such as `"Chop down"` or `"Open"`) on the object. Retries if the wrong thing got clicked, and waits for you to arrive if it made you walk. `false` skips the wait. It may turn the camera toward the object first; `face` false leaves the camera alone, for an object you know is on screen.
 
 Example:
 ```luau

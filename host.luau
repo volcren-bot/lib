@@ -374,6 +374,55 @@ export type SceneRoute = {
 	reached: boolean,
 }
 
+-- A tile and the plane it is on.
+export type NavTile = {
+	x: number,
+	y: number,
+	plane: number,
+}
+
+-- A loc a plan uses: a closed door to open or a ladder or staircase to climb, and the option that does it.
+export type NavLoc = {
+	id: number,
+	x: number,
+	y: number,
+	plane: number,
+	kind: number,
+	size_x: number,
+	size_y: number,
+	option: string,
+}
+
+export type NavAction = {
+	-- the index in `tiles` of the tile it is used from; the next tile is past it (on `to_plane` for a climb)
+	at: number,
+	kind: "door" | "climb",
+	loc: NavLoc,
+	to_plane: number,
+}
+
+export type NavPlan = {
+	-- every tile walked, the start first
+	tiles: { NavTile },
+	-- in the order they come
+	actions: { NavAction },
+	-- false when it ends elsewhere: as close as it gets, or `goal` when the target is too far for one plan
+	reached: boolean,
+	goal: NavTile,
+}
+
+-- every field is optional (see docs/host.md)
+export type NavOptions = {
+	near: number?,
+	door_options: { string }?,
+	climb_options: { [string]: number }?,
+	avoid: { NavLoc }?,
+	seed: number?,
+	rnd: number?,
+	door_cost: number?,
+	climb_cost: number?,
+}
+
 -- passing these to `scene_route` randomizes the route (see docs/host.md); every field is optional
 export type SceneRouteOptions = {
 	seed: number?,
@@ -444,7 +493,7 @@ return {
 	selected_widget = g.selected_widget :: () -> SelectedWidget?,
 	npcs = g.npcs :: () -> { Npc }?,
 	npc_model = g.npc_model :: (index: number) -> NpcModel?,
-	locs = g.locs :: () -> { Loc }?,
+	locs = g.locs :: (plane: number?) -> { Loc }?,
 	cache_locs = g.cache_locs :: (area: Corners, filter: CacheLocFilter?) -> { CacheLoc }?,
 	ground_items = g.ground_items :: () -> { GroundItem }?,
 	map_regions = g.map_regions :: () -> { { number } }?,
@@ -452,6 +501,7 @@ return {
 	chat_messages = g.chat_messages :: () -> { ChatMessage }?,
 	find_path = g.find_path :: (from: Tile, to: Tile, plane: number?, max_tiles: number?) -> { Tile }?,
 	scene_route = g.scene_route :: (from: Tile, to: Tile, options: SceneRouteOptions?) -> SceneRoute?,
+	nav_plan = g.nav_plan :: (from: Tile | NavTile, to: Tile | NavTile, options: NavOptions?) -> (NavPlan?, string?),
 	loc_model = g.loc_model :: (loc: Loc) -> NpcModel?,
 	players = g.players :: () -> { PlayerInfo }?,
 	player_model = g.player_model :: (index: number) -> NpcModel?,

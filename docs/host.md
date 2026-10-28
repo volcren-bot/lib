@@ -445,9 +445,9 @@ end
 
 Definition:
 ```luau
-Host.locs: () -> { Loc }?
+Host.locs: (plane: number?) -> { Loc }?
 ```
-Lists the world objects (doors, trees, walls...) on your floor.
+Lists the world objects (doors, trees, walls...) of the loaded scene on a plane (0 to 3, yours by default). `shape` and `rotation` are known for every kind (walls included). `clickable` is the client's own flag for an object you can click; it is also what makes the minimap draw a wall red, so a clickable wall is a door, gate or curtain.
 
 Example:
 ```luau
@@ -620,6 +620,38 @@ local me = state and state.position
 if me then
 	local path = Host.find_path({ x = me.x, y = me.y }, { x = me.x + 10, y = me.y })
 	print("steps:", path and #path)
+end
+```
+
+## Host.nav_plan
+
+Definition:
+```luau
+Host.nav_plan: (from: Tile | NavTile, to: Tile | NavTile, options: NavOptions?) -> NavPlan?
+```
+Plans a walk over every plane of the loaded scene at once, through closed doors and up and down ladders and staircases; a tile without a `plane` is on yours. It reads the client's collision of all four planes, then:
+
+- **Doors.** A door is what the minimap draws red: a wall (or a diagonal wall) the client lets you click, that blocks, has one of `door_options` and is closed (its walls are in the collision). Its walls are taken out of the collision while planning, at `door_cost` (tenths of a tile) for going through, so a plan uses a door when that is shorter than the way round.
+- **Climbs.** Any clickable object with one of `climb_options` (menu option to planes climbed, `1` up and `-1` down) joins the tiles it is used from (beside it, where no wall is between) to the tiles beside the nearest object on the other plane that climbs back (within 6 tiles), at `climb_cost`. Where exactly you land is a guess, so plan again once there.
+
+The plan's `tiles` are every tile walked, start first, each with its plane; `actions` are the doors and climbs on the way, in order, each with the index `at` of the tile it is used from (the next tile is past it). When `to` is outside the loaded scene the plan uses the game cache's collision (closed doors open) for the rest, up to about 400 tiles across; farther than that it plans to a tile along the world path (`goal`), and `reached` is false. A target that can't be reached gives a plan to the closest tile on its plane, with `reached` false. In an instance only the loaded scene is used. All fields are optional:
+- `near`: the plan ends this many tiles (any direction) from `to` on its plane (default 0).
+- `door_options`: the options that open a door, any case (default `{ "Open" }`; `{}` takes closed doors for walls).
+- `climb_options`: default `{ ["Climb-up"] = 1, ["Climb-down"] = -1 }`; `{}` stays on the plane.
+- `avoid`: locs not to use (`id`, `x`, `y`, `plane`), such as a door that didn't open.
+- `seed`, `rnd`: with a seed every tile's cost is scaled by 1 +- `rnd` / 2, the same seed planning the same way (default `rnd` 0.6).
+- `door_cost`, `climb_cost`: default 30 and 50.
+
+Example:
+```luau
+local Host = require("../host")
+
+local me = Host.game_state().position
+if me then
+	local plan = Host.nav_plan({ x = me.x, y = me.y }, { x = me.x, y = me.y, plane = 0 })
+	for _, action in ipairs(plan and plan.actions or {}) do
+		print(action.kind, action.loc.option, action.loc.x, action.loc.y, "plane", action.loc.plane, "to", action.to_plane)
+	end
 end
 ```
 

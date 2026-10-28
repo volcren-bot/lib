@@ -139,7 +139,13 @@ function Objects.click(loc: Loc, button: Mouse.Button?): boolean
 	return Clickbox.click(clickbox_of(loc), hovered_by(loc), loc.name or tostring(loc.id), button, tile_of(loc))
 end
 
-function Objects.interact(loc: Loc, option: string | { string }, walk_timeout_ms: (number | false)?): boolean
+-- `face` false leaves the camera alone (for a loc already on screen).
+function Objects.interact(
+	loc: Loc,
+	option: string | { string },
+	walk_timeout_ms: (number | false)?,
+	face: boolean?
+): boolean
 	local function owns(entry: MenuEntry): boolean
 		return Objects.owns(loc, entry)
 	end
@@ -149,7 +155,7 @@ function Objects.interact(loc: Loc, option: string | { string }, walk_timeout_ms
 		loc.name or tostring(loc.id),
 		option,
 		owns,
-		tile_of(loc),
+		if face == false then nil else tile_of(loc),
 		walk_timeout_ms
 	)
 end
