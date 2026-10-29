@@ -130,6 +130,56 @@ for _, slot in ipairs(slots or {}) do
 end
 ```
 
+## Host.on_item_change
+
+Definition:
+```luau
+Host.on_item_change: (callback: (change: ItemChange) -> ()) -> number
+```
+Calls `callback` for every change the client makes to an item container slot (inventory `93`, worn items `94`, bank `95`, ...), from now on. The change has `container`, `slot`, `tick`, `old_item`, `old_quantity`, `new_item`, `new_quantity` (an empty slot is item `-1`) and `old_known`, false when the write created the container. Returns an id for `Host.off_item_change`.
+
+The client tells the script the moment it makes the change, but a script is one thread: the callbacks run inside `Host.sleep` and `Host.wait_item_change`, waking them early, and not while the script is busy elsewhere. A script that never sleeps never sees a callback. An error in a callback ends the script like any other. The changes of one game tick arrive together, a bank opening is a few hundred.
+
+Example:
+```luau
+local Host = require("../host")
+
+Host.on_item_change(function(change)
+	if change.container == 93 and change.new_item ~= change.old_item then
+		print(`inventory slot {change.slot}: {change.old_item} -> {change.new_item} (tick {change.tick})`)
+	end
+end)
+while true do
+	Host.sleep(1000) -- callbacks run while this sleeps
+end
+```
+
+## Host.off_item_change
+
+Definition:
+```luau
+Host.off_item_change: (id: number) -> boolean
+```
+Stops calling the callback `Host.on_item_change` returned `id` for. Returns whether there was one.
+
+## Host.wait_item_change
+
+Definition:
+```luau
+Host.wait_item_change: (ms: number) -> boolean
+```
+Waits up to `ms` for the client to change an item container, runs the callbacks for what it changed and returns true; false when nothing changed in that time. Needs a callback from `Host.on_item_change` (without one it only sleeps).
+
+Example:
+```luau
+local Host = require("../host")
+
+Host.on_item_change(function() end)
+if Host.wait_item_change(30000) then
+	print("something changed")
+end
+```
+
 ## Host.project
 
 Definition:

@@ -10,6 +10,7 @@ RuneLite calls these graphics objects. A spot animation is a `Host.SpotAnim`:
 
 - `id` is its spot animation (graphic) id, the same id RuneLite's dev tools show.
 - `x`, `y` and `plane` are the world tile it is on. `local_x` and `local_y` are the same place in fine units (128 to a tile).
+- `view_id` is the world view it is in: `0` is the main world. Another number is a moving sub-scene such as a boat the player is on; its `x`, `y` and `local_x` and `local_y` are that scene's own and not on the world's tiles, so `SpotAnims.at` leaves those out.
 - `z` is the client's own height: the ground's height at the tile minus the height the server asked for, so negative is up.
 - `start_cycle` and `cycle` are client cycles (50 a second): when it starts playing, and now. It is listed from the moment the server sends it, which can be before it starts.
 

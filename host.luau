@@ -256,6 +256,21 @@ export type ItemSlot = {
 	quantity: number,
 }
 
+-- One write the client made to an item container slot that changed it. An empty slot is item -1, quantity 0.
+export type ItemChange = {
+	sequence: number,
+	time_ms: number,
+	tick: number?,
+	container: number,
+	slot: number,
+	-- false when the write created the container
+	old_known: boolean,
+	old_item: number,
+	old_quantity: number,
+	new_item: number,
+	new_quantity: number,
+}
+
 export type Npc = {
 	index: number,
 	id: number,
@@ -367,7 +382,7 @@ export type PlayerInfo = {
 	target_npc: number,
 	target_x: number,
 	target_y: number,
-	-- the actor it interacts with, of any kind and for any option (follow, talk, attack): an npc index or a player index (-1 for the other kind or none)
+	-- the actor it interacts with (follow, talk, attack): an npc or player index, -1 for the other kind or none
 	interacting_npc: number,
 	interacting_player: number,
 }
@@ -398,8 +413,7 @@ export type Projectile = {
 	cycle: number,
 	-- false while it waits to leave; until then the position is the source tile's centre
 	moving: boolean,
-	-- where it is now: world tile, local fine coordinates, the client's raw z (negative is up), orientation (0-2047)
-	-- and height above the ground
+	-- world tile, local fine coordinates, raw z (negative is up), orientation (0-2047) and height above the ground
 	x: number,
 	y: number,
 	local_x: number,
@@ -413,11 +427,13 @@ export type Projectile = {
 export type SpotAnim = {
 	-- the spot animation (graphic) id
 	id: number,
-	-- the world tile and plane it is on
+	-- the world tile and plane it is on (for a spot anim inside a boat, view_id ~= 0, the tile in the boat's own scene)
 	x: number,
 	y: number,
 	plane: number,
-	-- local fine coordinates (128 to a tile) and the client's raw z (the ground's height at the tile minus the height the server asked for)
+	-- 0 for the main world; any other number is a moving sub-scene (a boat) whose coordinates are its own
+	view_id: number,
+	-- local fine coordinates (128 to a tile) and the client's raw z
 	local_x: number,
 	local_y: number,
 	z: number,
@@ -548,6 +564,9 @@ return {
 	widget = g.widget :: (group: number, child: number) -> Widget?,
 	widget_children = g.widget_children :: (group: number, child: number) -> { Widget }?,
 	item_container = g.item_container :: (id: number) -> { ItemSlot }?,
+	on_item_change = g.on_item_change :: ((change: ItemChange) -> ()) -> number,
+	off_item_change = g.off_item_change :: (id: number) -> boolean,
+	wait_item_change = g.wait_item_change :: (ms: number) -> boolean,
 	project = g.project :: (
 		points: { FinePoint },
 		via: ("auto" | "local" | "client")?,

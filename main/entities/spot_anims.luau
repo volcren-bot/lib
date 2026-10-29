@@ -39,7 +39,7 @@ function SpotAnims.at(tile: Tile, what: (number | { number })?): { SpotAnim }?
 	end
 	local at: { SpotAnim } = {}
 	for _, spot in ipairs(found) do
-		if spot.x == tile.x and spot.y == tile.y then
+		if spot.view_id == 0 and spot.x == tile.x and spot.y == tile.y then
 			table.insert(at, spot)
 		end
 	end
