@@ -187,10 +187,10 @@ Definition:
 Host.project: (
 	points: { FinePoint },
 	via: ("auto" | "local" | "client")?,
-	shift: { x: number, y: number }?
+	shift: { x: number, y: number, plane: number? }?
 ) -> { ScreenPoint }?
 ```
-Turns points in the game world into points on your screen. `via` picks how it is calculated; leave it out unless you have a reason. `shift` (whole fine units) projects them as the camera will show them once the player has walked that far: the camera is moved by it, and up or down with the ground under the player. Only the local calculation can do this, so `via = "client"` with a `shift` is an error.
+Turns points in the game world into points on your screen. `via` picks how it is calculated; leave it out unless you have a reason. `shift` (whole fine units) projects them as the camera will show them once the player has walked that far: the camera is moved by it, and up or down with the ground under the player. Give the `plane` the player will stand on when it differs from yours (a climb or a drop): the camera then rises or sinks with the ground of that floor, not of yours. Only the local calculation can do this, so `via = "client"` with a `shift` is an error.
 
 Example:
 ```luau
@@ -1236,6 +1236,14 @@ local Host = require("../host")
 Host.move_async(200, 150)
 Host.input_cancel()
 ```
+
+## Host.bank_pin_enter
+
+Definition:
+```luau
+Host.bank_pin_enter: () -> string
+```
+Enters the account's bank PIN on the open bank PIN keypad, entirely inside the injector, and returns how it went: `"entered"`, `"closed"`, `"no_pin"`, `"unavailable"`, `"locked"`, `"wrong"` or `"failed"`. The PIN comes from the loader, looked up by the hash of the logged in account's name, and is never given to the script. Blocking input, so it takes the mouse back from async input first. Use [BankpinKeypad.enter](main/interfaces/mainscreen/bankpin_keypad.md).
 
 ## Host.draw_rect
 

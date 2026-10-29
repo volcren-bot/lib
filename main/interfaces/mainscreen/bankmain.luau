@@ -21,7 +21,6 @@ local Bankmain = {
 	-- the tab bar (child n is tab n) and the setting that holds the open tab (0 is the main tab)
 	TABS_CHILD = 10,
 	TAB_VARBIT = 4150,
-	pin = nil :: string?,
 	slots = items.slots,
 	items = items.items,
 	indices_of = items.indices_of,
@@ -36,14 +35,11 @@ local Bankmain = {
 }
 
 function Bankmain.is_open(): boolean
-	local pin = Bankmain.pin
-	if pin ~= nil and BankpinKeypad.is_open() then
-		if not BankpinKeypad.wait_loading(3000) then
-			Log.log("Bankmain", "the bank PIN buttons didn't load within 3 seconds")
-			return false
-		end
-		local entered = BankpinKeypad.enter(pin)
-		if not entered then
+	if BankpinKeypad.is_open() then
+		-- the injector enters the account's saved PIN; an account without one leaves the keypad to the player
+		local entered = BankpinKeypad.enter()
+		if entered ~= "entered" and entered ~= "no_pin" then
+			Log.log("Bankmain", `the bank PIN wasn't entered: {entered}`)
 			return false
 		end
 	end

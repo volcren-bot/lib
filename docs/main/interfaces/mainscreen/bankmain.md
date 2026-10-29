@@ -1,6 +1,6 @@
 # Main.Interfaces.Mainscreen.Bankmain
 
-The bank. It has every function of [Inv](../inv.md) already set up for the bank's contents, and can enter your bank PIN if the keypad is in the way.
+The bank. It has every function of [Inv](../inv.md) already set up for the bank's contents, and enters the account's bank PIN if the keypad is in the way.
 
 ```luau
 local Bankmain = require("../main/interfaces/mainscreen/bankmain")
@@ -15,21 +15,6 @@ Bankmain.GROUP = 12
 ```
 The bank's container id and its interface group.
 
-## Bankmain.pin
-
-Definition:
-```luau
-Bankmain.pin: string?
-```
-Set this to your 4-digit bank PIN and `is_open` will type it for you whenever the PIN keypad shows up. Leave it `nil` to not enter anything.
-
-Example:
-```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
-
-Bankmain.pin = "1234"
-```
-
 ## Functions from Inv
 
 `slots`, `items`, `indices_of`, `index_of`, `find`, `contains`, `contains_any`, `contains_all`, `count`, `count_ex` and `wait_count` work as described in [Inv](../inv.md), on the bank's contents.
@@ -40,7 +25,7 @@ Definition:
 ```luau
 function Bankmain.is_open(): boolean
 ```
-Whether the bank window is open. If a PIN is set and the keypad is showing, it enters the PIN first.
+Whether the bank window is open. If the keypad is showing, the injector enters the account's PIN first (see [BankpinKeypad.enter](bankpin_keypad.md)); `false` if that fails. An account with no saved PIN leaves the keypad alone.
 
 Example:
 ```luau

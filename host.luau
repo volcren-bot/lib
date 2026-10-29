@@ -570,7 +570,7 @@ return {
 	project = g.project :: (
 		points: { FinePoint },
 		via: ("auto" | "local" | "client")?,
-		shift: { x: number, y: number }?
+		shift: { x: number, y: number, plane: number? }?
 	) -> { ScreenPoint }?,
 	form = g.form :: (spec: FormSpec) -> { [string]: any }?,
 	menu = g.menu :: () -> { MenuEntry }?,
@@ -633,6 +633,8 @@ return {
 	input_wait = g.input_wait :: () -> string?,
 	input_error = g.input_error :: () -> string?,
 	input_cancel = g.input_cancel :: () -> (),
+	-- Enters the account's bank PIN on the open keypad; the PIN lives in the injector and is never shown to the script.
+	bank_pin_enter = g.bank_pin_enter :: () -> string,
 	draw_rect = g.draw_rect :: (
 		x1: number,
 		y1: number,

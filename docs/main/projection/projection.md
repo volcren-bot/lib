@@ -76,7 +76,7 @@ function Projection.cuboid(
 	shift: FinePoint?
 ): Cuboid?
 ```
-A box standing on the ground, centered on a point, as a bottom and a top quad on screen. `size` is its width in tiles (1 by default) and `height` its height (200 by default). `at` shows it as seen once the player stands on that tile (see `Projection.arrival`), `shift` as seen once the camera has moved that far (see `Projection.shifted`).
+A box standing on the ground, centered on a point, as a bottom and a top quad on screen. `size` is its width in tiles (1 by default) and `height` its height (200 by default). `at` shows it as seen once the player stands on that tile (see `Projection.arrival`); give it a `plane` field when the player will be on another floor, `shift` as seen once the camera has moved that far (see `Projection.shifted`).
 
 Example:
 ```luau

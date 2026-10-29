@@ -220,7 +220,7 @@ Definition:
 ```luau
 function Objects.projected(loc: Loc, at: Tile): Clickbox?
 ```
-The loc's box as the camera will show it once the player stands on `at`: the cuboid over its footprint (see `Projection.cuboid`), since that's all we know of it from there.
+The loc's box as the camera will show it once the player stands on `at` (add a `plane` to `at` when that is another floor): the cuboid over its footprint (see `Projection.cuboid`), since that's all we know of it from there.
 
 Example:
 ```luau

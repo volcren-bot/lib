@@ -46,7 +46,7 @@ function Projection.arrival(at: Tile): FinePoint?
 	}
 end
 
-local function screen_points(points: { FinePoint }, shift: { x: number, y: number }?): { Point }?
+local function screen_points(points: { FinePoint }, shift: { x: number, y: number, plane: number? }?): { Point }?
 	local screen = project(points, nil, shift)
 	if screen == nil then
 		return nil
@@ -59,8 +59,8 @@ local function screen_points(points: { FinePoint }, shift: { x: number, y: numbe
 end
 
 -- Projects `points` as the camera will show them after moving by `shift` (fine units).
-function Projection.shifted(points: { FinePoint }, shift: FinePoint): { Point }?
-	return screen_points(points, { x = math.round(shift.x), y = math.round(shift.y) })
+function Projection.shifted(points: { FinePoint }, shift: FinePoint, plane: number?): { Point }?
+	return screen_points(points, { x = math.round(shift.x), y = math.round(shift.y), plane = plane })
 end
 
 function Projection.points(points: { FinePoint }, at: Tile?): { Point }?
@@ -69,7 +69,8 @@ function Projection.points(points: { FinePoint }, at: Tile?): { Point }?
 		if shift == nil then
 			return nil
 		end
-		return Projection.shifted(points, shift)
+		-- an `at` table may carry the `plane` the player will stand on (a climb or a drop), which the camera's height follows
+		return Projection.shifted(points, shift, (at :: any).plane)
 	end
 	return screen_points(points)
 end
