@@ -24,18 +24,21 @@ if path == nil then
 end
 print(`{#path - 1} steps to {target.x}, {target.y}`)
 
-Draw.clear()
-local segments = {}
-local previous = nil
-for _, tile in path do
-	local point = Minimap.tile_to_point(tile)
-	if point and previous then
-		table.insert(segments, { previous, point })
+-- the whole path in one overlay update
+Draw.batch(function()
+	Draw.clear()
+	local segments = {}
+	local previous = nil
+	for _, tile in path do
+		local point = Minimap.tile_to_point(tile)
+		if point and previous then
+			table.insert(segments, { previous, point })
+		end
+		previous = point
+		local quad = Projection.tile(tile)
+		if quad and Projection.on_screen(quad) then
+			Draw.quad(quad, Draw.YELLOW)
+		end
 	end
-	previous = point
-	local quad = Projection.tile(tile)
-	if quad and Projection.on_screen(quad) then
-		Draw.quad(quad, Draw.YELLOW)
-	end
-end
-Draw.lines(segments, Draw.GREEN)
+	Draw.lines(segments, Draw.GREEN)
+end)

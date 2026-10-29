@@ -33,24 +33,26 @@ end
 local stuck = how :: SafeSpot.Chaser
 print(`safe on {tile.x}, {tile.y}; the {NAME} is stuck on {stuck.x}, {stuck.y}`)
 
--- our tile in green, the NPC's in red
+-- our tile in green, the NPC's in red, drawn as one overlay update
 for _ = 1, SHOW_MS // 100 do
-	Draw.clear()
-	local mine = Projection.tile(tile)
-	if mine then
-		Draw.quad(mine, Draw.GREEN)
-	end
-	local c = SafeSpot.locate(npc.index, size)
-	if c then
-		for i = 0, c.size - 1 do
-			for j = 0, c.size - 1 do
-				local q = Projection.tile({ x = c.x + i, y = c.y + j })
-				if q then
-					Draw.quad(q, Draw.RED)
+	Draw.batch(function()
+		Draw.clear()
+		local mine = Projection.tile(tile)
+		if mine then
+			Draw.quad(mine, Draw.GREEN)
+		end
+		local c = SafeSpot.locate(npc.index, size)
+		if c then
+			for i = 0, c.size - 1 do
+				for j = 0, c.size - 1 do
+					local q = Projection.tile({ x = c.x + i, y = c.y + j })
+					if q then
+						Draw.quad(q, Draw.RED)
+					end
 				end
 			end
 		end
-	end
+	end)
 	sleep(100)
 end
 Draw.clear()

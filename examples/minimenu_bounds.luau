@@ -4,7 +4,6 @@ local Draw = require("../utils/draw")
 local Host = require("../host")
 local Minimenu = require("../main/interfaces/minimenu")
 local sleep = Host.sleep
-local clear_overlay = Host.clear_overlay
 
 type Palette = { menu: Draw.Color, hover: Draw.Color, keep_out: Draw.Color }
 
@@ -21,24 +20,27 @@ local drawn = false
 while true do
 	local open = Minimenu.is_open()
 	if open then
-		clear_overlay()
-		local level = 0
-		while true do
-			local menu = Minimenu.bounds(0, level)
-			local hover = Minimenu.hover_bounds(level)
-			local keep_out = Minimenu.bounds(Minimenu.MARGIN, level)
-			if not (menu and hover and keep_out) then
-				break
+		-- every level's boxes in one overlay update
+		Draw.batch(function()
+			Draw.clear()
+			local level = 0
+			while true do
+				local menu = Minimenu.bounds(0, level)
+				local hover = Minimenu.hover_bounds(level)
+				local keep_out = Minimenu.bounds(Minimenu.MARGIN, level)
+				if not (menu and hover and keep_out) then
+					break
+				end
+				local palette = palettes[(level % #palettes) + 1]
+				draw(keep_out, palette.keep_out)
+				draw(hover, palette.hover)
+				draw(menu, palette.menu)
+				level += 1
 			end
-			local palette = palettes[(level % #palettes) + 1]
-			draw(keep_out, palette.keep_out)
-			draw(hover, palette.hover)
-			draw(menu, palette.menu)
-			level += 1
-		end
+		end)
 		drawn = true
 	elseif drawn then
-		clear_overlay()
+		Draw.clear()
 		drawn = false
 	end
 	sleep(50)

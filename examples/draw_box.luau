@@ -1,7 +1,8 @@
 --!strict
-local Host = require("../host")
-local draw_rect = Host.draw_rect
-local clear_overlay = Host.clear_overlay
-clear_overlay()
-draw_rect(100, 100, 200, 200, 255, 0, 0)
+local Draw = require("../utils/draw")
+-- cleared and drawn in one overlay update
+Draw.batch(function()
+	Draw.clear()
+	Draw.rect(100, 100, 200, 200, Draw.RED)
+end)
 print("drew a red box at (100, 100)-(200, 200)")

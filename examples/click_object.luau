@@ -17,16 +17,18 @@ if loc == nil then
 end
 print(`nearest {loc.name} ({loc.id}) at {loc.x}, {loc.y}, {Objects.distance(loc, me)} tiles away`)
 
--- The client's own clickbox: the loc's triangles, outlined in yellow.
+-- The client's own clickbox: the loc's triangles, outlined in yellow, drawn as one overlay update.
 local function highlight()
 	local box = Objects.clickbox(loc)
-	Draw.clear()
-	if box then
-		for _, t in ipairs(box.triangles or {}) do
-			Draw.polygon(t, Draw.color(255, 255, 0, 90))
+	Draw.batch(function()
+		Draw.clear()
+		if box then
+			for _, t in ipairs(box.triangles or {}) do
+				Draw.polygon(t, Draw.color(255, 255, 0, 90))
+			end
+			Clickbox.draw(box)
 		end
-		Clickbox.draw(box)
-	end
+	end)
 end
 
 highlight()

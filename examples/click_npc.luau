@@ -20,10 +20,12 @@ print(`nearest {npc.name} ({npc.id}) at {npc.x}, {npc.y}, {Npcs.distance(npc, me
 -- The NPC's clickbox: model outline in yellow (cyan when only the box is known), the client's 3D click box for size-1 NPCs in blue.
 local function highlight()
 	local box = Npcs.clickbox(npc)
-	Draw.clear()
-	if box then
-		Clickbox.draw(box)
-	end
+	Draw.batch(function()
+		Draw.clear()
+		if box then
+			Clickbox.draw(box)
+		end
+	end)
 end
 
 highlight()

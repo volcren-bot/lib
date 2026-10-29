@@ -20,7 +20,6 @@ if loc == nil then
 end
 
 local COLOR = Draw.CYAN
-local ERASE = Draw.color(0, 0, 0, 0)
 
 -- Each triangle edge once (neighbouring faces share them).
 local function edges(faces: { { Point } }): { { Point } }
@@ -40,13 +39,16 @@ local function edges(faces: { { Point } }): { { Point } }
 	return out
 end
 
-local function draw(lines: { { Point } }, color: Draw.Color)
-	for _, l in ipairs(lines) do
-		Draw.line(l[1], l[2], color)
-	end
+-- Replaces the outline in one overlay update: the client never shows it half drawn.
+local function draw(lines: { { Point } })
+	Draw.batch(function()
+		Draw.clear()
+		for _, l in ipairs(lines) do
+			Draw.line(l[1], l[2], COLOR)
+		end
+	end)
 end
 
-local last: { { Point } }? = nil
 local frames, projecting, drawing = 0, 0, 0
 local started = time()
 while time() - started < SECONDS * 1000 do
@@ -54,21 +56,14 @@ while time() - started < SECONDS * 1000 do
 	local model = Objects.model(loc)
 	local t1 = time()
 	if model then
-		local lines = edges(model.faces)
-		if last then
-			draw(last, ERASE)
-		end
-		draw(lines, COLOR)
-		last = lines
+		draw(edges(model.faces))
 	end
 	frames += 1
 	projecting += t1 - t0
 	drawing += time() - t1
 	sleep(5)
 end
-if last then
-	draw(last, ERASE)
-end
+Draw.clear()
 local elapsed = (time() - started) / 1000
 print(
 	string.format(

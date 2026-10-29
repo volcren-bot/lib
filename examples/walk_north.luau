@@ -10,10 +10,12 @@ print(`walking to {target.x}, {target.y}`)
 
 local function highlight()
 	local quad = Projection.tile(target)
-	Draw.clear()
-	if quad then
-		Draw.quad(quad, Draw.YELLOW)
-	end
+	Draw.batch(function()
+		Draw.clear()
+		if quad then
+			Draw.quad(quad, Draw.YELLOW)
+		end
+	end)
 end
 
 highlight()

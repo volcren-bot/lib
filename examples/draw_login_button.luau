@@ -1,14 +1,13 @@
 --!strict
 local Host = require("../host")
 local game_state = Host.game_state
-local draw_rect = Host.draw_rect
-local clear_overlay = Host.clear_overlay
 local sleep = Host.sleep
+local Draw = require("../utils/draw")
 local TitleScreen = require("../main/interfaces/login/titlescreen")
 local WelcomeScreen = require("../main/interfaces/login/welcome_screen")
 
 local function box(x1: number, y1: number, x2: number, y2: number, label: string)
-	draw_rect(x1, y1, x2, y2, 0, 255, 0)
+	Draw.rect(x1, y1, x2, y2, Draw.GREEN)
 	print(string.format("  %s: (%d, %d)-(%d, %d)", label, x1, y1, x2, y2))
 end
 
@@ -47,8 +46,11 @@ while true do
 
 	if key ~= last then
 		last = key
-		clear_overlay()
-		draw()
+		-- the screen's buttons in one overlay update
+		Draw.batch(function()
+			Draw.clear()
+			draw()
+		end)
 	end
 	sleep(1000)
 end
