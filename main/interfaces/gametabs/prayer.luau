@@ -421,7 +421,7 @@ local function orb_option(option: string): boolean
 	end, false))
 end
 
--- Turns the quick prayers on or off from the minimap orb and waits for it to change. Turning them on needs prayer points and at least one quick prayer.
+-- Turns the quick prayers on or off from the minimap orb and waits for the change; on needs prayer points and a quick prayer.
 function Prayer.set_quick_active(active: boolean): boolean
 	if Prayer.is_quick_active() == active then
 		return true
@@ -520,7 +520,7 @@ local function toggle_quick(p: Info, selected: boolean): boolean
 	return false
 end
 
--- Makes these the quick prayers: deselects the others and selects the ones missing through the setup panel, then closes it. Prayers you can't use yet can't be selected, and neither can ones that exclude each other (Thick Skin and Rock Skin, say), so this returns false for those.
+-- Makes these the quick prayers through the setup panel; false when one can't be selected or they exclude each other.
 function Prayer.set_quick_prayers(prayers: PrayerRef | { read PrayerRef }): boolean
 	local list = many(prayers)
 	if list == nil then

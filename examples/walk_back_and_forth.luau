@@ -1,6 +1,5 @@
 --!strict
--- Walks back and forth between two tiles, on any planes: the doors, ladders and staircases on the way are found in the
--- scene. The defaults are a house in Arceuus: the top floor (plane 2) and outside the ground floor's door (plane 0).
+-- Walks back and forth between two tiles on any planes, through the doors, ladders and staircases on the way.
 local Host = require("../host")
 local form = Host.form
 local time = Host.time

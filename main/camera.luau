@@ -32,7 +32,7 @@ Camera.method = "mouse" :: Method
 Camera.tolerance = 64
 Camera.zoom_tolerance = 12
 
--- `face` turns just enough to keep things within FACE_LIMIT degrees of the camera, with a distance chance (`face_chance`) and pitch/task options below.
+-- `face` turns just enough to keep things within FACE_LIMIT degrees of the camera, with a distance chance (`face_chance`).
 Camera.FACE_LIMIT = 70
 Camera.FACE_PITCH_SLACK = 200
 Camera.FACE_CHANCES = { { 2, 0.1 }, { 12, 0.8 }, { 20, 1 } }
@@ -282,7 +282,7 @@ function Camera.set_angles(yaw: number, pitch: number, method: Method?): boolean
 	return turn(yaw % Camera.TURN, pitch, method)
 end
 
--- Queues a middle-button drag towards `yaw` and `pitch` and returns at once; open loop, so it lands close, not exact. False when it can't drag.
+-- Queues a middle-button drag towards `yaw` and `pitch` and returns at once; open loop, false when it can't drag.
 local function turn_async(yaw: number?, pitch: number?): boolean
 	if pitch then
 		pitch = math.clamp(pitch, Camera.PITCH_MIN, Camera.PITCH_MAX)

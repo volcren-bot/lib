@@ -11,8 +11,7 @@ local Player = require("../player")
 
 local SpecialAttack = {}
 
--- The minimap orb of the special attack: its interface, and the children that can be the button (the orb is
--- hidden while the weapon has no special attack).
+-- The special attack orb: its interface and the children that can be the button (hidden without a special attack).
 SpecialAttack.GROUP = 160
 SpecialAttack.ORBS = { 36, 35, 34 }
 SpecialAttack.OPTION = "Use"
@@ -44,8 +43,7 @@ function SpecialAttack.is_enabled(): boolean
 	return Player.special_attack_enabled()
 end
 
--- Switches the special attack on or off from the orb and waits for it to change. Does nothing if it is so
--- already. false when the weapon has none, or the orb didn't change.
+-- Switches the special attack on or off and waits for the change; false when there is none or the orb didn't change.
 function SpecialAttack.set(enabled: boolean): boolean
 	if SpecialAttack.is_enabled() == enabled then
 		return true

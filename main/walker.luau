@@ -298,7 +298,7 @@ Walker.SHORTER_CHANCE = 0.2
 Walker.SHORTER_MAX = 4
 -- the projection and the minimap lag behind a scene that just loaded
 Walker.SCENE_SETTLE_MS = 400
--- Game screen clicks set no destination from about 35 tiles away (30 to 34 stop short); the minimap is limited by its radius.
+-- Game screen clicks set no destination from about 35 tiles away; the minimap is limited by its radius.
 Walker.SCREEN_REACH = 24
 
 -- The tile of the scene the game has loaded at its corner, which changes when it loads another one.
@@ -470,8 +470,7 @@ local function debug(text: string)
 	end
 end
 
--- After a plane change the walk waits a random pause in this range (ms; 0 to 1.5 ticks) before its next click, like a
--- player taking in the new floor. Settling the camera and planning happen inside it, so they don't add to it.
+-- After a plane change the walk pauses a random time in this range (ms) before its next click.
 Walker.CLIMB_PAUSE_MIN_MS = 0
 Walker.CLIMB_PAUSE_MAX_MS = 900
 
@@ -802,8 +801,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			if need and plan then
 				local from = math.max(progress + 1, (flag_at or 0) + 1)
 				local view, blockers = Toplevel.viewport(), Toplevel.blockers()
-				-- which tiles ahead are on screen, projected in one go; the game doesn't walk to a tile much farther than
-				-- SCREEN_REACH from a click on the screen
+				-- which tiles ahead are on screen, projected in one go
 				local shown_at: { [number]: boolean } = {}
 				local function look()
 					shown_at = {}
@@ -879,8 +877,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 						clicked = map
 					end
 					if clicked == nil and on_screen then
-						-- something stands on the tile (a door, a ladder): try the ones before it, and only then
-						-- "Walk here" from the menu
+						-- something stands on the tile: try the ones before it, then "Walk here" from the menu
 						local tried = on_screen :: number
 						for attempt = 1, Walker.SCREEN_FALLBACKS + 1 do
 							local nearer = farthest_shown(p.tiles, from, tried - 1, clickable)
@@ -910,8 +907,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 							still_clicks = 0
 						end
 						clicked_at, clicked_ms, clicked_tile_at = here, time(), p.tiles[clicked :: number]
-						-- turned while the player walks, not before the click: off screen only because the camera
-						-- points elsewhere, the next clicks go on the screen again
+						-- off screen only because the camera points elsewhere: the next clicks go on the screen again
 						Camera.face(p.tiles[clicked :: number], on_screen == nil)
 					end
 				end
@@ -921,10 +917,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 	end
 end
 
--- Walks to `to`, on `opts.plane` when given: plans with `Host.nav_plan` and plans again as it goes. Closed doors on the
--- way are clicked as soon as they show on screen, then the walk goes on once they are open; ladders and staircases the
--- same, once nothing closed is left between. A door or ladder that doesn't do anything is tried a few times, then
--- planned around.
+-- Walks to `to` (on `opts.plane`), planning with `Host.nav_plan` and opening doors and climbing as it goes.
 function Walker.walk(to: Tile, options: WalkOptions?): boolean
 	return walk_plan(to, options or {})
 end

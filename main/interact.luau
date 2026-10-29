@@ -71,7 +71,7 @@ function Interact.with(
 	return Player.wait_walk(if walk_timeout_ms then walk_timeout_ms else nil), nil
 end
 
--- Handles a minimenu left open before an interaction: clicks a row matching `options` for `target` (returns true and whether it went through), otherwise closes it.
+-- Handles a menu left open before an interaction: clicks a row matching `options` for `target`, else closes it.
 function Interact.open_menu(
 	options: { string },
 	target: Minimenu.Target?,

@@ -58,8 +58,7 @@ export type Grid = {
 	occupied: { [string]: boolean }?,
 }
 
--- An NPC as the pathfinding sees it: its south-west tile, its size in tiles and, for one read from the
--- game, its `index`.
+-- An NPC as the pathfinding sees it: south-west tile, size in tiles and, if read from the game, its `index`.
 export type Chaser = {
 	x: number,
 	y: number,
@@ -67,9 +66,7 @@ export type Chaser = {
 	index: number?,
 }
 
--- How a chase ends: "reached" (it's next to you, nothing between, and attacks), "stuck" (it can't take a step),
--- "loop" (it walks in circles) or "far" (still walking after `MAX_STEPS`). `path` is every tile its south-west
--- corner stands on, the start first; `touched` is whether it reached you before the end (while you walked).
+-- How a chase ends: "reached", "stuck", "loop" or "far" (still walking after `MAX_STEPS`); `path` is every tile it stood on.
 export type Chase = {
 	outcome: "reached" | "stuck" | "loop" | "far",
 	path: { Tile },
@@ -97,11 +94,9 @@ export type FindOptions = {
 	from: Tile?,
 	-- tiles you walk per tick on the way (default 2 when running, else 1)
 	speed: number?,
-	-- true drops spots an NPC reaches on the way there, where it can hit you once (default false: they come last
-	-- among spots as far away)
+	-- true drops spots an NPC reaches on the way there (default false: they come last)
 	untouched: boolean?,
-	-- true also takes spots where only the NPCs standing in the way stop it (default false: the walls have to,
-	-- since they may walk off). Those spots have `walls_hold` false.
+	-- true also takes spots held only by NPCs in the way (default false); those have `walls_hold` false
 	npcs_hold: boolean?,
 	-- tiles you can't stand on, by "x,y"
 	exclude: { [string]: boolean }?,
@@ -154,8 +149,7 @@ function SafeSpot.size(npc: Npc): number
 	return (sizes and sizes[npc.index]) or SafeSpot.guess_size(npc)
 end
 
--- How big an NPC is when nothing says: one standing still is drawn in the middle of its tiles, which is a
--- tile's middle for an odd size and a tile's corner for an even one. A walking one is taken as 1.
+-- NPC size when nothing says: a standing one is drawn at the middle of its tiles, a walking one is taken as 1.
 function SafeSpot.guess_size(npc: Npc): number
 	if npc.local_x % 128 == 0 and npc.local_y % 128 == 0 then
 		return 2
@@ -163,9 +157,7 @@ function SafeSpot.guess_size(npc: Npc): number
 	return 1
 end
 
--- Marks the tiles the NPCs around stand on in `grid.occupied`, leaving out the ones in `except` (indices,
--- like the NPCs you're working out). Sizes come from the game (`Host.npc_sizes`), else `sizes` by name, else
--- they're guessed.
+-- Marks the tiles NPCs stand on in `grid.occupied`, except `except` (indices); sizes from the game, `sizes`, or guessed.
 function SafeSpot.occupy(grid: Grid, except: { number }?, sizes: { [string]: number }?): Grid
 	local occupied: { [string]: boolean } = {}
 	local all = npcs() or {}
@@ -193,9 +185,7 @@ local function free(grid: Grid, x: number, y: number, mask: number): boolean
 	return band(flags(grid, x, y), bit32.bor(mask, BLOCKED)) == 0
 end
 
--- Wall masks, as the game client checks them. A one tile step checks the tile it enters and, going
--- diagonally, the two it cuts past. A bigger NPC checks every tile its leading edge enters, including the
--- walls between them.
+-- Wall masks as the game checks them: a step checks the tile entered, a diagonal the two it cuts past.
 local CORNER = { [-1] = { [-1] = 0x0e, [1] = 0x38 }, [1] = { [-1] = 0x83, [1] = 0xe0 } }
 local SIDE_X = { [-1] = 0x08, [1] = 0x80 }
 local SIDE_Y = { [-1] = 0x02, [1] = 0x20 }
@@ -260,8 +250,7 @@ function SafeSpot.can_step(grid: Grid, x: number, y: number, dx: number, dy: num
 	return true
 end
 
--- Whether an NPC on `npc` is in melee reach of `target`: next to it north, east, south or west (not
--- diagonally, not on top of it) with no wall between.
+-- Whether an NPC on `npc` is in melee reach of `target`: orthogonally adjacent with no wall between.
 function SafeSpot.reached(grid: Grid, npc: Chaser, target: Tile): boolean
 	local x, y, n = npc.x, npc.y, npc.size
 	local tx, ty = target.x, target.y
@@ -292,8 +281,7 @@ function SafeSpot.under(npc: Chaser, target: Tile): boolean
 	return target.x >= npc.x and target.x < npc.x + npc.size and target.y >= npc.y and target.y < npc.y + npc.size
 end
 
--- The tile the NPC heads for: the side of `target` it is on, split by the diagonals through it, with the
--- south-west corners compared. On a diagonal it takes the north or south side, so it walks east or west.
+-- The tile the NPC heads for: the side of `target` it is on, split by the diagonals through it.
 function SafeSpot.destination(npc: Chaser, target: Tile): Tile
 	local n = npc.size
 	local diagonal = (npc.x - target.x) + (npc.y - target.y)
@@ -363,8 +351,7 @@ local function can_move(grid: Grid, npc: Chaser, dx: number, dy: number): boolea
 	return true
 end
 
--- The NPC's next south-west tile chasing `target`, or nil when it doesn't move: it reached it, or every
--- step is blocked. It steps diagonally towards its destination, else east or west, else north or south.
+-- The NPC's next south-west tile chasing `target`, or nil when it doesn't move.
 function SafeSpot.step(grid: Grid, npc: Chaser, target: Tile): Tile?
 	if SafeSpot.reached(grid, npc, target) then
 		return nil
@@ -383,8 +370,7 @@ function SafeSpot.step(grid: Grid, npc: Chaser, target: Tile): Tile?
 	return nil
 end
 
--- Plays out an NPC chasing you, one step a tick. `route` is the tiles you walk, the first being where you
--- are (`speed` of them a tick, default 1); without one you stand on `target`. The NPC moves before you each tick.
+-- Plays out an NPC chasing you one step a tick along `route` (default: you stand on `target`).
 function SafeSpot.chase(grid: Grid, npc: Chaser, target: Tile, route: { Tile }?, speed: number?): Chase
 	local path: { Tile } = { { x = npc.x, y = npc.y } }
 	local seen: { [string]: number } = {}
@@ -439,9 +425,7 @@ local function npc_by_index(index: number): Npc?
 	return nil
 end
 
--- The chaser of an NPC: its south-west tile, worked out from where it's drawn (the middle of its tiles).
--- While it walks that is the tile it is nearest to; given how it was drawn a little `before`, it's the tile
--- it walks to, which is where the game has it already.
+-- The chaser of an NPC: its south-west tile, worked out from where it's drawn; `before` gives the tile it walks to.
 function SafeSpot.chaser(npc: Npc, size: number?, before: Npc?): Chaser
 	local n = size or 1
 	local half = n * 64
@@ -480,8 +464,7 @@ function SafeSpot.locate(index: number, size: number?): Chaser?
 	return SafeSpot.chaser(now, size, before)
 end
 
--- Walking distances from `from` over the grid, as the game walks (breadth first, west, east, south, north,
--- then the diagonals), within `radius` of `around`: the distance and the tile before, by "x,y".
+-- Walking distances from `from` over the grid within `radius` of `around`: the distance and previous tile by "x,y".
 local DIRECTIONS = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }
 
 local function walks(grid: Grid, from: Tile, around: Tile, radius: number): ({ [string]: number }, { [string]: Tile })
@@ -522,9 +505,7 @@ local function route_to(previous: { [string]: Tile }, from: Tile, to: Tile): { T
 	return route
 end
 
--- Tiles you can walk to where none of `chasers` can reach you, nearest first. Each NPC is played out
--- chasing you from where it is now while you walk there, then while you stand there. It has to get stuck on
--- the walls alone and with the other NPCs standing where they are (they slow it down, they don't trap it).
+-- Tiles you can walk to where none of `chasers` can reach you, nearest first.
 function SafeSpot.find(chasers: { Chaser }, options: FindOptions?): ({ Spot }?, string?)
 	local o = options or {}
 	local from = o.from or Walker.position()
@@ -629,8 +610,7 @@ function SafeSpot.find(chasers: { Chaser }, options: FindOptions?): ({ Spot }?, 
 	return spots, nil
 end
 
--- Waits until the NPC has stood on one tile for `SETTLE_TICKS` ticks out of your reach. Returns where it
--- stands, or nil and why not: it reached you, it's gone, or it kept moving.
+-- Waits until the NPC has stood on one tile for `SETTLE_TICKS` ticks; returns it, or nil and why not.
 function SafeSpot.wait_trapped(index: number, size: number?, timeout_ms: number?): (Chaser?, string?)
 	local started = time()
 	local timeout = timeout_ms or SafeSpot.SETTLE_TIMEOUT_MS
@@ -664,9 +644,7 @@ function SafeSpot.wait_trapped(index: number, size: number?, timeout_ms: number?
 	return nil, "the NPC kept moving"
 end
 
--- Gets the NPC with `index` stuck where it can't reach you: walks to the nearest tile `find` (or
--- `options.spots`) gives, then waits for it to settle. Tries again from where it ends up when it still
--- reaches you. Returns the tile you stand on and where the NPC is stuck, or nil and why not.
+-- Gets the NPC with `index` stuck out of reach and waits for it to settle; returns your tile and the NPC's, or nil and why.
 function SafeSpot.trap(index: number, options: TrapOptions?): (Tile?, Chaser? | string)
 	local o = options or {}
 	local size = o.size or 1

@@ -268,7 +268,7 @@ local function key_of(char: string): number
 	return 0
 end
 
--- Async versions queue the input and return at once; held keys are released on cancel, blocking input, a minimenu read or script end.
+-- Async versions queue the input and return at once; held keys are released on cancel or script end.
 function Keyboard.key_down_async(key: number)
 	key_down_async(key)
 	Keyboard.last_key = key

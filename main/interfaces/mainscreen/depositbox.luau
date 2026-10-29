@@ -291,7 +291,7 @@ function DepositBox.select_quantity(quantity: Quantity): boolean
 	end, SELECT_TIMEOUT_MS)
 end
 
--- Queues the click and returns at once; true if the quantity is selected or the click was queued. `force` clicks even when it is selected now.
+-- Queues the click and returns at once; true if selected or queued, `force` clicks even when selected.
 function DepositBox.select_quantity_async(quantity: Quantity, force: boolean?): boolean
 	if not force and DepositBox.quantity_selected(quantity) then
 		return true

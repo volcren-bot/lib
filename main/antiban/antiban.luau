@@ -122,8 +122,7 @@ end
 local PUBLISH_MS = 30 * Antiban.SECOND
 local last_published = -PUBLISH_MS
 
--- Sends the schedule to the loader's Breaks tab, which counts the times down itself, so unless `force` is set
--- (the schedule changed) it goes out at most every `PUBLISH_MS`.
+-- Sends the schedule to the loader's Breaks tab, at most every `PUBLISH_MS` unless `force` is set.
 local function publish(force: boolean?, active: Host.ActiveBreak?)
 	local now = Host.time()
 	if not force and now - last_published < PUBLISH_MS then

@@ -1,6 +1,5 @@
 --!strict
--- Safe spots to fight from: tiles where a melee NPC gets stuck where it can't hit you, but where you can still
--- hit it from range (a bow, a crossbow, a spell). Built on `SafeSpot`, which works out how NPCs chase you.
+-- Tiles where a melee NPC gets stuck and can't hit you, but you can still hit it from range.
 local Host = require("../host")
 local game_state = Host.game_state
 local item_container = Host.item_container
@@ -46,8 +45,7 @@ CombatSafeSpot.MAX_RANGE = 10
 CombatSafeSpot.AVOID_RADIUS = 16
 -- ticks `fight` gives an attack to show before clicking again
 CombatSafeSpot.ATTACK_TICKS = 3
--- ticks `fight` waits on its spot for the NPC to come in range before the fight started, and reads it may be
--- missing for before it counts as gone
+-- ticks `fight` waits for the NPC to come in range, and reads it may be missing before it counts as gone
 CombatSafeSpot.ENGAGE_TICKS = 15
 CombatSafeSpot.GONE_READS = 2
 -- how long `fight` goes on for at most
@@ -59,8 +57,7 @@ export type CombatSpot = {
 	tile: Tile,
 	-- tiles you walk to get there
 	distance: number,
-	-- where the NPC ends up stuck with the NPCs around standing still, and once they walked off (nil when then
-	-- it reaches you: only the NPCs in its way hold it)
+	-- where the NPC ends up stuck with the NPCs around standing still, and once they walked off (nil when it reaches you)
 	at: Tile,
 	at_walls: Tile?,
 	-- how far you are from it once it's stuck
@@ -75,11 +72,9 @@ export type CombatFindOptions = {
 	min_gap: number?,
 	-- other NPCs the spot must keep away from too, besides the target
 	others: { Chaser }?,
-	-- false only takes spots the walls alone hold it at (default true: an NPC stuck behind other NPCs counts,
-	-- and those spots come after the ones the walls hold)
+	-- false only takes spots the walls alone hold it at (default true: NPCs in its way count too)
 	npcs_hold: boolean?,
-	-- you can hit it where it is now too, so the fight starts from the spot: attacking something out of range
-	-- walks you up to it
+	-- you can hit it where it is now too, so attacking it doesn't walk you up to it
 	attack_now: boolean?,
 	-- passed on to `SafeSpot.find`: where to look, from where, how fast you walk...
 	around: Tile?,
@@ -105,8 +100,7 @@ export type FightOptions = {
 	timeout_ms: number?,
 }
 
--- Whether a projectile flies from `from` to `to`, as the game checks it: a line over the tiles between, stopped
--- by walls across it and by objects that block it. Water and other floors don't.
+-- Whether a projectile flies from `from` to `to`: blocked by walls and objects in the way, not by water.
 function CombatSafeSpot.line_of_sight(grid: Grid, from: Tile, to: Tile): boolean
 	if from.x == to.x and from.y == to.y then
 		return true
@@ -185,8 +179,7 @@ function CombatSafeSpot.can_attack(grid: Grid, me: Tile, npc: Chaser, range: num
 	return CombatSafeSpot.line_of_sight(grid, me, t)
 end
 
--- Your attack range with the weapon you wear and the style you fight with: the weapon's own, plus
--- `LONGRANGE_BONUS` on longrange, at most `MAX_RANGE`. 1 with nothing in your hands. Nil when it can't be read.
+-- Your attack range with the wielded weapon and style (1 unarmed), at most `MAX_RANGE`; nil when unreadable.
 function CombatSafeSpot.weapon_range(): number?
 	local worn = item_container(CombatSafeSpot.WORN)
 	if worn == nil then
@@ -212,10 +205,7 @@ function CombatSafeSpot.weapon_range(): number?
 	return math.min(range, CombatSafeSpot.MAX_RANGE)
 end
 
--- Tiles to fight `target` from, nearest walk first: it chases you there and gets stuck (see `SafeSpot.find`)
--- within your range and in sight, at least `min_gap` tiles away, while `others` can't reach you either. Where
--- it ends up is played out twice, with the NPCs around standing still and over the walls alone, and you
--- have to be able to hit it either way.
+-- Tiles to fight `target` from, nearest walk first: it gets stuck there in your range and sight, `min_gap` away.
 function CombatSafeSpot.find(target: Chaser, options: CombatFindOptions?): ({ CombatSpot }?, string?)
 	local o = options or {}
 	local range = o.range or CombatSafeSpot.weapon_range()
@@ -384,9 +374,7 @@ local function my_target(): (number?, number)
 	return nil, -1
 end
 
--- Whether standing on `me` holds against the NPC as things are: it gets stuck (behind walls or the NPCs in
--- its way) at least `min_gap` away, where you can hit it. When an NPC it's stuck behind walks off, this turns
--- false and `fight` finds another spot.
+-- Whether standing on `me` still holds: the NPC is stuck at least `min_gap` away and you can hit it.
 local function holds(grid: Grid, npc: Chaser, me: Tile, range: number, min_gap: number): boolean
 	local chase = SafeSpot.chase(grid, npc, me)
 	if chase.outcome ~= "stuck" and chase.outcome ~= "loop" then
@@ -404,12 +392,7 @@ local function walk_exact(tile: Tile)
 	end
 end
 
--- Fights the NPC with `index` from a safe spot until it's gone (dead) or `on_tick` says stop. It won't start
--- on an NPC another player is fighting (see `fought_by`). Before the fight
--- starts it walks to a spot `find` gives where the NPC is in range already, so attacking it doesn't walk you
--- up to it (or waits there `ENGAGE_TICKS` for it to come in range); then it attacks, and walks to another spot
--- whenever the NPC isn't stuck where you can hit it any more. The NPC's size is read from the game. Returns
--- true when it's gone, else false and why.
+-- Fights the NPC with `index` from a safe spot until it's gone or `on_tick` says stop; true when it's gone, else false and why.
 function CombatSafeSpot.fight(index: number, options: FightOptions?): (boolean, string?)
 	local o = options or {}
 	local range = o.range or CombatSafeSpot.weapon_range()

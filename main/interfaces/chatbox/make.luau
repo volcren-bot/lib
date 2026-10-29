@@ -232,7 +232,7 @@ function Make.set_amount(amount: AmountArg): boolean
 	end
 end
 
--- Queues the click on an amount button and returns at once, without checking the menu or the result; "X" needs `set_amount`. `force` clicks even when it is selected now.
+-- Queues the click on an amount button and returns at once; "X" needs `set_amount`, `force` clicks even when selected.
 function Make.set_amount_async(label: string, force: boolean?): boolean
 	local amounts = Make.amounts()
 	if amounts == nil then

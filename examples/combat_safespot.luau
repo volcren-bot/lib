@@ -1,7 +1,5 @@
 --!strict
--- Attacks the nearest NAME nobody else is fighting and kills it from a safe spot with a ranged weapon: it gets
--- stuck where it can't hit back, but in your range and sight. Then the next one, KILLS times.
--- Turn auto retaliate off first, or you walk up to whatever hits you.
+-- Kills the nearest NAME nobody else is fighting from a safe spot with a ranged weapon, KILLS times.
 local NAME = "Lesser demon"
 local KILLS = 3
 -- other monsters around to keep out of reach of too ({} for none)

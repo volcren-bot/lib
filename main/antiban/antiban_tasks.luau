@@ -251,7 +251,7 @@ end
 local TINY_TASKS = { Tasks.tiny_camera_rotation, Tasks.tiny_zoom_change, Tasks.tiny_pitch_change }
 local tiny_ready_at: { number } = {}
 
--- Runs one random tiny task that is off cooldown, then cools it for `min_cooldown` to `max_cooldown` ms; false when all are cooling.
+-- Runs one random tiny task that is off cooldown; false when all are cooling.
 function Tasks.random_tiny(min_cooldown: number, max_cooldown: number): boolean
 	local ready: { number } = {}
 	for i = 1, #TINY_TASKS do

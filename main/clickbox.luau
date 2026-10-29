@@ -213,7 +213,7 @@ local function shifted(box: Clickbox, anchor: Anchor, shift: Host.FinePoint): Cl
 	}
 end
 
--- An Aim for something the player may walk past: the drawn `model` clickbox (or the box around `anchor`) moved to where the camera will show it `lead_ms` ahead.
+-- An Aim for something the player may walk past: the `model` clickbox (or box around `anchor`) where the camera will show it `lead_ms` ahead.
 function Clickbox.walking(model: () -> Clickbox?, anchor: () -> Anchor?, what: string): Aim
 	return function(lead_ms: number?)
 		local box = model()
@@ -379,7 +379,7 @@ function Clickbox.hover(clickbox: Aim, hovered: () -> boolean, what: string, til
 	return false
 end
 
--- Starts the mouse moving over the clickbox and returns at once; true if there was a spot to aim at, not that it's hovered. Doesn't turn the camera.
+-- Starts the mouse moving over the clickbox and returns at once; true if there was a spot to aim at. Doesn't turn the camera.
 function Clickbox.hover_async(clickbox: Aim, what: string): boolean
 	clear_menu(clickbox)
 	local target = aim(clickbox, what)

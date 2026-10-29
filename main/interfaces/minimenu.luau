@@ -329,7 +329,7 @@ function Minimenu.close(timeout_ms: number?): boolean
 	return wait_open(false, timeout_ms or 600)
 end
 
--- Submenus open when the mouse rests on a row with `entry.submenu`; level 1 opens from the menu, 2 from that, and the functions below work on those levels.
+-- Submenus open when the mouse rests on a row with `entry.submenu`; level 1 opens from the menu, 2 from that.
 
 Minimenu.SUBMENU_TIMEOUT = 600
 

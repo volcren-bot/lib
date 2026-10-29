@@ -106,8 +106,7 @@ function Draw.cuboid(cuboid: { bottom: Quad, top: Quad }, color: Color?)
 	Draw.lines(segments, color)
 end
 
--- Seven segment digits for `Draw.text`: segments a (top), b (top right), c (bottom right), d (bottom), e (bottom
--- left), f (top left) and g (middle).
+-- Seven segment digit layout for `Draw.text`, segments a to g.
 local SEGMENTS: { [string]: string } = {
 	["0"] = "abcdef",
 	["1"] = "bc",
@@ -123,8 +122,7 @@ local SEGMENTS: { [string]: string } = {
 	["#"] = "bcgf",
 }
 
--- Draws digits, ".", "-", "#" and "/" as lines, starting at the top left (x, y); `size` is the height of a digit in pixels.
--- Returns the x where the text ends. There are no letters.
+-- Draws digits and ".-#/" as lines from (x, y), `size` pixels high; returns the x where it ends.
 function Draw.text(text: string, x: number, y: number, size: number?, color: Color?): number
 	local h = size or 16
 	local w = h * 0.5

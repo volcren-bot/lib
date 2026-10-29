@@ -107,7 +107,7 @@ local function wait_closed(group: number | string, timeout_ms: number): boolean
 	return false
 end
 
--- Closes a main screen interface and waits (`timeout_ms` per try): Escape with `key_probability` unless "Esc to close" is off, else clicks `button()` up to 3 times.
+-- Closes a main screen interface and waits: Escape with `key_probability` unless "Esc to close" is off, else clicks `button()`.
 function Toplevel.close(
 	group: number | string,
 	button: () -> Widget?,

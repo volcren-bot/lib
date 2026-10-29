@@ -99,7 +99,7 @@ function ChatTabs.open(tab: Tab): boolean
 	end, CHANGE_TIMEOUT_MS)
 end
 
--- Queues the click and returns at once; true if the tab is active or the click was queued. `force` clicks even when it is active now.
+-- Queues the click and returns at once; true if the tab is active or queued, `force` clicks even when active.
 function ChatTabs.open_async(tab: Tab, force: boolean?): boolean
 	if not force and ChatTabs.is_active(tab) then
 		return true

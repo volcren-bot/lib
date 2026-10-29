@@ -243,7 +243,7 @@ local function wait_open(id: number, timeout_ms: number): boolean
 	return false
 end
 
--- Opens a tab: presses its key with `key_probability` (by default a biometric around `SidePanels.KEY_CHANCE`), else clicks it, up to 3 times.
+-- Opens a tab with its key (chance `key_probability`, default a biometric) or a click, up to 3 times.
 function SidePanels.open(tab: number | string, key_probability: number?, timeout_ms: number?): boolean
 	local id = SidePanels.resolve(tab)
 	if id == nil then
@@ -283,7 +283,7 @@ function SidePanels.open(tab: number | string, key_probability: number?, timeout
 	return false
 end
 
--- Queues the key press or click and returns at once; true if the tab is open or input was queued. `force` queues it even when the tab is open now, for a tab an earlier queued input leaves.
+-- Queues the key press or click and returns at once; true if the tab is open or input was queued, `force` queues anyway.
 function SidePanels.open_async(tab: number | string, key_probability: number?, force: boolean?): boolean
 	local id = SidePanels.resolve(tab)
 	if id == nil then

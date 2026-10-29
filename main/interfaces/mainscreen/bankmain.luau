@@ -18,8 +18,7 @@ local items = Inv.new(CONTAINER)
 local Bankmain = {
 	CONTAINER = CONTAINER,
 	GROUP = 12,
-	-- the tab bar, its buttons are the children of this component (the child with index n is tab n), and the
-	-- setting that holds the open tab (0 is the main tab, which shows everything)
+	-- the tab bar (child n is tab n) and the setting that holds the open tab (0 is the main tab)
 	TABS_CHILD = 10,
 	TAB_VARBIT = 4150,
 	pin = nil :: string?,
@@ -83,9 +82,7 @@ function Bankmain.tab_button(tab: number): Widget?
 	return nil
 end
 
--- Opens a bank tab and waits for it to be the open one. The item grid only scrolls when the open tab has more
--- than a screen of items, and its slots are the ones of the tab: open the main tab (0) to find any item by its
--- slot in the bank. true when it is open in the end.
+-- Opens a bank tab and waits for it to be open; open tab 0 to find any item by its bank slot. true when open.
 function Bankmain.open_tab(tab: number, timeout_ms: number?): boolean
 	if Bankmain.tab() == tab then
 		return true

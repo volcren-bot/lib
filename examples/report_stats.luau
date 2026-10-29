@@ -1,6 +1,5 @@
 --!strict
--- Reports the experience the player gains to Volcren every 15 seconds and prints what was sent.
--- In the editor the numbers are dropped, in a store run they end up in the script's totals.
+-- Reports the experience gained to Volcren every 15 seconds and prints what was sent.
 local Host = require("../host")
 local StatsReport = require("../utils/stats_report")
 
