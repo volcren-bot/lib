@@ -13,6 +13,7 @@ A tab can be given by its number or by its name (`"inventory"`, `"stats"`, `"pra
 Definition:
 ```luau
 SidePanels.VARC = 171
+SidePanels.KEY_CHANCE = 0.9
 
 SidePanels.COMBAT_INTERFACE = 0
 SidePanels.STATS = 1
@@ -131,7 +132,7 @@ function SidePanels.open(tab: number | string, key_probability: number?, timeout
 ```
 Opens a tab and waits for it to open (`timeout_ms` for each try, 3 ticks by default). Does nothing if it's already open.
 
-If the tab has a key bound (see `SidePanels.key`), it presses it with the chance `key_probability`. By default that is a biometric random around 0.8, or the `Biometrics.ESCAPE` probability when the key is ESC, since ESC also closes interfaces. Pass `1` to always use the key and `0` to never use it. A tab with no key, or a key press that didn't open the tab, is clicked with the mouse, up to 3 times. Returns `false` if it still isn't open, or if the tab's button isn't available (the click needs it, the key doesn't).
+If the tab has a key bound (see `SidePanels.key`), it presses it with the chance `key_probability`. By default that is a biometric random around `SidePanels.KEY_CHANCE` (0.9), or the `Biometrics.ESCAPE` probability when the key is ESC, since ESC also closes interfaces. Pass `1` to always use the key and `0` to never use it. A tab with no key, or a key press that didn't open the tab, is clicked with the mouse, up to 3 times. Returns `false` if it still isn't open, or if the tab's button isn't available (the click needs it, the key doesn't).
 
 Example:
 ```luau

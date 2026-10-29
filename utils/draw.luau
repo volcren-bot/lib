@@ -106,6 +106,61 @@ function Draw.cuboid(cuboid: { bottom: Quad, top: Quad }, color: Color?)
 	Draw.lines(segments, color)
 end
 
+-- Seven segment digits for `Draw.text`: segments a (top), b (top right), c (bottom right), d (bottom), e (bottom
+-- left), f (top left) and g (middle).
+local SEGMENTS: { [string]: string } = {
+	["0"] = "abcdef",
+	["1"] = "bc",
+	["2"] = "abged",
+	["3"] = "abgcd",
+	["4"] = "fgbc",
+	["5"] = "afgcd",
+	["6"] = "afgedc",
+	["7"] = "abc",
+	["8"] = "abcdefg",
+	["9"] = "abcdfg",
+	["-"] = "g",
+	["#"] = "bcgf",
+}
+
+-- Draws digits, ".", "-", "#" and "/" as lines, starting at the top left (x, y); `size` is the height of a digit in pixels.
+-- Returns the x where the text ends. There are no letters.
+function Draw.text(text: string, x: number, y: number, size: number?, color: Color?): number
+	local h = size or 16
+	local w = h * 0.5
+	local gap = h * 0.3
+	local cx = x
+	for i = 1, #text do
+		local ch = string.sub(text, i, i)
+		if ch == "/" then
+			Draw.line({ x = cx, y = y + h }, { x = cx + w, y = y }, color)
+			cx += w + gap
+		elseif ch == "." then
+			Draw.line({ x = cx + 1, y = y + h }, { x = cx + 2, y = y + h }, color)
+			cx += gap
+		else
+			local segs = SEGMENTS[ch]
+			if segs then
+				local pts: { [string]: { { x: number, y: number } } } = {
+					a = { { x = cx, y = y }, { x = cx + w, y = y } },
+					b = { { x = cx + w, y = y }, { x = cx + w, y = y + h / 2 } },
+					c = { { x = cx + w, y = y + h / 2 }, { x = cx + w, y = y + h } },
+					d = { { x = cx, y = y + h }, { x = cx + w, y = y + h } },
+					e = { { x = cx, y = y + h / 2 }, { x = cx, y = y + h } },
+					f = { { x = cx, y = y }, { x = cx, y = y + h / 2 } },
+					g = { { x = cx, y = y + h / 2 }, { x = cx + w, y = y + h / 2 } },
+				}
+				for k = 1, #segs do
+					local seg = pts[string.sub(segs, k, k)]
+					Draw.line(seg[1], seg[2], color)
+				end
+			end
+			cx += w + gap
+		end
+	end
+	return cx
+end
+
 function Draw.clear()
 	if batch then
 		-- Everything batched so far would be wiped anyway.

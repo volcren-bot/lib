@@ -210,3 +210,21 @@ for i = 0, 100 do
 	Host.sleep(20)
 end
 ```
+
+## Draw.text
+
+Definition:
+```luau
+function Draw.text(text: string, x: number, y: number, size: number?, color: Color?): number
+```
+Draws digits, `.`, `-`, `#` and `/` as lines, starting at the top left corner (`x`, `y`). `size` is the height of a digit in pixels (16 by default). There are no letters. Returns the x where the text ends, so you can go on from there.
+
+Example:
+```luau
+local Draw = require("../utils/draw")
+
+Draw.batch(function()
+	Draw.clear()
+	Draw.text("#1 0.82", 100, 100, 20, Draw.YELLOW)
+end)
+```

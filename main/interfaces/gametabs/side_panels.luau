@@ -16,6 +16,8 @@ local Random = require("../../../utils/math/random")
 local SidePanels = {}
 
 SidePanels.VARC = 171
+-- how likely a tab is opened with its F-key (a biometric around this) instead of a click
+SidePanels.KEY_CHANCE = 0.9
 
 SidePanels.COMBAT_INTERFACE = 0
 SidePanels.STATS = 1
@@ -241,7 +243,7 @@ local function wait_open(id: number, timeout_ms: number): boolean
 	return false
 end
 
--- Opens a tab: presses its key with `key_probability` (a biometric around 0.8), else clicks it, up to 3 times.
+-- Opens a tab: presses its key with `key_probability` (by default a biometric around `SidePanels.KEY_CHANCE`), else clicks it, up to 3 times.
 function SidePanels.open(tab: number | string, key_probability: number?, timeout_ms: number?): boolean
 	local id = SidePanels.resolve(tab)
 	if id == nil then
@@ -257,7 +259,7 @@ function SidePanels.open(tab: number | string, key_probability: number?, timeout
 		local probability = key_probability
 			or if key == Keyboard.keys.ESCAPE
 				then Biometrics.get_probability(Biometrics.ESCAPE)
-				else Biometrics.random_double(0.8)
+				else Biometrics.random_double(SidePanels.KEY_CHANCE)
 		if Random.chance(probability) then
 			Keyboard.key_press(key)
 			if wait_open(id, timeout) then
@@ -296,7 +298,7 @@ function SidePanels.open_async(tab: number | string, key_probability: number?, f
 		local probability = key_probability
 			or if key == Keyboard.keys.ESCAPE
 				then Biometrics.get_probability(Biometrics.ESCAPE)
-				else Biometrics.random_double(0.8)
+				else Biometrics.random_double(SidePanels.KEY_CHANCE)
 		if Random.chance(probability) then
 			Keyboard.key_press_async(key)
 			return true

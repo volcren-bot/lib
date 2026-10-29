@@ -265,6 +265,18 @@ export type Npc = {
 	local_x: number,
 	local_y: number,
 	animation: number,
+	-- the actor it interacts with: an npc index or a player index (-1 for the other kind or none)
+	interacting_npc: number,
+	interacting_player: number,
+}
+
+-- A hitsplat on an actor: its type, the damage it shows and the client cycle it was added on.
+export type Hitsplat = {
+	-- which of the four slots it is in
+	slot: number,
+	kind: number,
+	damage: number,
+	cycle: number,
 }
 
 export type NpcModel = {
@@ -355,6 +367,63 @@ export type PlayerInfo = {
 	target_npc: number,
 	target_x: number,
 	target_y: number,
+	-- the actor it interacts with, of any kind and for any option (follow, talk, attack): an npc index or a player index (-1 for the other kind or none)
+	interacting_npc: number,
+	interacting_player: number,
+}
+
+-- A projectile in flight (an arrow, a bolt, a spell). Tiles are world tiles; heights are fine units above the ground.
+export type Projectile = {
+	-- the spot animation (graphic) id
+	id: number,
+	-- where it flies from and to, as the server sent it
+	source_x: number,
+	source_y: number,
+	source_plane: number,
+	target_x: number,
+	target_y: number,
+	target_plane: number,
+	-- the actors it flies from and at, -1 for none (the server often sends only a source tile); it follows a target actor
+	source_npc: number,
+	source_player: number,
+	target_npc: number,
+	target_player: number,
+	start_height: number,
+	end_height: number,
+	slope: number,
+	start_pos: number,
+	-- client cycles (50 a second): when it starts moving, when it lands, and now
+	start_cycle: number,
+	end_cycle: number,
+	cycle: number,
+	-- false while it waits to leave; until then the position is the source tile's centre
+	moving: boolean,
+	-- where it is now: world tile, local fine coordinates, the client's raw z (negative is up), orientation (0-2047)
+	-- and height above the ground
+	x: number,
+	y: number,
+	local_x: number,
+	local_y: number,
+	z: number,
+	orientation: number,
+	height: number,
+}
+
+-- A spot animation (RuneLite: graphics object) on a tile: an impact, a splash, a teleport flash. Tiles are world tiles.
+export type SpotAnim = {
+	-- the spot animation (graphic) id
+	id: number,
+	-- the world tile and plane it is on
+	x: number,
+	y: number,
+	plane: number,
+	-- local fine coordinates (128 to a tile) and the client's raw z (the ground's height at the tile minus the height the server asked for)
+	local_x: number,
+	local_y: number,
+	z: number,
+	-- client cycles (50 a second): when it starts playing (later than now while it waits) and now
+	start_cycle: number,
+	cycle: number,
 }
 
 export type WindMouseOptions = {
@@ -504,9 +573,12 @@ return {
 	npcs = g.npcs :: () -> { Npc }?,
 	npc_model = g.npc_model :: (index: number) -> NpcModel?,
 	npc_sizes = g.npc_sizes :: (indices: { number }) -> { [number]: number }?,
+	npc_hitsplats = g.npc_hitsplats :: (indices: { number }) -> { [number]: { Hitsplat } }?,
 	locs = g.locs :: (plane: number?) -> { Loc }?,
 	cache_locs = g.cache_locs :: (area: Corners, filter: CacheLocFilter?) -> { CacheLoc }?,
 	ground_items = g.ground_items :: () -> { GroundItem }?,
+	projectiles = g.projectiles :: () -> { Projectile }?,
+	spot_anims = g.spot_anims :: () -> { SpotAnim }?,
 	map_regions = g.map_regions :: () -> { { number } }?,
 	in_instance = g.in_instance :: () -> boolean?,
 	chat_messages = g.chat_messages :: () -> { ChatMessage }?,

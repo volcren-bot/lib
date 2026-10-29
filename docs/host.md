@@ -30,6 +30,8 @@ The data the functions below hand back. Each one is a plain table, so you read i
 | `CacheLocFilter` | What `Host.cache_locs` keeps: a `plane`, `names` (part of the name) and `actions` (whole menu options). |
 | `Loc` | A world object (door, tree, wall...) with its tile, size, shape and whether it can be clicked. |
 | `GroundItem` | An item lying on the ground. |
+| `Projectile` | A projectile in flight: its graphic `id`, the tiles and actors it flies between, its start and end `cycle`s and where it is now (see [Projectiles](main/entities/projectiles.md)). |
+| `SpotAnim` | A spot animation (RuneLite's graphics object) on a tile: its graphic `id`, world tile and `plane`, and when it starts (see [Spot animations](main/entities/spot_anims.md)). |
 | `ChatMessage` | A message of the chat history as the game keeps it: `uid` (counts up), `kind` (the message type), `name` (who said it, with icon tags), `sender` (the channel it came from), `text`, when it was added (`time` in ms since 1970, `age` in ms ago, `cycle`) and the game's own `time_utc`/`time_local` ("HH:MM"). |
 | `MenuEntry` / `MenuClick` | A right-click menu line, and the line the client last acted on. A line of an open menu has `submenu = true` when it opens a submenu. |
 | `MenuLayout` / `MenuSubmenu` / `MenuRect` | The open right-click menu and its open submenus as the client lays them out (see `Host.menu_layout`). |
@@ -465,6 +467,31 @@ for _, npc in ipairs(all) do
 end
 ```
 
+## Host.npc_hitsplats
+
+Definition:
+```luau
+Host.npc_hitsplats: (indices: { number }) -> { [number]: { Hitsplat } }?
+```
+The hitsplats on the NPCs with these `index`es, keyed by index; the NPCs that are gone are left out. An NPC shows at most its last four, for about a second and a half, and a new hit replaces the oldest, so read them at least once a tick to see every hit. Each one has its `slot` (0 to 3, it keeps it until replaced), its `kind` (the splat type: 16 for damage, 12 for a block), the `damage` it shows and the client `cycle` it was added on, which tells hits apart. [NpcHealth](main/entities/npc_health.md) works the health of NPCs out from them.
+
+Example:
+```luau
+local Host = require("../host")
+
+local all = Host.npcs() or {}
+local indices = {}
+for _, npc in ipairs(all) do
+	table.insert(indices, npc.index)
+end
+local splats = Host.npc_hitsplats(indices) or {}
+for _, npc in ipairs(all) do
+	for _, splat in ipairs(splats[npc.index] or {}) do
+		print(npc.name, splat.damage, splat.cycle)
+	end
+end
+```
+
 ## Host.locs
 
 Definition:
@@ -540,6 +567,40 @@ local Host = require("../host")
 
 for _, item in ipairs(Host.ground_items() or {}) do
 	print(item.name, item.quantity, item.x, item.y)
+end
+```
+
+## Host.projectiles
+
+Definition:
+```luau
+Host.projectiles: () -> { Projectile }?
+```
+Lists the projectiles in flight, and the ones the server sent that haven't left yet. `Main.Entities.Projectiles` has the helpers.
+
+Example:
+```luau
+local Host = require("../host")
+
+for _, p in ipairs(Host.projectiles() or {}) do
+	print(p.id, p.x, p.y, p.height, p.end_cycle - p.cycle)
+end
+```
+
+## Host.spot_anims
+
+Definition:
+```luau
+Host.spot_anims: () -> { SpotAnim }?
+```
+Lists the spot animations on tiles in your scene: the ones the server placed with a position, like impacts and splashes. Effects on a character (a teleport flash on you, a freeze on an NPC) are not here; those are the `graphic` of that `Npc` or `PlayerInfo`. `Main.Entities.SpotAnims` has the helpers.
+
+Example:
+```luau
+local Host = require("../host")
+
+for _, s in ipairs(Host.spot_anims() or {}) do
+	print(s.id, s.x, s.y, s.plane)
 end
 ```
 

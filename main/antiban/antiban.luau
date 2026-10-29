@@ -13,6 +13,7 @@ local Random = require("../../utils/math/random")
 local Antiban = {}
 
 Antiban.SECOND = 1000
+
 Antiban.MINUTE = 60 * Antiban.SECOND
 Antiban.HOUR = 60 * Antiban.MINUTE
 Antiban.DAY = 24 * Antiban.HOUR

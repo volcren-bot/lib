@@ -80,3 +80,49 @@ local Bankmain = require("../main/interfaces/mainscreen/bankmain")
 
 Bankmain.close()
 ```
+
+## Bankmain.tab
+
+Definition:
+```luau
+function Bankmain.tab(): number?
+```
+The open bank tab: 0 for the main tab, which shows every item, 1 to 9 for the others. `nil` when it can't be read.
+
+Example:
+```luau
+local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+
+print("tab:", Bankmain.tab())
+```
+
+## Bankmain.tab_button
+
+Definition:
+```luau
+function Bankmain.tab_button(tab: number): Widget?
+```
+The button of a bank tab in the tab bar, or `nil` when the bank is closed.
+
+Example:
+```luau
+local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+
+print(Bankmain.tab_button(0))
+```
+
+## Bankmain.open_tab
+
+Definition:
+```luau
+function Bankmain.open_tab(tab: number, timeout_ms: number?): boolean
+```
+Opens a bank tab and waits for it to be the open one (2 seconds by default). The item grid only scrolls when the open tab has more than a screen of items, and the grid shows the tab's own items, so open the main tab (0) before looking for an item by its slot in the bank. Returns `true` when the tab is open in the end.
+
+Example:
+```luau
+local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+
+assert(Bankmain.open_tab(0), "couldn't open the main tab")
+print(Bankmain.index_of("Anglerfish"))
+```
