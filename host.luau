@@ -271,6 +271,47 @@ export type ItemChange = {
 	new_quantity: number,
 }
 
+-- One packet the client received from the server, or sent to it.
+export type Packet = {
+	sequence: number,
+	-- milliseconds since the agent started logging: only good for ordering and spacing packets
+	time_ms: number,
+	-- true for a packet the client sent
+	sent: boolean,
+	-- the server packet id (received) or the client packet id (sent)
+	opcode: number,
+	-- the whole payload length; `payload` has at most the first 104 bytes
+	length: number,
+	-- the payload's bytes, read with string.byte or buffer.fromstring
+	payload: string,
+}
+
+-- The tile the server last put you on (world coordinates).
+export type ServerTile = {
+	x: number,
+	y: number,
+	plane: number?,
+	-- steps of the path the client still has to animate, not what is left of your route
+	steps: number,
+}
+
+-- Your server tile and when it last changed, as the agent saw it before taking each packet.
+export type MovementState = {
+	x: number,
+	y: number,
+	plane: number?,
+	-- the tile before the last change
+	from_x: number,
+	from_y: number,
+	from_plane: number?,
+	-- the tile changed in the tick being received or in the last one that ended
+	moving: boolean,
+	-- the client's tick counter when the tile last changed; nil if it hasn't since the agent first saw you
+	moved_tick: number?,
+	-- the client's tick counter now
+	tick: number,
+}
+
 export type Npc = {
 	index: number,
 	id: number,
@@ -556,6 +597,26 @@ export type Shape =
 	}
 	| { kind: "clear" }
 
+-- What `Host.http_request` takes. Only hosts on the whitelist in the loader's settings can be reached.
+export type HttpRequest = {
+	url: string,
+	-- "GET" when not given
+	method: string?,
+	headers: { [string]: string }?,
+	body: string?,
+	-- milliseconds the whole request may take, redirects included (15000 when not given, 60000 at most)
+	timeout: number?,
+}
+
+export type HttpResponse = {
+	-- true for a status from 200 to 299
+	ok: boolean,
+	status: number,
+	-- lowercase names; a header sent more than once is joined with ", "
+	headers: { [string]: string },
+	body: string,
+}
+
 local g = _G :: any
 
 return {
@@ -567,6 +628,9 @@ return {
 	on_item_change = g.on_item_change :: ((change: ItemChange) -> ()) -> number,
 	off_item_change = g.off_item_change :: (id: number) -> boolean,
 	wait_item_change = g.wait_item_change :: (ms: number) -> boolean,
+	on_packet = g.on_packet :: (opcodes: { number }, callback: (packet: Packet) -> (), sent: boolean?) -> number,
+	off_packet = g.off_packet :: (id: number) -> boolean,
+	wait_packet = g.wait_packet :: (opcodes: { number }, ms: number, sent: boolean?) -> Packet?,
 	project = g.project :: (
 		points: { FinePoint },
 		via: ("auto" | "local" | "client")?,
@@ -600,6 +664,8 @@ return {
 	spot_anims = g.spot_anims :: () -> { SpotAnim }?,
 	map_regions = g.map_regions :: () -> { { number } }?,
 	in_instance = g.in_instance :: () -> boolean?,
+	server_tile = g.server_tile :: () -> ServerTile?,
+	movement = g.movement :: () -> MovementState?,
 	chat_messages = g.chat_messages :: () -> { ChatMessage }?,
 	find_path = g.find_path :: (from: Tile, to: Tile, plane: number?, max_tiles: number?) -> { Tile }?,
 	collision = g.collision :: (area: Corners?) -> Collision?,
@@ -635,6 +701,8 @@ return {
 	input_cancel = g.input_cancel :: () -> (),
 	-- Enters the account's bank PIN on the open keypad; the PIN lives in the injector and is never shown to the script.
 	bank_pin_enter = g.bank_pin_enter :: () -> string,
+	-- Makes an HTTP request through the loader, to a host on the loader's whitelist. Needs no client.
+	http_request = g.http_request :: (options: HttpRequest) -> (HttpResponse?, string?),
 	draw_rect = g.draw_rect :: (
 		x1: number,
 		y1: number,

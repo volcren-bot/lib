@@ -43,6 +43,7 @@ The data the functions below hand back. Each one is a plain table, so you read i
 | `Shape` | One shape for `Host.draw_batch`: a rect, a line or a clear. |
 | `FormSpec` / `FormField` | The description of a settings window. |
 | `WindMouseOptions` | Tuning for human-like mouse movement. |
+| `HttpRequest` / `HttpResponse` | What `Host.http_request` takes and returns. |
 
 ## Host.game_state
 
@@ -177,6 +178,54 @@ local Host = require("../host")
 Host.on_item_change(function() end)
 if Host.wait_item_change(30000) then
 	print("something changed")
+end
+```
+
+## Host.on_packet
+
+Definition:
+```luau
+Host.on_packet: (opcodes: { number }, callback: (packet: Packet) -> (), sent: boolean?) -> number
+```
+Calls `callback` for every packet the client receives from the server whose id is in `opcodes`, from now on; with `sent` true, for the packets the client sends instead (client packet ids). Ids go from 0 to 255. The packet has `opcode`, `sent`, `length` (the whole payload), `payload` (a string of its first 104 bytes, read with `string.byte` or `buffer.fromstring`), `time_ms` and `sequence`. Returns an id for `Host.off_packet`.
+
+Like item change callbacks, they run inside `Host.sleep`, `Host.wait_item_change` and `Host.wait_packet`, not while the script is busy elsewhere. The client keeps the last 4096 packets, a few seconds of a busy area, so a script that doesn't sleep for longer than that misses some. Server packet 2 has no payload and arrives once per game tick.
+
+Example:
+```luau
+local Host = require("../host")
+
+local ticks = 0
+Host.on_packet({ 2 }, function()
+	ticks += 1
+end)
+Host.sleep(6000)
+print(`{ticks} ticks in 6 seconds`) -- about 10
+```
+
+## Host.off_packet
+
+Definition:
+```luau
+Host.off_packet: (id: number) -> boolean
+```
+Stops calling the callback `Host.on_packet` returned `id` for. Returns whether there was one.
+
+## Host.wait_packet
+
+Definition:
+```luau
+Host.wait_packet: (opcodes: { number }, ms: number, sent: boolean?) -> Packet?
+```
+Waits up to `ms` for the client to receive a packet whose id is in `opcodes` (with `sent` true, to send one), and returns it; `nil` when none came in that time. Only a packet that arrives after the call counts. Needs no callback, and runs the item and packet callbacks while it waits.
+
+Example:
+```luau
+local Host = require("../host")
+
+-- wait for the next game tick
+if Host.wait_packet({ 2 }, 1200) then
+	print("new tick")
 end
 ```
 
@@ -684,6 +733,43 @@ Example:
 local Host = require("../host")
 
 print(Host.in_instance())
+```
+
+## Host.server_tile
+
+Definition:
+```luau
+Host.server_tile: () -> ServerTile?
+```
+The tile the server last put you on. Your `position` in `Host.game_state` follows your character's model, which walks there smoothly and so lags the server by up to a tick or two; this is where the game already has you. `steps` is how many steps of the path the client still has to animate. `nil` when not logged in.
+
+Example:
+```luau
+local Host = require("../host")
+
+local tile = Host.server_tile()
+if tile then
+	print(`server tile {tile.x}, {tile.y}, {tile.steps} steps to animate`)
+end
+```
+
+## Host.movement
+
+Definition:
+```luau
+Host.movement: () -> MovementState?
+```
+Your server tile and whether the server moved you this tick. The agent looks at the tile just before the client takes each packet, so it sees every tick's change even while your script is busy. `moving` turns true as the tick that moves you is received and stays true until the next tick ends, so a single step reads as one tick of `moving` and a walk as `moving` all the way. A teleport, a login or a world hop also shows as one change; `from_x`, `from_y` and `from_plane` tell you how far it went (walking moves you at most 1 tile a tick, running 2). `nil` when not logged in, or with an agent that doesn't track the tile. `Player.is_moving` wraps this.
+
+Example:
+```luau
+local Host = require("../host")
+
+-- print each tick whether you moved
+while Host.wait_packet({ 2 }, 1200) do
+	local m = Host.movement()
+	print(m and m.moving)
+end
 ```
 
 ## Host.chat_messages
@@ -1244,6 +1330,28 @@ Definition:
 Host.bank_pin_enter: () -> string
 ```
 Enters the account's bank PIN on the open bank PIN keypad, entirely inside the injector, and returns how it went: `"entered"`, `"closed"`, `"no_pin"`, `"unavailable"`, `"locked"`, `"wrong"` or `"failed"`. The PIN comes from the loader, looked up by the hash of the logged in account's name, and is never given to the script. Blocking input, so it takes the mouse back from async input first. Use [BankpinKeypad.enter](main/interfaces/mainscreen/bankpin_keypad.md).
+
+## Host.http_request
+
+Definition:
+```luau
+Host.http_request: (options: HttpRequest) -> (HttpResponse?, string?)
+```
+Makes an HTTP request and returns the response, or `nil` and why not. `options` has a `url`, and optionally a `method` (`"GET"` by default), `headers` (a table of names to values), a text `body` (up to 1 MB) and a `timeout` in milliseconds (15000 by default, 60000 at most, redirects included). The response has `ok` (a status from 200 to 299), `status`, `headers` (lowercase names, a repeated header joined with `", "`) and `body` as text (up to 8 MB). A status like 404 is still a response: check `ok`, only a request that could not be made returns an error.
+
+The loader makes the request, and only to hosts on the whitelist in its Settings (the Volcren hosts are always on it, the user adds others). A redirect is followed only while every host on the way is whitelisted, and an `Authorization` or `Cookie` header isn't sent to a different host than the first. Blocks the script until the response is in, and needs no client.
+
+Example:
+```luau
+local Host = require("../host")
+
+local response, err = Host.http_request({ url = "https://api.volcren.com/health" })
+if not response then
+	print("request failed:", err)
+elseif response.ok then
+	print(response.status, response.body)
+end
+```
 
 ## Host.draw_rect
 

@@ -158,7 +158,15 @@ local function fine(): (number?, number?)
 	return p.local_x, p.local_y
 end
 
+-- server packet 2 ends a game tick; packet ids reshuffle when the game updates
+local TICK_PACKET = 2
+
 function Player.is_moving(sample_ms: number?): boolean
+	local movement = Host.movement()
+	if movement ~= nil then
+		return movement.moving
+	end
+	-- an agent that doesn't track the server tile: watch the model, which lags the server
 	local x, y = fine()
 	if x == nil then
 		return false
@@ -201,6 +209,26 @@ function Player.wait_still(timeout_ms: number?): boolean
 		if x2 ~= x or y2 ~= y then
 			x, y, still_since = x2, y2, time()
 		end
+	end
+end
+
+function Player.wait_server_still(timeout_ms: number?): boolean
+	local timeout = timeout_ms or Player.WALK_TIMEOUT
+	local started = time()
+	while true do
+		local left = timeout - (time() - started)
+		local movement = Host.movement()
+		if movement == nil then
+			return Player.wait_still(math.max(left, 0))
+		end
+		if not movement.moving then
+			return true
+		end
+		if left <= 0 then
+			Log.log("Player", `the server was still moving the player after {timeout} ms`)
+			return false
+		end
+		Host.wait_packet({ TICK_PACKET }, math.min(left, 1200))
 	end
 end
 

@@ -279,7 +279,7 @@ Definition:
 ```luau
 function Player.is_moving(sample_ms: number?): boolean
 ```
-Checks whether you are moving by comparing your position before and after a short wait (`sample_ms`, 100 by default).
+Tells you whether the server moved you to another tile in the last game tick, or in the one being received. It is exact and returns straight away; see `Host.movement`. With an agent that doesn't track the server tile, it compares your position before and after a short wait (`sample_ms`, 100 by default) instead.
 
 Example:
 ```luau
@@ -317,6 +317,21 @@ Example:
 local Player = require("../main/player")
 
 print("stopped:", Player.wait_still(5000))
+```
+
+## Player.wait_server_still
+
+Definition:
+```luau
+function Player.wait_server_still(timeout_ms: number?): boolean
+```
+Waits until the server stops moving you: it returns at the first game tick that leaves you on the same tile, which can be before your character's model has finished walking there (`Player.wait_still` waits for that). Returns `false` if you are still moving after `timeout_ms` (20 seconds by default). With an agent that doesn't track the server tile, it does what `Player.wait_still` does.
+
+Example:
+```luau
+local Player = require("../main/player")
+
+print("stopped:", Player.wait_server_still(5000))
 ```
 
 ## Player.wait_walk
