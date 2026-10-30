@@ -10,6 +10,8 @@ Angles are measured in "units" where a full turn is 16384. Most functions have a
 
 Turning is done like a person would: dragging with the middle mouse button (`"mouse"`) or holding the arrow keys (`"keys"`). Functions that turn the camera take an optional `method` to pick one.
 
+A drag or a zoom starts wherever the mouse already is when it's over the game view, not covered by an interface, and (for a drag) has room for the whole drag. Only otherwise does the mouse move into the game view first.
+
 ## Constants
 
 Definition:

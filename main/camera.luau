@@ -123,6 +123,7 @@ local function settle(): CameraState?
 	return last
 end
 
+-- Where a drag of `dx`, `dy` starts: the mouse itself when it's over the game view with room for the drag, else a new spot.
 local function drag_start(dx: number, dy: number): Point?
 	local view = Toplevel.viewport()
 	if view == nil then
@@ -136,15 +137,29 @@ local function drag_start(dx: number, dy: number): Point?
 	if x1 > x2 or y1 > y2 then
 		return nil
 	end
+	local room = Box.new(x1, y1, x2, y2)
 	local blockers = Toplevel.blockers() or {}
+	local function fits(p: Point): boolean
+		return Toplevel.is_visible(p, view, blockers)
+			and Toplevel.is_visible(Point.new(p.x + dx, p.y + dy), view, blockers)
+	end
+	-- Queued input may still be moving the mouse away from where it reads now.
+	local here = if Mouse.busy() then nil else Mouse.position()
+	if here and Box.contains(room, here) and fits(here) then
+		return here
+	end
 	for _ = 1, 20 do
-		local p = Box.random_point_center(Box.new(x1, y1, x2, y2))
-		local finish = Point.new(p.x + dx, p.y + dy)
-		if Toplevel.is_visible(p, view, blockers) and Toplevel.is_visible(finish, view, blockers) then
+		local p = Box.random_point_center(room)
+		if fits(p) then
 			return p
 		end
 	end
 	return nil
+end
+
+local function is_mouse_at(p: Point): boolean
+	local here = Mouse.position()
+	return here ~= nil and here.x == p.x and here.y == p.y
 end
 
 -- Where a middle-button drag starts and how far it goes to reach `yaw` and `pitch`; start is nil without room.
@@ -170,7 +185,9 @@ local function drag(camera: CameraState, yaw: number?, pitch: number?): boolean
 	if start == nil then
 		return false
 	end
-	Mouse.move(start)
+	if not is_mouse_at(start) then
+		Mouse.move(start)
+	end
 	Mouse.hold("middle")
 	sleep(Random.int(40, 90))
 	Mouse.move(Point.new(start.x + dx, start.y + dy))
@@ -299,7 +316,9 @@ local function turn_async(yaw: number?, pitch: number?): boolean
 	if start == nil then
 		return false
 	end
-	Mouse.move_async(start, true)
+	if not is_mouse_at(start) then
+		Mouse.move_async(start, true)
+	end
 	Mouse.drag_async(Point.new(start.x + dx, start.y + dy), "middle")
 	return true
 end
