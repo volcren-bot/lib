@@ -150,9 +150,23 @@ local function quad_on_screen(quad: Geometry.Quad, view: Geometry.Box?, blockers
 	return visible
 end
 
+-- the share of the game view's width and height, on each side, that walking doesn't click in
+Walker.SCREEN_PADDING = 0.10
+
+-- The game view less SCREEN_PADDING all round: tiles walking clicks must be inside it.
+local function walk_view(): Geometry.Box?
+	local view = Toplevel.viewport()
+	if view == nil then
+		return nil
+	end
+	local px = math.round((view.x2 - view.x1) * Walker.SCREEN_PADDING)
+	local py = math.round((view.y2 - view.y1) * Walker.SCREEN_PADDING)
+	return Geometry.Box.new(view.x1 + px, view.y1 + py, view.x2 - px, view.y2 - py)
+end
+
 function Walker.on_screen(tile: Tile): boolean
 	local quad = Projection.tile(tile)
-	return quad ~= nil and quad_on_screen(quad, Toplevel.viewport(), Toplevel.blockers())
+	return quad ~= nil and quad_on_screen(quad, walk_view(), Toplevel.blockers())
 end
 
 Walker.HOVER_ATTEMPTS = 2
@@ -230,7 +244,7 @@ local function click_projected(tile: Tile, accept: ((Host.MenuEntry) -> boolean)
 	if quad == nil then
 		return false
 	end
-	if not quad_on_screen(quad, Toplevel.viewport(), Toplevel.blockers()) then
+	if not quad_on_screen(quad, walk_view(), Toplevel.blockers()) then
 		return false
 	end
 	-- something standing on the tile (a ladder, a mast) can own part of it: try other spots of the quad
@@ -461,7 +475,7 @@ local function route_view(
 	if screen == nil then
 		return {}, none
 	end
-	local view, blockers = Toplevel.viewport(), Toplevel.blockers()
+	local view, blockers = walk_view(), Toplevel.blockers()
 	local views: { { degrees: number, shown: number } } = {}
 	local current = none
 	for n, turn in ipairs(turns) do
@@ -535,14 +549,19 @@ end
 -- how often the camera is checked against the route while running to the flag
 Walker.STEER_CHECK_MS = 1200
 -- The chance a wait for the flag has a tiny camera or mouse move (like the antiban's tiny tasks), how long after the
--- click it comes, and how long the wait for the next click must still be for it (or a turn while running).
-Walker.FIDGET_CHANCE = 0.65
+-- click it comes, and how long the wait for the next click must still be for it (or a turn while running). After each
+-- roll, made or missed, another follows a short while later at FIDGET_CHANCE_DROP less, until the chance runs out.
+Walker.FIDGET_CHANCE = 0.75
+Walker.FIDGET_CHANCE_DROP = 0.15
 Walker.FIDGET_DELAY_MIN_MS = 300
 Walker.FIDGET_DELAY_MAX_MS = 2000
+Walker.FIDGET_NEXT_MIN_MS = 100
+Walker.FIDGET_NEXT_MAX_MS = 200
 Walker.FIDGET_MIN_LEFT_MS = 1500
--- tiny pitch moves stay within this much of PITCH_MAX, and zoom moves within this many scroll notches of the walk's zoom
+-- tiny pitch moves stay within this much of PITCH_MAX, and zoom moves go this many scroll notches (1, 2, ...) from the
+-- walk's zoom, weighted
 Walker.FIDGET_PITCH = 250
-Walker.FIDGET_ZOOM_NOTCHES = 2
+Walker.FIDGET_ZOOM_NOTCHES = { 1, 2, 4, 2, 1 }
 
 -- The zoom tiny zoom moves stay round, kept from walk to walk so they don't add up, and the zoom the last one went to:
 -- a walk that finds any other zoom (the script's, or the player's) takes that as the one to stay round.
@@ -580,7 +599,7 @@ local function fidget(zoom: number?)
 		-- not the antiban's either: notches round the walk's zoom, so many of them don't add up to a different zoom
 		local current = Camera.zoom()
 		if current and zoom then
-			local change = Random.int(1, Walker.FIDGET_ZOOM_NOTCHES)
+			local change = (Random.weighted_index(Walker.FIDGET_ZOOM_NOTCHES) or 1)
 				* Camera.ZOOM_STEP
 				* (if Random.chance(0.5) then 1 else -1)
 			local target = math.clamp(zoom + change, Camera.ZOOM_MIN, Camera.ZOOM_MAX)
@@ -833,6 +852,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 	-- when the camera was last turned to the route (or checked), and when the wait for the flag has its tiny move
 	local steered_at = 0
 	local fidget_at: number? = nil
+	local fidget_chance = 0
 	local zoom = home_zoom()
 	local started = time()
 	-- no click before this: the pause after a plane change
@@ -1117,9 +1137,16 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 				-- that (or a bend in the route) turned the camera away from it
 				local now = time()
 				if fidget_at and now >= (fidget_at :: number) and left - ahead_ms >= Walker.FIDGET_MIN_LEFT_MS then
-					fidget_at = nil
-					fidget(zoom)
-					steered_at = now
+					local made = Biometrics.random_boolean(fidget_chance)
+					debug(`tiny move roll at {math.round(fidget_chance * 100)}%: {if made then "made" else "missed"}`)
+					if made then
+						fidget(zoom)
+						steered_at = now
+					end
+					fidget_chance -= Walker.FIDGET_CHANCE_DROP
+					fidget_at = if fidget_chance > 0.001
+						then now + Random.int(Walker.FIDGET_NEXT_MIN_MS, Walker.FIDGET_NEXT_MAX_MS)
+						else nil
 				elseif
 					flag_at
 					and (flag_at :: number) < last
@@ -1133,7 +1160,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			end
 			if need and plan then
 				local from = math.max(progress + 1, (flag_at or 0) + 1)
-				local view, blockers = Toplevel.viewport(), Toplevel.blockers()
+				local view, blockers = walk_view(), Toplevel.blockers()
 				-- which tiles ahead are on screen, projected in one go
 				local shown_at: { [number]: boolean } = {}
 				local function look()
@@ -1254,9 +1281,8 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 						end
 						clicked_at, clicked_ms, clicked_tile_at = here, time(), p.tiles[clicked :: number]
 						steered_at = time()
-						fidget_at = if Biometrics.random_boolean(Walker.FIDGET_CHANCE)
-							then time() + Random.int(Walker.FIDGET_DELAY_MIN_MS, Walker.FIDGET_DELAY_MAX_MS)
-							else nil
+						fidget_chance = Walker.FIDGET_CHANCE
+						fidget_at = time() + Random.int(Walker.FIDGET_DELAY_MIN_MS, Walker.FIDGET_DELAY_MAX_MS)
 						if (clicked :: number) < last then
 							-- while running there, turn to show the route past it, where the next click goes
 							-- (gain 1 after a minimap click: off screen only because the camera points elsewhere)
