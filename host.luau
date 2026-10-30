@@ -128,7 +128,7 @@ export type FinePoint = {
 
 export type FormField = {
 	id: string?,
-	kind: ("label" | "check" | "number" | "text" | "choice")?,
+	kind: ("label" | "check" | "number" | "text" | "choice" | "list")?,
 	label: string?,
 	text: string?,
 	default: any?,
@@ -137,6 +137,10 @@ export type FormField = {
 	max: number?,
 	step: number?,
 	integer: boolean?,
+	-- list: its rows, shown as ticked or not; the value is { [row id]: boolean }
+	items: { { id: string, label: string?, default: boolean? } }?,
+	-- the id of a check; the field is greyed out while that check is off
+	enabled_by: string?,
 }
 
 export type FormSpec = {

@@ -258,7 +258,7 @@ Definition:
 ```luau
 Host.form: (spec: FormSpec) -> { [string]: any }?
 ```
-Shows a settings window and waits until the user presses the button. Returns the chosen values by field id, or `nil, "cancelled"`. Field kinds are `label`, `check`, `number`, `text` and `choice`.
+Shows a settings window and waits until the user presses the button. Returns the chosen values by field id, or `nil, "cancelled"`. Field kinds are `label`, `check`, `number`, `text`, `choice` and `list` (a scrolling list of ticked rows, `items = { { id = "a", label = "A", default = true } }`, giving `{ a = true }`). Any field can set `enabled_by` to the id of a check, and is greyed out while that check is off.
 
 Example:
 ```luau
