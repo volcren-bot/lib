@@ -685,6 +685,8 @@ export type WalkOptions = {
 -- the farthest a door or ladder on the way is clicked from, and how often the walk looks for it on screen
 Walker.ACTION_RANGE = 16
 Walker.ACTION_CHECK_MS = 150
+-- where the underground (dungeons) starts: the same map, 100 map squares north
+Walker.UNDERGROUND = 6400
 -- clicks on a door or ladder that didn't do anything before the walk plans without it
 Walker.ACTION_ATTEMPTS = 3
 -- a click on one has failed when the player stands still this long without it working, or after the timeout
@@ -914,8 +916,9 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		local u = using :: Using
 		local now = time()
 		if u.action.kind == "climb" then
-			if here.plane ~= u.from.plane then
-				debug(`climbed to plane {here.plane} {math.floor(now - u.clicked_at)} ms after the click`)
+			-- a plane up or down, or into or out of the underground (the same plane, 100 map squares north)
+			if here.plane ~= u.from.plane or (here.y >= Walker.UNDERGROUND) ~= (u.from.y >= Walker.UNDERGROUND) then
+				debug(`climbed to {here.x}, {here.y} on plane {here.plane} {math.floor(now - u.clicked_at)} ms after the click`)
 				using, plan = nil, nil
 				resume_at = now + Random.int(Walker.CLIMB_PAUSE_MIN_MS, Walker.CLIMB_PAUSE_MAX_MS)
 				camera_settle()
@@ -1070,8 +1073,11 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 					end
 				end
 			elseif action then
-				-- the plan's door or ladder isn't loaded any more
-				plan = nil
+				-- the plan's door or ladder isn't loaded (yet: it can be past the scene, in the cache): walk on, and look again
+				if time() - looked_at >= Walker.ACTION_CHECK_MS then
+					looked_at = time()
+					action_loc = live_loc((action :: NavAction).loc)
+				end
 			end
 		end
 
