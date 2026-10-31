@@ -16,6 +16,21 @@ function Log.log(tag: string, ...: any)
 	print(table.concat(parts, " "))
 end
 
+-- like `Log.log`, but the loader shows the line in yellow
+function Log.warn(tag: string, ...: any)
+	local parts = { `[{tag}][{timestamp()}]:` }
+	for i = 1, select("#", ...) do
+		table.insert(parts, tostring((select(i, ...))))
+	end
+	local line = table.concat(parts, " ")
+	-- an injector from before report_warning only has print
+	if Host.report_warning == nil then
+		print(line)
+		return
+	end
+	Host.report_warning(line)
+end
+
 -- one row of a block: a label and its value, or a `section` heading when value is nil
 export type Row = { label: string, value: string? }
 

@@ -1568,6 +1568,21 @@ Host.report_counters({
 })
 ```
 
+## Host.report_warning
+
+Definition:
+```luau
+Host.report_warning: (text: string) -> ()
+```
+Writes a line to the loader's log in the warning color (yellow), for something the script wants noticed that isn't an error. The line is shown as written, so start it with the usual `[tag][time]:`; `Log.warn` does that. Works in any run.
+
+Example:
+```luau
+local Host = require("../host")
+
+Host.report_warning("[Bank][00:01:02:003]: the bank is nearly full")
+```
+
 ## Host.report_breaks
 
 Definition:

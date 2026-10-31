@@ -17,6 +17,19 @@ Example:
 Log.log("Tempoross", "Wave incoming")
 ```
 
+## Log.warn
+
+Definition:
+```luau
+function Log.warn(tag: string, ...: any)
+```
+Like `Log.log`, but the loader shows the line in yellow (see `Host.report_warning`).
+
+Example:
+```luau
+Log.warn("Bank", "no bank around")
+```
+
 ## Log.Row
 
 Definition:

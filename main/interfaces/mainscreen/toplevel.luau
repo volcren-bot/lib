@@ -94,6 +94,7 @@ local ESC_TO_CLOSE_VARBIT = 4681
 local CLOSE_POLL_MS = 100
 -- 3 game ticks
 local CLOSE_TIMEOUT_MS = 1800
+local CLOSE_CLEAR_MS = 600
 
 local function wait_closed(group: number | string, timeout_ms: number): boolean
 	local waited = 0
@@ -105,6 +106,65 @@ local function wait_closed(group: number | string, timeout_ms: number): boolean
 		end
 	end
 	return false
+end
+
+-- Escape is tried this many times (with a short pause between) before it is given up on for the rest of the run
+Toplevel.ESCAPE_TRIES = 3
+Toplevel.ESCAPE_PAUSE_MS = { 150, 400 }
+local escape_disabled = false
+
+-- false once Escape failed to close an interface ESCAPE_TRIES times in a row: "Esc to close" is probably off, so only the mouse is used from then on
+function Toplevel.escape_enabled(): boolean
+	return not escape_disabled
+end
+
+-- Turns Escape closing back on (it stays off until the end of the run otherwise).
+function Toplevel.reset_escape()
+	escape_disabled = false
+end
+
+-- Presses Escape up to ESCAPE_TRIES times, `timeout_ms` for each to see `closed()` turn true, with a short random pause between tries.
+-- true when it closed. Failing every try turns Escape off for the rest of the run; false right away while it is off.
+local function escape_close(closed: () -> boolean, timeout_ms: number, name: () -> string): boolean
+	if escape_disabled then
+		return false
+	end
+	for attempt = 1, Toplevel.ESCAPE_TRIES do
+		Keyboard.key_press(Keyboard.keys.ESCAPE)
+		local waited = 0
+		while waited < timeout_ms do
+			sleep(CLOSE_POLL_MS)
+			waited += CLOSE_POLL_MS
+			if closed() then
+				return true
+			end
+		end
+		if attempt < Toplevel.ESCAPE_TRIES then
+			sleep(Random.range(Toplevel.ESCAPE_PAUSE_MS[1], Toplevel.ESCAPE_PAUSE_MS[2]))
+		end
+	end
+	escape_disabled = true
+	Log.warn(
+		"Toplevel",
+		`Escape to close has been disabled because it failed {Toplevel.ESCAPE_TRIES} times closing interface {name()}, only the mouse will close interfaces from now on`
+	)
+	return false
+end
+
+-- Closes whatever main screen interface is open with Escape. false when none could be closed or Escape is off (the mouse has to do it then).
+function Toplevel.escape_clear(timeout_ms: number?): boolean
+	if not Toplevel.has_interface() then
+		return true
+	end
+	return escape_close(
+		function()
+			return not Toplevel.has_interface()
+		end,
+		timeout_ms or CLOSE_CLEAR_MS,
+		function()
+			return Toplevel.interface_name() or tostring(Toplevel.interface())
+		end
+	)
 end
 
 -- Closes a main screen interface and waits: Escape with `key_probability` unless "Esc to close" is off, else clicks `button()`.
@@ -119,9 +179,17 @@ function Toplevel.close(
 	end
 	local timeout = timeout_ms or CLOSE_TIMEOUT_MS
 	local probability = key_probability or Biometrics.get_probability(Biometrics.ESCAPE)
-	if varbit(ESC_TO_CLOSE_VARBIT) ~= 0 and Random.chance(probability) then
-		Keyboard.key_press(Keyboard.keys.ESCAPE)
-		if wait_closed(group, timeout) then
+	if varbit(ESC_TO_CLOSE_VARBIT) ~= 0 and not escape_disabled and Random.chance(probability) then
+		local function closed(): boolean
+			return not Toplevel.is_open(group)
+		end
+		local function name(): string
+			if type(group) == "string" then
+				return group
+			end
+			return GameVal.interface(group) or tostring(group)
+		end
+		if escape_close(closed, timeout, name) then
 			return true
 		end
 	end

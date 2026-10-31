@@ -70,7 +70,7 @@ Definition:
 ```luau
 function Toplevel.close(group: number | string, button: () -> Widget?, key_probability: number?, timeout_ms: number?): boolean
 ```
-Closes an interface of the main screen and waits for it to close (`timeout_ms` for each try, 3 ticks by default). It presses Escape with the chance `key_probability` (by default the `Biometrics.ESCAPE` probability), unless the client's "Esc to close" setting is off. If that doesn't close it, or Escape isn't used, it clicks the widget `button()` returns, up to 3 times; `button` returns `nil` when the close button can't be found, and then `close` fails. Returns `true` at once when it isn't open.
+Closes an interface of the main screen and waits for it to close (`timeout_ms` for each try, 3 ticks by default). It presses Escape with the chance `key_probability` (by default the `Biometrics.ESCAPE` probability), unless the client's "Esc to close" setting is off or Escape has been given up on (see `Toplevel.escape_enabled`). Escape gets `Toplevel.ESCAPE_TRIES` (3) tries, `timeout_ms` each with a short random pause between. If that doesn't close it, or Escape isn't used, it clicks the widget `button()` returns, up to 3 times; `button` returns `nil` when the close button can't be found, and then `close` fails. Returns `true` at once when it isn't open.
 
 Example:
 ```luau
@@ -79,6 +79,25 @@ local Bankmain = require("../main/interfaces/mainscreen/bankmain")
 
 Toplevel.close(Bankmain.GROUP, Bankmain.close_button)
 ```
+
+## Toplevel.escape_enabled
+
+Definition:
+```luau
+Toplevel.ESCAPE_TRIES = 3
+Toplevel.ESCAPE_PAUSE_MS = { 150, 400 }
+function Toplevel.escape_enabled(): boolean
+function Toplevel.reset_escape()
+```
+Escape closing of every main screen interface (`close`, `escape_clear`, and so the bank and the deposit box) shares one switch. When Escape fails to close an interface `ESCAPE_TRIES` times in a row, "Esc to close" is probably off, so the switch turns off for the rest of the run and only the mouse is used. A yellow line in the loader's log says so, naming the interface. `escape_enabled` tells whether it is still on; `reset_escape` turns it back on.
+
+## Toplevel.escape_clear
+
+Definition:
+```luau
+function Toplevel.escape_clear(timeout_ms: number?): boolean
+```
+Closes whatever window is open on the main screen with Escape (`timeout_ms` per try, 600 by default), with the same tries and switch as `close`. `true` at once when nothing is open; `false` when it didn't close or Escape is off. `Bankmain.open` and `DepositBox.open` use it to clear the way.
 
 ## Toplevel.has_interface
 

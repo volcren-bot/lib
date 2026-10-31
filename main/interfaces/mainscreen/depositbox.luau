@@ -9,7 +9,6 @@ type Loc = Host.Loc
 local Geometry = require("../../../utils/math/geometry")
 type Box = Geometry.Box
 local Item = require("../../../utils/item")
-local Keyboard = require("../../../utils/input/keyboard")
 local Mouse = require("../../../utils/input/mouse")
 type Item = Item.Item
 local Chat = require("../chatbox/chat")
@@ -459,24 +458,6 @@ function DepositBox.hover(loc: Loc?, walk: boolean?): boolean
 	return Objects.hover(target)
 end
 
-local function clear_main_screen(): boolean
-	local open = Toplevel.has_interface()
-	if open == nil then
-		return false
-	end
-	if not open then
-		return true
-	end
-	Keyboard.key_press(Keyboard.keys.ESCAPE)
-	return poll(function()
-		local still = Toplevel.has_interface()
-		if still == nil then
-			return false
-		end
-		return not still
-	end, CLOSE_TIMEOUT_MS)
-end
-
 function DepositBox.open(loc: Loc?, walk: boolean?): boolean
 	local open = is_open()
 	if open == nil then
@@ -485,7 +466,7 @@ function DepositBox.open(loc: Loc?, walk: boolean?): boolean
 	if open then
 		return true
 	end
-	local cleared = clear_main_screen()
+	local cleared = Toplevel.escape_clear(CLOSE_TIMEOUT_MS)
 	if not cleared then
 		return cleared
 	end

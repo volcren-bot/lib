@@ -764,6 +764,7 @@ return {
 	murmur2a = g.murmur2a :: (text: string, seed: number?) -> number,
 	biometrics_profile = g.biometrics_profile :: (name: string) -> { number },
 	report_counters = g.report_counters :: (counters: { Counter }) -> (),
+	report_warning = g.report_warning :: (text: string) -> (),
 	report_breaks = g.report_breaks :: (plan: BreakPlan) -> (),
 	report_stats = g.report_stats :: (experience: number, gold: number, custom: { number }?) -> (),
 }
