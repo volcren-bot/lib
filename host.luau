@@ -169,6 +169,8 @@ export type FormField = {
 export type FormSpec = {
 	title: string?,
 	submit: string?,
+	-- the checks go in a column on the right, everything else on the left; stacked in a narrow window
+	columns: boolean?,
 	fields: { FormField },
 }
 
