@@ -35,9 +35,6 @@ Biometrics.LIKES = 19
 Biometrics.DISLIKES = 20
 
 local COUNT = 21
-local BLOCKS = 6
-local M = 0x5bd1e995
-local TWO32 = 4294967296
 
 local HOUR = 3600000
 local MINUTE = 60000
@@ -47,39 +44,8 @@ local DAY = 24 * HOUR
 local hash: { number }? = nil
 local seed_name: string? = nil
 
-local function mul32(a: number, b: number): number
-	local lo = (a % 65536) * b
-	local hi = (math.floor(a / 65536) * b) % 65536
-	return (lo + hi * 65536) % TWO32
-end
-
-local function mix(h: number, k: number): number
-	k = mul32(k, M)
-	k = bit32.bxor(k, bit32.rshift(k, 24))
-	k = mul32(k, M)
-	return bit32.bxor(mul32(h, M), k)
-end
-
 function Biometrics.murmur2a(text: string, seed: number?): number
-	local h = (seed or 0) % TWO32
-	local len = #text
-	local pos = 1
-	while len - pos + 1 >= 4 do
-		local b1, b2, b3, b4 = string.byte(text, pos, pos + 3)
-		h = mix(h, b1 + b2 * 256 + b3 * 65536 + b4 * 16777216)
-		pos += 4
-	end
-	local tail = 0
-	local shift = 1
-	for i = pos, len do
-		tail += string.byte(text, i) * shift
-		shift *= 256
-	end
-	h = mix(h, tail)
-	h = mix(h, len)
-	h = bit32.bxor(h, bit32.rshift(h, 13))
-	h = mul32(h, M)
-	return bit32.bxor(h, bit32.rshift(h, 15))
+	return Host.murmur2a(text, seed)
 end
 
 function Biometrics.hash_string(text: string): number
@@ -94,17 +60,6 @@ local function apply_mouse()
 	Mouse.press_max = math.floor(190 + 60 * Biometrics.get_probability(Biometrics.MAX_CLICKTIME) + 0.5)
 end
 
-local function build(name: string): { number }
-	local bytes: { number } = {}
-	for block = 0, BLOCKS - 1 do
-		local h = Biometrics.murmur2a(name, block)
-		for i = 0, 3 do
-			bytes[#bytes + 1] = bit32.band(bit32.rshift(h, i * 8), 0xff)
-		end
-	end
-	return bytes
-end
-
 function Biometrics.setup(username: string?)
 	if username == nil or username == "" then
 		seed_name = nil
@@ -112,7 +67,7 @@ function Biometrics.setup(username: string?)
 		return
 	end
 	seed_name = username
-	hash = build(username)
+	hash = Host.biometrics_profile(username)
 	apply_mouse()
 	Log.log("Biometrics", `Current account seed: {Biometrics.hash_string(username)}`)
 end

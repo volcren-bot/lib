@@ -1485,13 +1485,52 @@ Host.sleep(500)
 print("took", Host.time() - start, "ms")
 ```
 
+## Host.antiban_config
+
+Definition:
+```luau
+Host.antiban_config: () -> AntibanConfig
+```
+The global break and sleep config the loader sent (the default one when run without it): `breaks_enabled`, `sleeps_enabled`, `breaks` (`interval`, `length`, `randomness?`, `logout_chance?`), `sleeps` (`time?`, `length?`, `randomness?`, `logout_chance?`) and a `version` that goes up whenever a new one arrives. Times are in milliseconds. A field that is left out is Auto. Scripts don't read this themselves; `Antiban.sync_config` does.
+
+Example:
+```luau
+local Host = require("../host")
+
+print(#Host.antiban_config().breaks)
+```
+
+## Host.antiban_skips
+
+Definition:
+```luau
+Host.antiban_skips: () -> { { kind: string, index: number } }
+```
+The "Skip next" presses in the loader's Breaks tab since the last call, oldest first. `kind` is `"break"` or `"sleep"` and `index` the position in the config, counting from 0. `Antiban.sync_config` handles them; scripts don't need to.
+
+## Host.murmur2a
+
+Definition:
+```luau
+Host.murmur2a: (text: string, seed: number?) -> number
+```
+The MurmurHash2A of `text` as a number from 0 to 2^32 - 1 (`seed` 0 by default). `Biometrics.murmur2a` calls it.
+
+## Host.biometrics_profile
+
+Definition:
+```luau
+Host.biometrics_profile: (name: string) -> { number }
+```
+The 24 byte biometric profile of an account name, each byte 0 to 255. The same name always gives the same profile. `Biometrics.setup` calls it.
+
 ## Host.clock
 
 Definition:
 ```luau
 Host.clock: () -> number
 ```
-Seconds since local midnight on this computer, with the milliseconds as the fraction. Unlike `Host.time`, it's the time of day, so use it to schedule things at a clock time (see `Antiban.add_sleep`).
+Seconds since local midnight on this computer, with the milliseconds as the fraction. Unlike `Host.time`, it's the time of day, so use it to schedule things at a clock time (see `Antiban.sync_config`).
 
 Example:
 ```luau

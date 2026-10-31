@@ -46,6 +46,7 @@ export type Break = {
 	std_var: number,
 	logout_chance: number,
 	next: number,
+	key: string?,
 }
 
 export type Sleep = {
@@ -54,6 +55,7 @@ export type Sleep = {
 	std_var: number,
 	logout_chance: number,
 	next: number,
+	key: string?,
 }
 
 export type Countdown = {
@@ -132,16 +134,18 @@ local function publish(force: boolean?, active: Host.ActiveBreak?)
 	local running = running_ms()
 	local clock = Host.clock()
 	local breaks: { Host.PlannedBreak } = {}
-	for _, task in Antiban.breaks do
-		table.insert(breaks, { remaining = math.max(0, task.next - running), length = task.length })
+	for i, task in Antiban.breaks do
+		table.insert(breaks, { remaining = math.max(0, task.next - running), length = task.length, index = i - 1 })
 	end
 	local sleeps: { Host.PlannedBreak } = {}
-	for _, task in Antiban.sleeps do
+	for i, task in Antiban.sleeps do
 		local remaining = math.max(0, task.next - running)
-		table.insert(
-			sleeps,
-			{ remaining = remaining, length = task.length, at = (clock + remaining / Antiban.SECOND) % SECONDS_PER_DAY }
-		)
+		table.insert(sleeps, {
+			remaining = remaining,
+			length = task.length,
+			at = (clock + remaining / Antiban.SECOND) % SECONDS_PER_DAY,
+			index = i - 1,
+		})
 	end
 	Host.report_breaks({ breaks = breaks, sleeps = sleeps, active = active })
 end
@@ -235,28 +239,127 @@ function Antiban.delay_tasks(ms: number)
 	end
 end
 
-function Antiban.add_break(interval: number, length: number, randomness: number?, logout_chance: number?)
-	local std_var = randomness or 0.2
-	table.insert(Antiban.breaks, {
-		interval = interval,
-		length = length,
-		std_var = std_var,
-		logout_chance = logout_chance or 0.33,
-		next = running_ms() + around(interval, std_var),
-	})
-	publish(true)
+local BREAK_LOGOUT_BASE = { { 2, 0.01 }, { 5, 0.02 }, { 10, 0.05 } }
+local BREAK_LOGOUT_LONG = 0.5
+local BREAK_STD_VAR = 0.33
+local SLEEP_STD_VAR = 0.1
+
+local function round2(value: number): number
+	return math.floor(value * 100 + 0.5) / 100
 end
 
-function Antiban.add_sleep(time: string, length: number, randomness: number?, logout_chance: number?)
-	local std_var = randomness or 0.1
-	table.insert(Antiban.sleeps, {
-		time = time,
-		length = length,
-		std_var = std_var,
-		logout_chance = logout_chance or 0.5,
-		next = Antiban.time_running_at_clock(time, std_var),
-	})
+-- Auto logout chance of a break, by its length: short ones almost never log out, long ones often do.
+local function auto_break_logout(length: number): number
+	for _, step in BREAK_LOGOUT_BASE do
+		if length <= step[1] * Antiban.MINUTE then
+			return step[2]
+		end
+	end
+	return math.min(1, round2(BREAK_LOGOUT_LONG * Biometrics.random_double(1.3)))
+end
+
+local function break_key(cfg: Host.BreakConfig): string
+	return `{cfg.interval}|{cfg.length}|{cfg.randomness}|{cfg.logout_chance}`
+end
+
+local function sleep_key(cfg: Host.SleepConfig): string
+	return `{cfg.time}|{cfg.length}|{cfg.randomness}|{cfg.logout_chance}`
+end
+
+-- Skips the next occurrence of the breaks and sleeps the user pressed "Skip next" on in the Breaks tab. The break or
+-- sleep that comes after keeps its planned cadence: it is due one interval (or one day) after the skipped one was.
+-- Returns true if anything was skipped.
+function Antiban.apply_skips(): boolean
+	local skipped = false
+	for _, skip in Host.antiban_skips() do
+		local task: (Break | Sleep)? = if skip.kind == "break"
+			then Antiban.breaks[skip.index + 1]
+			else Antiban.sleeps[skip.index + 1]
+		if task ~= nil then
+			skipped = true
+			-- at least once, and until it is in the future, so skipping a break that is due really clears it
+			repeat
+				if skip.kind == "break" then
+					task.next += around((task :: Break).interval, task.std_var)
+				else
+					task.next += Antiban.DAY
+				end
+			until task.next > running_ms()
+			Log.log("Antiban", `Skipped the next {skip.kind}`)
+		end
+	end
+	if skipped then
+		publish(true)
+	end
+	return skipped
+end
+
+local config_version = -1
+
+-- Plans the breaks and sleeps from the loader's config, if it changed since the last call. A break or sleep that
+-- stays the same keeps its due time, and one whose interval or time of day stays the same keeps it too, so editing
+-- the config never loses the time already waited. Returns true if anything changed.
+function Antiban.sync_config(): boolean
+	local skipped = Antiban.apply_skips()
+	local config = Host.antiban_config()
+	if config.version == config_version then
+		return skipped
+	end
+	config_version = config.version
+
+	local old_breaks, old_sleeps = Antiban.breaks, Antiban.sleeps
+	local breaks: { Break } = {}
+	local sleeps: { Sleep } = {}
+	if config.breaks_enabled then
+		for i, cfg in config.breaks do
+			local key = break_key(cfg)
+			local old = old_breaks[i]
+			if old ~= nil and old.key == key then
+				table.insert(breaks, old)
+			else
+				local std_var = cfg.randomness or BREAK_STD_VAR
+				local task: Break = {
+					interval = cfg.interval,
+					length = cfg.length,
+					std_var = std_var,
+					logout_chance = cfg.logout_chance or auto_break_logout(cfg.length),
+					next = running_ms() + around(cfg.interval, std_var),
+					key = key,
+				}
+				if old ~= nil and old.interval == cfg.interval and old.std_var == std_var then
+					task.next = old.next
+				end
+				table.insert(breaks, task)
+			end
+		end
+	end
+	if config.sleeps_enabled then
+		for i, cfg in config.sleeps do
+			local key = sleep_key(cfg)
+			local old = old_sleeps[i]
+			if old ~= nil and old.key == key then
+				table.insert(sleeps, old)
+			else
+				local time = cfg.time or Biometrics.sleep_hour()
+				local std_var = cfg.randomness or SLEEP_STD_VAR
+				local task: Sleep = {
+					time = time,
+					length = cfg.length or Biometrics.sleep_length() * Antiban.HOUR,
+					std_var = std_var,
+					logout_chance = cfg.logout_chance or math.min(1, round2(0.8 * Biometrics.random_double(1.3))),
+					next = Antiban.time_running_at_clock(time, std_var),
+					key = key,
+				}
+				if old ~= nil and old.time == time and old.std_var == std_var then
+					task.next = old.next
+				end
+				table.insert(sleeps, task)
+			end
+		end
+	end
+	Antiban.breaks, Antiban.sleeps = breaks, sleeps
 	publish(true)
+	return true
 end
 
 function Antiban.lose_focus(): boolean
@@ -405,6 +508,7 @@ function Antiban.take_sleep(task: Sleep)
 end
 
 function Antiban.do_break(): boolean
+	Antiban.sync_config()
 	publish()
 	local taken = false
 	for _, task in Antiban.breaks do
@@ -417,6 +521,7 @@ function Antiban.do_break(): boolean
 end
 
 function Antiban.do_sleep(): boolean
+	Antiban.sync_config()
 	publish()
 	local taken = false
 	for _, task in Antiban.sleeps do
@@ -430,6 +535,7 @@ end
 
 -- Whether a break or a sleep is due, so the next `do_antiban` would take it.
 function Antiban.break_due(): boolean
+	Antiban.sync_config()
 	publish()
 	local now = running_ms()
 	for _, list in { Antiban.breaks, Antiban.sleeps } do
@@ -494,7 +600,8 @@ end
 
 function Antiban.simulate_breaks(botting_days: number?)
 	local days = botting_days or 1000
-	assert(#Antiban.breaks > 0, "add a break before simulating breaks")
+	Antiban.sync_config()
+	assert(#Antiban.breaks > 0, "turn breaks on and add one in the Breaks tab before simulating breaks")
 	local copies: { Break } = {}
 	for i, b in Antiban.breaks do
 		copies[i] = table.clone(b)

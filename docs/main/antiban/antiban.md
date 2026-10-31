@@ -1,6 +1,6 @@
 # Main.Antiban.Antiban
 
-The scheduler for antiban: timed tasks, breaks, sleeps and walking tasks. Schedule them once when the script starts, then call `do_antiban` (or `do_walking_antiban` while walking) in your loop; the ones that are due get taken then. Breaks and sleeps log out or lose focus now and then, like a person would, and log back in afterwards.
+The scheduler for antiban: timed tasks, breaks, sleeps and walking tasks. Schedule the tasks once when the script starts (breaks and sleeps come from the loader's config, see `sync_config`), then call `do_antiban` (or `do_walking_antiban` while walking) in your loop; the ones that are due get taken then. Breaks and sleeps log out or lose focus now and then, like a person would, and log back in afterwards.
 
 Times are in milliseconds, and the scheduling uses a running clock that freezes while antiban works, so the time spent on breaks and tasks doesn't count towards the next one.
 
@@ -121,40 +121,28 @@ local started = Host.time()
 Antiban.delay_tasks(Host.time() - started)
 ```
 
-## Antiban.add_break
+## Antiban.sync_config
 
 Definition:
 
 ```luau
-function Antiban.add_break(interval: number, length: number, randomness: number?, logout_chance: number?)
+function Antiban.sync_config(): boolean
 ```
 
-Schedules a break of about `length` ms every `interval` ms (`randomness` 0.2 by default). During it the script waits, with a `logout_chance` of logging out for it (0.33 by default). Breaks should be shorter than sleeps. They only happen from `do_antiban`.
+Breaks and sleeps are the same for every script and are set in the loader's Breaks tab, not by the script. This plans them from that config: call it once in your setup, after `Biometrics.setup_player()`. `do_antiban`, `do_break`, `do_sleep` and `break_due` call it as well, so a config the user changed while the script runs is picked up the next time one of them runs. Returns true if the plan changed.
+
+It also handles "Skip next" from the Breaks tab: that break or sleep's next occurrence is dropped, and the one after keeps its planned cadence (one interval, or one day for a sleep, after the skipped one). Skipping one that is due clears it. `Host.antiban_skips()` is where those requests arrive.
+
+A break or sleep that is still there after a change keeps its due time when its interval (or time of day) is unchanged, so editing the config never loses the time already waited. Anything the config leaves on Auto is picked from the account's biometrics: a sleep's time and length, a sleep's logout chance, and a break's logout chance (by its length: 1% up to 2 minutes, 2% up to 5, 5% up to 10, around 50% above that). With breaks switched off, `breaks` and `sleeps` are empty.
 
 Example:
 
 ```luau
 local Antiban = require("../main/antiban/antiban")
+local Biometrics = require("../main/antiban/biometrics")
 
-Antiban.add_break(30 * Antiban.MINUTE, 5 * Antiban.MINUTE)
-```
-
-## Antiban.add_sleep
-
-Definition:
-
-```luau
-function Antiban.add_sleep(time: string, length: number, randomness: number?, logout_chance: number?)
-```
-
-Schedules a sleep, a long break, of about `length` ms at the time of day `time` ("HH:MM" or "HH:MM:SS", 24 hour, on this computer's clock). It's never taken before `time`; `randomness` (0.1 by default) pushes it later by a fraction of a day. `logout_chance` (0.5 by default) is the chance of logging out for it. Sleeps only happen from `do_antiban`.
-
-Example:
-
-```luau
-local Antiban = require("../main/antiban/antiban")
-
-Antiban.add_sleep("01:30:45", 8 * Antiban.HOUR, 0.1, 0.8)
+Biometrics.setup_player()
+Antiban.sync_config()
 ```
 
 ## Antiban.break_due
@@ -291,7 +279,7 @@ Example:
 ```luau
 local Antiban = require("../main/antiban/antiban")
 
-Antiban.add_break(30 * Antiban.MINUTE, 5 * Antiban.MINUTE)
+Antiban.sync_config()
 Antiban.take_break(Antiban.breaks[1])
 ```
 
@@ -310,7 +298,7 @@ Example:
 ```luau
 local Antiban = require("../main/antiban/antiban")
 
-Antiban.add_sleep("23:00:00", 6 * Antiban.HOUR)
+Antiban.sync_config()
 Antiban.take_sleep(Antiban.sleeps[1])
 ```
 
@@ -401,7 +389,7 @@ Example:
 ```luau
 local Antiban = require("../main/antiban/antiban")
 
-Antiban.add_break(30 * Antiban.MINUTE, 5 * Antiban.MINUTE)
+Antiban.sync_config()
 Antiban.simulate_breaks()
 ```
 

@@ -45,6 +45,29 @@ export type BreakPlan = {
 	active: ActiveBreak?,
 }
 
+-- A field left out is "Auto": the lib picks it from the account's biometrics.
+export type BreakConfig = {
+	interval: number,
+	length: number,
+	randomness: number?,
+	logout_chance: number?,
+}
+
+export type SleepConfig = {
+	time: string?,
+	length: number?,
+	randomness: number?,
+	logout_chance: number?,
+}
+
+export type AntibanConfig = {
+	version: number,
+	breaks_enabled: boolean,
+	sleeps_enabled: boolean,
+	breaks: { BreakConfig },
+	sleeps: { SleepConfig },
+}
+
 export type LoginLayout = {
 	screen: number,
 	panel_x: number,
@@ -734,6 +757,10 @@ return {
 	sleep = g.sleep :: (ms: number) -> (),
 	time = g.time :: () -> number,
 	clock = g.clock :: () -> number,
+	antiban_skips = g.antiban_skips :: () -> { { kind: string, index: number } },
+	antiban_config = g.antiban_config :: () -> AntibanConfig,
+	murmur2a = g.murmur2a :: (text: string, seed: number?) -> number,
+	biometrics_profile = g.biometrics_profile :: (name: string) -> { number },
 	report_counters = g.report_counters :: (counters: { Counter }) -> (),
 	report_breaks = g.report_breaks :: (plan: BreakPlan) -> (),
 	report_stats = g.report_stats :: (experience: number, gold: number, custom: { number }?) -> (),

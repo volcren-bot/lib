@@ -1,6 +1,6 @@
 # Main.Antiban.Biometrics
 
-Gives each account its own consistent "personality" so a script doesn't behave identically for everyone: mouse speed, click timings, sleep schedule and how often it makes small human-like mistakes. The personality is generated from the account name, so the same account always behaves the same way.
+Gives each account its own consistent "personality" so a script doesn't behave identically for everyone: mouse speed, click timings, sleep schedule and how often it makes small human-like mistakes. The personality is generated from the account name, so the same account always behaves the same way. The hash and the profile are computed by the injector (`Host.murmur2a`, `Host.biometrics_profile`). The breaks tab's Auto values (sleep time, sleep length, logout chances) come from this profile.
 
 ```luau
 local Biometrics = require("../main/antiban/biometrics")
