@@ -190,3 +190,16 @@ local Toplevel = require("../main/interfaces/mainscreen/toplevel")
 
 print(Toplevel.visible_point(Geometry.Box.new(100, 100, 300, 300)))
 ```
+
+## Toplevel.reset_escape
+
+Definition:
+```luau
+function Toplevel.reset_escape()
+```
+TODO...
+
+Example:
+```luau
+
+```

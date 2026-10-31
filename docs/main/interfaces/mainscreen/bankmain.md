@@ -293,3 +293,489 @@ local Bankmain = require("../main/interfaces/mainscreen/bankmain")
 assert(Bankmain.open_tab(0), "couldn't open the main tab")
 print(Bankmain.index_of("Anglerfish"))
 ```
+
+## Bankmain.button
+
+Definition:
+```luau
+function Bankmain.button(button: Button): Widget?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.click_button
+
+Definition:
+```luau
+function Bankmain.click_button(button: Button): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.arrangement
+
+Definition:
+```luau
+function Bankmain.arrangement(): Arrangement?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.set_arrangement
+
+Definition:
+```luau
+function Bankmain.set_arrangement(mode: Arrangement, timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.notes
+
+Definition:
+```luau
+function Bankmain.notes(): boolean?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.set_notes
+
+Definition:
+```luau
+function Bankmain.set_notes(on: boolean, timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.placeholders
+
+Definition:
+```luau
+function Bankmain.placeholders(): boolean?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.set_placeholders
+
+Definition:
+```luau
+function Bankmain.set_placeholders(on: boolean, timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.quantity
+
+Definition:
+```luau
+function Bankmain.quantity(): Quantity?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.custom_quantity
+
+Definition:
+```luau
+function Bankmain.custom_quantity(): number?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.quantity_of
+
+Definition:
+```luau
+function Bankmain.quantity_of(amount: number): Quantity
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.select_quantity
+
+Definition:
+```luau
+function Bankmain.select_quantity(quantity: Quantity, timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.set_custom_quantity
+
+Definition:
+```luau
+function Bankmain.set_custom_quantity(amount: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.set_quantity
+
+Definition:
+```luau
+function Bankmain.set_quantity(amount: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.deposit_inventory
+
+Definition:
+```luau
+function Bankmain.deposit_inventory(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.deposit_worn
+
+Definition:
+```luau
+function Bankmain.deposit_worn(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.deposit_containers
+
+Definition:
+```luau
+function Bankmain.deposit_containers(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.is_search_open
+
+Definition:
+```luau
+function Bankmain.is_search_open(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.open_search
+
+Definition:
+```luau
+function Bankmain.open_search(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.search
+
+Definition:
+```luau
+function Bankmain.search(text: string): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.has_potion_storage
+
+Definition:
+```luau
+function Bankmain.has_potion_storage(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.potion_storage_is_open
+
+Definition:
+```luau
+function Bankmain.potion_storage_is_open(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.toggle_potion_storage
+
+Definition:
+```luau
+function Bankmain.toggle_potion_storage(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.open_potion_storage
+
+Definition:
+```luau
+function Bankmain.open_potion_storage(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.close_potion_storage
+
+Definition:
+```luau
+function Bankmain.close_potion_storage(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.tab_sizes
+
+Definition:
+```luau
+function Bankmain.tab_sizes(): { number }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.count_tabs
+
+Definition:
+```luau
+function Bankmain.count_tabs(): number?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.tab_of_slot
+
+Definition:
+```luau
+function Bankmain.tab_of_slot(slot: number): number?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.find_tab
+
+Definition:
+```luau
+function Bankmain.find_tab(item: Item | { Item }): (number?, number?)
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.is_slot_shown
+
+Definition:
+```luau
+function Bankmain.is_slot_shown(slot: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.scroll_distance
+
+Definition:
+```luau
+function Bankmain.scroll_distance(slot: number): number?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.scroll_to
+
+Definition:
+```luau
+function Bankmain.scroll_to(slot: number, timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.show_slot
+
+Definition:
+```luau
+function Bankmain.show_slot(slot: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.withdraw
+
+Definition:
+```luau
+function Bankmain.withdraw(
+	item: Item | { Item },
+	amount: number?,
+	noted: boolean?,
+	use_quantity_buttons: boolean?
+): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.deposit
+
+Definition:
+```luau
+function Bankmain.deposit(item: Item | { Item }, amount: number?, use_quantity_buttons: boolean?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.deposit_array
+
+Definition:
+```luau
+function Bankmain.deposit_array(entries: { Entry }, use_quantity_buttons: boolean?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.deposit_different
+
+Definition:
+```luau
+function Bankmain.deposit_different(keep: Item | { Item }, use_quantity_buttons: boolean?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
