@@ -460,3 +460,16 @@ if Biometrics.random_boolean(0.4) then
 	Antiban.do_async_tasks("game")
 end
 ```
+
+## Antiban.apply_skips
+
+Definition:
+```luau
+function Antiban.apply_skips(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
