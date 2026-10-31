@@ -280,6 +280,26 @@ end
 print(values.name, values.loops, values.fast)
 ```
 
+## Host.form_update
+
+Definition:
+```luau
+Host.form_update: () -> { [string]: any }?
+```
+Returns the values the user changed the settings to since the last call, or `nil` when there is nothing new. After the user presses the form's button the settings stay on the script's page in the loader and the button becomes Update, which sends the changed values to the running script. They have the same shape as what `Host.form` returned; poll this in the main loop and replace your settings with the result when it isn't `nil`. Needs host API 8.
+
+```luau
+local values = Host.form({ title = "My script", fields = { { id = "fast", kind = "check", label = "Go fast" } } })
+while true do
+	local new = Host.form_update()
+	if new then
+		values = new
+	end
+	-- ...use values.fast
+	Host.sleep(100)
+end
+```
+
 ## Host.menu
 
 Definition:

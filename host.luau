@@ -641,6 +641,7 @@ return {
 		shift: { x: number, y: number, plane: number? }?
 	) -> { ScreenPoint }?,
 	form = g.form :: (spec: FormSpec) -> { [string]: any }?,
+	form_update = g.form_update :: () -> { [string]: any }?,
 	menu = g.menu :: () -> { MenuEntry }?,
 	menu_click = g.menu_click :: () -> MenuClick?,
 	menu_open = g.menu_open :: () -> boolean,
