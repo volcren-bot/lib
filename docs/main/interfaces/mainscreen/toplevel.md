@@ -203,3 +203,16 @@ Example:
 ```luau
 
 ```
+
+## Toplevel.panel_blockers
+
+Definition:
+```luau
+function Toplevel.panel_blockers(): { Box }?
+```
+TODO...
+
+Example:
+```luau
+
+```
