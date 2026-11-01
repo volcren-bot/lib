@@ -84,7 +84,7 @@ Definition:
 ```luau
 function WorldSwitcher.rows(safe: boolean?): { Row }?
 ```
-Every world in the list, top to bottom, including ones scrolled out of view. The switcher has to be open. With `safe` (the default), dangerous worlds are left out: any with a type flag in `WorldSwitcher.UNSAFE_TYPES` (PvP, bounty, high risk, deadman, tournament, beta, seasonal, fresh start, speedrunning, no-save, PvP arena, last man standing) or an activity containing one of `WorldSwitcher.UNSAFE_ACTIVITIES`. Pass `false` to get every world.
+Every world in the list, top to bottom, including ones scrolled out of view. The switcher has to be open. With `safe` (the default), dangerous worlds are left out: any with a type flag in `WorldSwitcher.UNSAFE_TYPES` (PvP, bounty, high risk, deadman, tournament, beta, seasonal, fresh start, speedrunning, no-save, PvP arena, last man standing) or an activity containing one of `WorldSwitcher.UNSAFE_ACTIVITIES`. Pass `false` to get every world. Worlds the game refused to let you into (see `WorldSwitcher.blocked_worlds`) are always left out.
 
 Example:
 ```luau
@@ -289,7 +289,7 @@ Definition:
 ```luau
 function WorldSwitcher.switch(world: number): boolean
 ```
-Hops to a world. Opens the switcher, scrolls to the world, clicks it, confirms the "Are you sure you wish to switch to World N?" box that some worlds (activity worlds such as Tempoross's 422) ask first, and waits until you've arrived. Returns `true` at once if you're already there, and `false` while the cooldown runs or when the world is a skill total world above your total level (`next`, `previous` and `random` leave such worlds out of your list first).
+Hops to a world. Opens the switcher, scrolls to the world, clicks it, confirms the "Are you sure you wish to switch to World N?" box that some worlds (activity worlds such as Tempoross's 422) ask first, and waits until you've arrived. Returns `true` at once if you're already there, and `false` while the cooldown runs or when the world is a skill total world above your total level (`next`, `previous` and `random` leave such worlds out of your list first). When the game turns the hop down, the world is added to the blocked list until the script ends and `false` is returned: either a warning shows (such as the "Bounty Hunter world" one, closed with escape or its Cancel button, a biometric picks which first) or the chat says "Please choose a different world.". A failed hop (the world isn't found, the hover never shows "Switch", or the hop never starts) is tried up to 3 times with a short random pause; if all 3 fail, a warning is logged and the world is blocked too, in case it's broken. A hop that started but didn't arrive in time isn't retried or blocked, and neither is a world greyed out in the list. A blocked world is never hopped to again, and `next`, `previous` and `random` always leave it out, `safe` or not.
 
 Example:
 ```luau
@@ -297,6 +297,36 @@ local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 local ok = WorldSwitcher.switch(301)
 print(if ok then "hopped" else "unavailable")
+```
+
+## WorldSwitcher.is_blocked
+
+Definition:
+```luau
+function WorldSwitcher.is_blocked(world: number): boolean
+```
+Whether the game refused a hop to this world earlier in the script (a warning before entering, or "Please choose a different world."). The list lives in memory until the script ends and has no setting to allow these worlds.
+
+Example:
+```luau
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
+
+print("blocked:", WorldSwitcher.is_blocked(569))
+```
+
+## WorldSwitcher.blocked_worlds
+
+Definition:
+```luau
+function WorldSwitcher.blocked_worlds(): { number }
+```
+Every world blocked so far, sorted.
+
+Example:
+```luau
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
+
+print(table.concat(WorldSwitcher.blocked_worlds(), ", "))
 ```
 
 ## WorldSwitcher.next

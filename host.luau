@@ -164,6 +164,8 @@ export type FormField = {
 	items: { { id: string, label: string?, default: boolean? } }?,
 	-- the id of a check; the field is greyed out while that check is off
 	enabled_by: string?,
+	-- only shown while the field `id` has this value, or one of these when it is a list (a choice's option, a check's boolean, ...); its value is still sent while hidden
+	visible_when: { id: string, equals: any }?,
 }
 
 export type FormSpec = {

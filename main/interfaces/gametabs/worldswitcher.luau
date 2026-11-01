@@ -5,6 +5,7 @@ local widget = Host.widget
 local widget_children = Host.widget_children
 local world_select = Host.world_select
 local menu = Host.menu
+local chat_messages = Host.chat_messages
 local varp = Host.varp
 local sleep = Host.sleep
 local time = Host.time
@@ -14,6 +15,7 @@ type Widget = Host.Widget
 local Biometrics = require("@lib/main/antiban/biometrics")
 local GameState = require("@lib/main/game_state")
 local Geometry = require("@lib/utils/math/geometry")
+local Keyboard = require("@lib/utils/input/keyboard")
 local Log = require("@lib/utils/log")
 local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 local Logout = require("@lib/main/interfaces/gametabs/logout")
@@ -50,6 +52,29 @@ local WorldSwitcher = {
 }
 
 WorldSwitcher.cooldown_ms = 7000
+
+-- worlds the game refused to let us into (a warning or "Please choose a different world."): kept until the script ends, always skipped
+local blocked: { [number]: boolean } = {}
+
+function WorldSwitcher.is_blocked(world: number): boolean
+	return blocked[world] == true
+end
+
+function WorldSwitcher.blocked_worlds(): { number }
+	local worlds: { number } = {}
+	for world in blocked do
+		table.insert(worlds, world)
+	end
+	table.sort(worlds)
+	return worlds
+end
+
+local function block(world: number, why: string)
+	if not blocked[world] then
+		blocked[world] = true
+		Log.log("WorldSwitcher", `world {world} {why}, never hopping there`)
+	end
+end
 
 -- world type flags the client itself reads from the world list (PvP, bounty, high risk, deadman, ...)
 WorldSwitcher.UNSAFE_TYPES = LoginWorldSwitcher.DANGEROUS
@@ -182,14 +207,14 @@ local function only_safe(worlds: { number }): { number }
 	local result: { number } = {}
 	for _, world in worlds do
 		local w = info[world]
-		if w == nil or is_safe(w.types, w.activity) then
+		if not blocked[world] and (w == nil or is_safe(w.types, w.activity)) then
 			table.insert(result, world)
 		end
 	end
 	return result
 end
 
-function WorldSwitcher.rows(safe: boolean?): { Row }?
+local function list_rows(): { Row }?
 	local open = WorldSwitcher.is_open()
 	if not open then
 		return nil
@@ -246,12 +271,17 @@ function WorldSwitcher.rows(safe: boolean?): { Row }?
 	table.sort(result, function(a: Row, b: Row)
 		return a.box.y1 < b.box.y1
 	end)
-	if safe == false then
-		return result
+	return result
+end
+
+function WorldSwitcher.rows(safe: boolean?): { Row }?
+	local rows = list_rows()
+	if rows == nil then
+		return nil
 	end
 	local filtered: { Row } = {}
-	for _, row in result do
-		if is_safe(row.types, row.activity) then
+	for _, row in rows do
+		if not blocked[row.world] and (safe == false or is_safe(row.types, row.activity)) then
 			table.insert(filtered, row)
 		end
 	end
@@ -273,7 +303,7 @@ function WorldSwitcher.worlds(safe: boolean?): { Row }?
 end
 
 function WorldSwitcher.find(world: number): Row?
-	local rows = WorldSwitcher.rows(false)
+	local rows = list_rows()
 	if rows == nil then
 		return nil
 	end
@@ -286,7 +316,7 @@ function WorldSwitcher.find(world: number): Row?
 end
 
 function WorldSwitcher.is_loading(): boolean
-	local rows = WorldSwitcher.rows(false)
+	local rows = list_rows()
 	if rows == nil then
 		return false
 	end
@@ -467,6 +497,88 @@ local function hovering(world: number): boolean
 end
 
 local CONFIRM_TIMEOUT_MS = 1800
+local DISMISS_TIMEOUT_MS = 1200
+local REFUSED = "Please choose a different world."
+
+-- the newest chat message's uid, to tell the messages a click causes from older ones
+local function last_uid(): number
+	local newest = 0
+	for _, m in chat_messages() or {} do
+		if m.uid > newest then
+			newest = m.uid
+		end
+	end
+	return newest
+end
+
+-- the "World N is a ... world!" confirmation the world list shows before some worlds, and the world it names
+local function warning(): (Widget?, number?)
+	local text = widget(WorldSwitcher.CONFIRM_GROUP, WorldSwitcher.CONFIRM_TEXT)
+	if text == nil or text.hidden or text.text == nil then
+		return nil, nil
+	end
+	local number = string.match(text.text, "World (%d+) is a")
+	if number == nil then
+		return nil, nil
+	end
+	return text, tonumber(number)
+end
+
+local function refused(since: number): boolean
+	for _, m in chat_messages() or {} do
+		if m.uid > since and string.find(m.text, REFUSED, 1, true) then
+			return true
+		end
+	end
+	return false
+end
+
+-- closes the warning with escape or its Cancel button (a biometric picks which first, the button is the fallback)
+local function dismiss_warning(): boolean
+	local function gone(): boolean
+		return wait_until(function()
+			return warning() == nil
+		end, DISMISS_TIMEOUT_MS)
+	end
+	Random.sleep(200, 600)
+	if Random.chance(Biometrics.get_probability(Biometrics.ESCAPE)) then
+		Keyboard.key_press(Keyboard.keys.ESCAPE)
+		if gone() then
+			return true
+		end
+	end
+	for _, button in widget_children(WorldSwitcher.CONFIRM_GROUP, WorldSwitcher.CONFIRM_BUTTONS) or {} do
+		if button.text == "Cancel" and not button.hidden then
+			Mouse.click(box_of(button))
+			if gone() then
+				return true
+			end
+			break
+		end
+	end
+	if warning() == nil then
+		return true
+	end
+	Keyboard.key_press(Keyboard.keys.ESCAPE)
+	return gone()
+end
+
+-- blocks the world when the game turned the hop down, with a warning (cancelled) or a chat message; true when it did
+local function check_refusal(world: number, since: number): boolean
+	local text, named = warning()
+	if text ~= nil then
+		block(named or world, "warns before entering")
+		if not dismiss_warning() then
+			Log.log("WorldSwitcher", "couldn't close the world warning")
+		end
+		return true
+	end
+	if refused(since) then
+		block(world, "isn't allowed")
+		return true
+	end
+	return false
+end
 
 local function confirm_button(world: number): Widget?
 	local text = widget(WorldSwitcher.CONFIRM_GROUP, WorldSwitcher.CONFIRM_TEXT)
@@ -486,11 +598,11 @@ local function confirm_button(world: number): Widget?
 	return nil
 end
 
-local function confirm(world: number)
+local function confirm(world: number, since: number)
 	local button: Widget? = nil
 	wait_until(function()
 		button = confirm_button(world)
-		return button ~= nil or hopping()
+		return button ~= nil or hopping() or warning() ~= nil or refused(since)
 	end, CONFIRM_TIMEOUT_MS)
 	if button then
 		Random.sleep(150, 500)
@@ -498,21 +610,37 @@ local function confirm(world: number)
 	end
 end
 
-local function hop(world: number): boolean
+local HOP_ATTEMPTS = 3
+
+-- one go at hopping: "ok", "refused" (the game said no, the world is blocked now), "moving" (the hop started but we didn't arrive), "unavailable" or "failed" (worth another try)
+local function hop(world: number, fail_cooldown: boolean): string
 	local row = scroll_to(world)
 	if row == nil then
-		return false
+		return "failed"
 	end
 	if not row.available then
-		return false
+		return "unavailable"
 	end
 	Mouse.move(row.box)
 	if not hovering(world) then
-		return false
+		return "failed"
 	end
+	local since = last_uid()
 	Mouse.click()
-	confirm(world)
-	return WorldSwitcher.wait_switch(world)
+	confirm(world, since)
+	if not hopping() and check_refusal(world, since) then
+		return "refused"
+	end
+	if WorldSwitcher.wait_switch(world, fail_cooldown) then
+		return "ok"
+	end
+	if hopping() then
+		return "moving"
+	end
+	if check_refusal(world, since) then
+		return "refused"
+	end
+	return if WorldSwitcher.current() == world then "ok" else "failed"
 end
 
 -- whether your total level lets you into a world (worlds that aren't in the world list pass)
@@ -539,15 +667,37 @@ function WorldSwitcher.switch(world: number): boolean
 	if current == world then
 		return true
 	end
+	if blocked[world] then
+		Log.log("WorldSwitcher", `world {world} is blocked`)
+		return false
+	end
 	if not can_join(world) then
 		Log.log("WorldSwitcher", `world {world} needs a higher total level than yours`)
 		return false
 	end
-	local opened = WorldSwitcher.open()
-	if not opened then
-		return opened
+	for attempt = 1, HOP_ATTEMPTS do
+		local opened = WorldSwitcher.open()
+		if not opened then
+			return opened
+		end
+		local result = hop(world, attempt == HOP_ATTEMPTS)
+		if result == "ok" then
+			return true
+		end
+		if result ~= "failed" then
+			return false
+		end
+		if attempt < HOP_ATTEMPTS then
+			Log.log("WorldSwitcher", `hopping to world {world} failed (attempt {attempt}/{HOP_ATTEMPTS}), trying again`)
+			Random.sleep(500, 1500)
+		end
 	end
-	return hop(world)
+	Log.warn(
+		"WorldSwitcher",
+		`hopping to world {world} failed {HOP_ATTEMPTS} times in a row, blocking it for this script`
+	)
+	block(world, `didn't let us in after {HOP_ATTEMPTS} attempts`)
+	return false
 end
 
 local function pick(
@@ -557,6 +707,14 @@ local function pick(
 ): boolean
 	if safe ~= false then
 		worlds = only_safe(worlds)
+	else
+		local allowed: { number } = {}
+		for _, world in worlds do
+			if not blocked[world] then
+				table.insert(allowed, world)
+			end
+		end
+		worlds = allowed
 	end
 	local reachable: { number } = {}
 	for _, world in worlds do

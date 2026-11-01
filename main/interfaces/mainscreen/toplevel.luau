@@ -249,7 +249,8 @@ function Toplevel.viewport(): Box?
 	return box_of(top, layout.viewport)
 end
 
-function Toplevel.blockers(): { Box }?
+-- The side panels and the chat that cover the game view, without the windows open on top of it.
+function Toplevel.panel_blockers(): { Box }?
 	local top = root()
 	if top == nil then
 		return nil
@@ -264,6 +265,14 @@ function Toplevel.blockers(): { Box }?
 		if b then
 			table.insert(boxes, b)
 		end
+	end
+	return boxes
+end
+
+function Toplevel.blockers(): { Box }?
+	local boxes = Toplevel.panel_blockers()
+	if boxes == nil then
+		return nil
 	end
 	local open = Toplevel.interfaces()
 	for _, o in ipairs(open or {}) do

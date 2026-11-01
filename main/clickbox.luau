@@ -126,12 +126,13 @@ local function pick_triangle(box: Clickbox, from: Point?, visible: (Point) -> bo
 	end, falloff)
 end
 
-function Clickbox.target(box: Clickbox, what: string, keep: ((Point) -> boolean)?): Point?
+-- `ignore_windows` only counts the side panels and chat as covering the game view, not the windows open on top of it.
+function Clickbox.target(box: Clickbox, what: string, keep: ((Point) -> boolean)?, ignore_windows: boolean?): Point?
 	local view = Toplevel.viewport()
 	if view == nil then
 		return nil
 	end
-	local blockers = Toplevel.blockers() or {}
+	local blockers = (if ignore_windows then Toplevel.panel_blockers() else Toplevel.blockers()) or {}
 	local function visible(p: Point): boolean
 		local at = Point.new(math.round(p.x), math.round(p.y))
 		return Toplevel.is_visible(at, view, blockers) and (keep == nil or keep(at))
@@ -263,12 +264,25 @@ local function target_ahead(clickbox: Aim, what: string, lead: number): Point?
 	return (Clickbox.target(ahead, what))
 end
 
+-- Closes the window open on top of the game view when it is what covers the clickbox (and nothing else does); whether it did.
+local function close_window_over(box: Clickbox, what: string): boolean
+	if not Toplevel.has_interface() or Clickbox.target(box, what, nil, true) == nil then
+		return false
+	end
+	Log.log("Clickbox", `closing the {Toplevel.interface_name() or "window"} that covers {what}`)
+	return Toplevel.escape_clear()
+end
+
 -- Picks a mouse target from where the clickbox will be once the mouse arrives, since the scene slides while walking.
 local function aim(clickbox: Aim, what: string): Point?
 	local box = clickbox()
 	local target = nil
 	if box then
 		target = Clickbox.target(box, what)
+		if target == nil and close_window_over(box, what) then
+			box = clickbox()
+			target = if box then Clickbox.target(box, what) else nil
+		end
 	end
 	if Player.destination() == nil then
 		return target

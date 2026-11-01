@@ -1158,8 +1158,11 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 				local view, blockers = walk_view(), Toplevel.blockers()
 				-- which tiles ahead are on screen, projected in one go
 				local shown_at: { [number]: boolean } = {}
+				-- which tiles ahead would be on screen if no window were open on top of the game view
+				local shown_without_windows: { [number]: boolean } = {}
 				local function look()
-					shown_at = {}
+					shown_at, shown_without_windows = {}, {}
+					local panels = Toplevel.panel_blockers()
 					local base = Projection.base()
 					local wanted: { number } = {}
 					local points: { Host.FinePoint } = {}
@@ -1187,6 +1190,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 							local corners = screen :: { Geometry.Point }
 							local quad = Geometry.Quad.new(c, corners[n * 4 - 2], corners[n * 4 - 1], corners[n * 4])
 							shown_at[i] = quad_on_screen(quad, view, blockers)
+							shown_without_windows[i] = quad_on_screen(quad, view, panels)
 						end
 					end
 				end
@@ -1211,6 +1215,21 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 				local function pick(): (number?, number?)
 					look()
 					local screen = farthest_shown(p.tiles, from, last, clickable)
+					if screen == nil and Toplevel.has_interface() then
+						-- a window open on top of the game view is what hides the route: closed rather than walking round it by the minimap
+						local hidden = false
+						for i = from, last do
+							hidden = hidden or (shown_without_windows[i] == true and not shown_at[i])
+						end
+						if hidden then
+							Log.log("Walker", `closing the {Toplevel.interface_name() or "window"} that hides the way`)
+							if Toplevel.escape_clear() then
+								blockers = Toplevel.blockers()
+								look()
+								screen = farthest_shown(p.tiles, from, last, clickable)
+							end
+						end
+					end
 					if screen and screen < last and randomize and Biometrics.random_boolean(Walker.SHORTER_CHANCE) then
 						screen = shorter(p.tiles, from, screen, clickable)
 					end
