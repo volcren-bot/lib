@@ -680,6 +680,10 @@ function WorldSwitcher.switch(world: number): boolean
 		if not opened then
 			return opened
 		end
+		-- a list in world order scrolls predictably; if sorting fails the world is still found by scrolling
+		if not WorldSwitcher.sort() then
+			Log.log("WorldSwitcher", "couldn't sort the world list by world number")
+		end
 		local result = hop(world, attempt == HOP_ATTEMPTS)
 		if result == "ok" then
 			return true
