@@ -15,10 +15,12 @@ local Biometrics = require("@lib/main/antiban/biometrics")
 local GameState = require("@lib/main/game_state")
 local Geometry = require("@lib/utils/math/geometry")
 local Log = require("@lib/utils/log")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 local Logout = require("@lib/main/interfaces/gametabs/logout")
 local Mouse = require("@lib/utils/input/mouse")
 local Random = require("@lib/utils/math/random")
 local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 local Box = Geometry.Box
 type Box = Geometry.Box
@@ -49,10 +51,17 @@ local WorldSwitcher = {
 
 WorldSwitcher.cooldown_ms = 7000
 
+-- world type flags the client itself reads from the world list (PvP, bounty, high risk, deadman, ...)
+WorldSwitcher.UNSAFE_TYPES = LoginWorldSwitcher.DANGEROUS
+
+-- activities that are PvP but carry no type flag (lowercase, matched as substrings)
+WorldSwitcher.UNSAFE_ACTIVITIES = { "pvp", "wilderness", "clan wars" }
+
 export type Row = {
 	world: number,
 	players: number?,
 	activity: string?,
+	types: number,
 	members: boolean,
 	available: boolean,
 	visible: boolean,
@@ -114,7 +123,73 @@ local function box_of(w: Widget): Box
 	return Box.new(w.x, w.y, w.x + w.width - 1, w.y + w.height - 1)
 end
 
-function WorldSwitcher.rows(): { Row }?
+-- the total level a skill total world asks for (its activity reads like "1500 skill total")
+local function required_total(types: number, activity: string?): number?
+	if bit32.band(types, LoginWorldSwitcher.SKILL_TOTAL) == 0 or activity == nil then
+		return nil
+	end
+	local number = string.match(activity, "(%d+)")
+	return if number then tonumber(number) else nil
+end
+
+-- whether your total level lets you into a world; unknown levels don't
+local function meets_total(types: number, activity: string?): boolean
+	local required = required_total(types, activity)
+	if required == nil then
+		return true
+	end
+	local total = Stats.total_level(game_state().skills)
+	return total ~= nil and total >= required
+end
+
+local function is_safe(types: number, activity: string?): boolean
+	if bit32.band(types, WorldSwitcher.UNSAFE_TYPES) ~= 0 then
+		return false
+	end
+	if activity == nil then
+		return true
+	end
+	activity = string.lower(activity)
+	for _, unsafe in WorldSwitcher.UNSAFE_ACTIVITIES do
+		if string.find(activity, unsafe, 1, true) then
+			return false
+		end
+	end
+	return true
+end
+
+-- the type flags of every world, by number
+local function world_types(): { [number]: number }
+	local types: { [number]: number } = {}
+	local select = world_select()
+	if select ~= nil then
+		for _, w in select.worlds do
+			types[w.id] = w.types
+		end
+	end
+	return types
+end
+
+-- drops the dangerous worlds from a list of world numbers
+local function only_safe(worlds: { number }): { number }
+	local info: { [number]: { types: number, activity: string } } = {}
+	local select = world_select()
+	if select ~= nil then
+		for _, w in select.worlds do
+			info[w.id] = w
+		end
+	end
+	local result: { number } = {}
+	for _, world in worlds do
+		local w = info[world]
+		if w == nil or is_safe(w.types, w.activity) then
+			table.insert(result, world)
+		end
+	end
+	return result
+end
+
+function WorldSwitcher.rows(safe: boolean?): { Row }?
 	local open = WorldSwitcher.is_open()
 	if not open then
 		return nil
@@ -140,6 +215,8 @@ function WorldSwitcher.rows(): { Row }?
 		end
 	end
 
+	local types = world_types()
+	local current = WorldSwitcher.current()
 	local result: { Row } = {}
 	for _, row in rows do
 		if not row.hidden then
@@ -149,12 +226,18 @@ function WorldSwitcher.rows(): { Row }?
 			end)
 			local number, players, activity = line[1], line[2], line[3]
 			local colour = if number then number.text_color else WorldSwitcher.FREE
+			-- the world you are on is drawn grey like an unavailable one, so its colour says nothing
+			local here = row.index == current
 			table.insert(result, {
 				world = row.index,
 				players = if players then tonumber(players.text) else nil,
 				activity = if activity then activity.text else nil,
-				members = colour == WorldSwitcher.MEMBERS,
-				available = colour ~= WorldSwitcher.UNAVAILABLE,
+				types = types[row.index] or 0,
+				members = if types[row.index]
+					then bit32.band(types[row.index], LoginWorldSwitcher.MEMBERS) ~= 0
+					else colour == WorldSwitcher.MEMBERS,
+				available = (here or colour ~= WorldSwitcher.UNAVAILABLE)
+					and meets_total(types[row.index] or 0, activity and activity.text),
 				visible = row.y >= list.y and row.y + row.height <= list.y + list.height,
 				box = box_of(row),
 			})
@@ -163,11 +246,20 @@ function WorldSwitcher.rows(): { Row }?
 	table.sort(result, function(a: Row, b: Row)
 		return a.box.y1 < b.box.y1
 	end)
-	return result
+	if safe == false then
+		return result
+	end
+	local filtered: { Row } = {}
+	for _, row in result do
+		if is_safe(row.types, row.activity) then
+			table.insert(filtered, row)
+		end
+	end
+	return filtered
 end
 
-function WorldSwitcher.worlds(): { Row }?
-	local rows = WorldSwitcher.rows()
+function WorldSwitcher.worlds(safe: boolean?): { Row }?
+	local rows = WorldSwitcher.rows(safe)
 	if rows == nil then
 		return nil
 	end
@@ -181,7 +273,7 @@ function WorldSwitcher.worlds(): { Row }?
 end
 
 function WorldSwitcher.find(world: number): Row?
-	local rows = WorldSwitcher.rows()
+	local rows = WorldSwitcher.rows(false)
 	if rows == nil then
 		return nil
 	end
@@ -194,7 +286,7 @@ function WorldSwitcher.find(world: number): Row?
 end
 
 function WorldSwitcher.is_loading(): boolean
-	local rows = WorldSwitcher.rows()
+	local rows = WorldSwitcher.rows(false)
 	if rows == nil then
 		return false
 	end
@@ -423,6 +515,19 @@ local function hop(world: number): boolean
 	return WorldSwitcher.wait_switch(world)
 end
 
+-- whether your total level lets you into a world (worlds that aren't in the world list pass)
+local function can_join(world: number): boolean
+	local select = world_select()
+	if select ~= nil then
+		for _, w in select.worlds do
+			if w.id == world then
+				return meets_total(w.types, w.activity)
+			end
+		end
+	end
+	return true
+end
+
 function WorldSwitcher.switch(world: number): boolean
 	if WorldSwitcher.cooldown() > 0 then
 		return false
@@ -434,6 +539,10 @@ function WorldSwitcher.switch(world: number): boolean
 	if current == world then
 		return true
 	end
+	if not can_join(world) then
+		Log.log("WorldSwitcher", `world {world} needs a higher total level than yours`)
+		return false
+	end
 	local opened = WorldSwitcher.open()
 	if not opened then
 		return opened
@@ -441,7 +550,21 @@ function WorldSwitcher.switch(world: number): boolean
 	return hop(world)
 end
 
-local function pick(worlds: { number }, choose: (current: number, at: number?) -> number): boolean
+local function pick(
+	worlds: { number },
+	safe: boolean?,
+	choose: (worlds: { number }, current: number, at: number?) -> number
+): boolean
+	if safe ~= false then
+		worlds = only_safe(worlds)
+	end
+	local reachable: { number } = {}
+	for _, world in worlds do
+		if can_join(world) then
+			table.insert(reachable, world)
+		end
+	end
+	worlds = reachable
 	if #worlds == 0 then
 		return false
 	end
@@ -455,23 +578,23 @@ local function pick(worlds: { number }, choose: (current: number, at: number?) -
 	if #worlds == 1 and worlds[1] == current then
 		return true
 	end
-	return WorldSwitcher.switch(choose(current, table.find(worlds, current)))
+	return WorldSwitcher.switch(choose(worlds, current, table.find(worlds, current)))
 end
 
-function WorldSwitcher.next(worlds: { number }): boolean
-	return pick(worlds, function(_, at)
+function WorldSwitcher.next(worlds: { number }, safe: boolean?): boolean
+	return pick(worlds, safe, function(worlds, _, at)
 		return worlds[if at and at < #worlds then at + 1 else 1]
 	end)
 end
 
-function WorldSwitcher.previous(worlds: { number }): boolean
-	return pick(worlds, function(_, at)
+function WorldSwitcher.previous(worlds: { number }, safe: boolean?): boolean
+	return pick(worlds, safe, function(worlds, _, at)
 		return worlds[if at and at > 1 then at - 1 else #worlds]
 	end)
 end
 
-function WorldSwitcher.random(worlds: { number }): boolean
-	return pick(worlds, function(current)
+function WorldSwitcher.random(worlds: { number }, safe: boolean?): boolean
+	return pick(worlds, safe, function(worlds, current)
 		local others: { number } = {}
 		for _, w in worlds do
 			if w ~= current then

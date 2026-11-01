@@ -6,7 +6,7 @@ Changing worlds in game with the world switcher panel: open it, read the list of
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 ```
 
-A row of the list has `world`, `players`, `activity`, `members` (members-only world), `available` (your account can use it), `visible` (fully shown in the scrolled list) and `box` (where it is on screen).
+A row of the list has `world`, `players`, `activity`, `types` (the world's type flags, see `LoginWorldSwitcher`), `members` (members-only world), `available` (your account can use it: not greyed out, and for skill total worlds your total level is high enough; the world you are on counts as available), `visible` (fully shown in the scrolled list) and `box` (where it is on screen).
 
 ## Constants
 
@@ -34,6 +34,13 @@ WorldSwitcher.UNAVAILABLE = 0x7f7f7f
 The interface piece numbers of the panel, the setting that remembers the sort order, and the colors used to tell free, members and unavailable worlds apart.
 
 ## Settings
+
+Definition:
+```luau
+WorldSwitcher.UNSAFE_TYPES = LoginWorldSwitcher.DANGEROUS
+WorldSwitcher.UNSAFE_ACTIVITIES = { "pvp", "wilderness", "clan wars" }
+```
+The type flags that mark a world as dangerous, and lowercase pieces of activity text for PvP worlds the server doesn't flag (Wilderness PK, PvP Arena, Clan Wars). `rows` and `worlds` skip matching worlds unless called with `safe = false`.
 
 Definition:
 ```luau
@@ -75,9 +82,9 @@ print("world", WorldSwitcher.current())
 
 Definition:
 ```luau
-function WorldSwitcher.rows(): { Row }?
+function WorldSwitcher.rows(safe: boolean?): { Row }?
 ```
-Every world in the list, top to bottom, including ones scrolled out of view. The switcher has to be open.
+Every world in the list, top to bottom, including ones scrolled out of view. The switcher has to be open. With `safe` (the default), dangerous worlds are left out: any with a type flag in `WorldSwitcher.UNSAFE_TYPES` (PvP, bounty, high risk, deadman, tournament, beta, seasonal, fresh start, speedrunning, no-save, PvP arena) or an activity containing one of `WorldSwitcher.UNSAFE_ACTIVITIES`. Pass `false` to get every world.
 
 Example:
 ```luau
@@ -93,9 +100,9 @@ end
 
 Definition:
 ```luau
-function WorldSwitcher.worlds(): { Row }?
+function WorldSwitcher.worlds(safe: boolean?): { Row }?
 ```
-Only the worlds you can currently see in the list (not scrolled out of view).
+Only the worlds you can currently see in the list (not scrolled out of view). `safe` works as in `rows` and is on by default.
 
 Example:
 ```luau
@@ -111,7 +118,7 @@ Definition:
 ```luau
 function WorldSwitcher.find(world: number): Row?
 ```
-The row of one world, shown or not. Returns `nil` if the world isn't in the list.
+The row of one world, shown or not, dangerous or not. Returns `nil` if the world isn't in the list.
 
 Example:
 ```luau
@@ -282,7 +289,7 @@ Definition:
 ```luau
 function WorldSwitcher.switch(world: number): boolean
 ```
-Hops to a world. Opens the switcher, scrolls to the world, clicks it, confirms the "Are you sure you wish to switch to World N?" box that some worlds (activity worlds such as Tempoross's 422) ask first, and waits until you've arrived. Returns `true` at once if you're already there, and `false` while the cooldown runs.
+Hops to a world. Opens the switcher, scrolls to the world, clicks it, confirms the "Are you sure you wish to switch to World N?" box that some worlds (activity worlds such as Tempoross's 422) ask first, and waits until you've arrived. Returns `true` at once if you're already there, and `false` while the cooldown runs or when the world is a skill total world above your total level (`next`, `previous` and `random` leave such worlds out of your list first).
 
 Example:
 ```luau
@@ -296,9 +303,9 @@ print(if ok then "hopped" else "unavailable")
 
 Definition:
 ```luau
-function WorldSwitcher.next(worlds: { number }): boolean
+function WorldSwitcher.next(worlds: { number }, safe: boolean?): boolean
 ```
-Hops to the world after the current one in your list (or the first one if you're not on any of them).
+Hops to the world after the current one in your list (or the first one if you're not on any of them). With `safe` (the default) dangerous worlds are dropped from your list first; pass `false` to keep them.
 
 Example:
 ```luau
@@ -311,9 +318,9 @@ print(WorldSwitcher.next({ 301, 302, 303 }))
 
 Definition:
 ```luau
-function WorldSwitcher.previous(worlds: { number }): boolean
+function WorldSwitcher.previous(worlds: { number }, safe: boolean?): boolean
 ```
-Hops to the world before the current one in your list (or the last one).
+Hops to the world before the current one in your list (or the last one). `safe` works as in `next`.
 
 Example:
 ```luau
@@ -326,9 +333,9 @@ print(WorldSwitcher.previous({ 301, 302, 303 }))
 
 Definition:
 ```luau
-function WorldSwitcher.random(worlds: { number }): boolean
+function WorldSwitcher.random(worlds: { number }, safe: boolean?): boolean
 ```
-Hops to a random world from your list, other than the current one.
+Hops to a random world from your list, other than the current one. `safe` works as in `next`.
 
 Example:
 ```luau

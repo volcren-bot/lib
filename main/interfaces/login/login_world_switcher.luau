@@ -36,6 +36,7 @@ LoginWorldSwitcher.SEASONAL = 0x40000000
 LoginWorldSwitcher.DANGEROUS = bit32.bor(
 	LoginWorldSwitcher.PVP,
 	LoginWorldSwitcher.BOUNTY,
+	LoginWorldSwitcher.PVP_ARENA,
 	LoginWorldSwitcher.QUEST_SPEEDRUNNING,
 	LoginWorldSwitcher.HIGH_RISK,
 	LoginWorldSwitcher.BETA_WORLD,
