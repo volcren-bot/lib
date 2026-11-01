@@ -40,7 +40,7 @@ Definition:
 ```luau
 LoginWorldSwitcher.DANGEROUS: number
 ```
-All the world types that can put your account at risk (PvP, bounty, high risk, deadman, ...)
+All the world types that can put your account at risk (PvP, bounty, high risk, last man standing, deadman, ...)
 combined into one flag. `switch` refuses these worlds unless `allow_dangerous_worlds` is set.
 
 Example:

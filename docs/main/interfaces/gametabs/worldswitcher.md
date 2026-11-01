@@ -38,7 +38,7 @@ The interface piece numbers of the panel, the setting that remembers the sort or
 Definition:
 ```luau
 WorldSwitcher.UNSAFE_TYPES = LoginWorldSwitcher.DANGEROUS
-WorldSwitcher.UNSAFE_ACTIVITIES = { "pvp", "wilderness", "clan wars" }
+WorldSwitcher.UNSAFE_ACTIVITIES = { "pvp", "wilderness", "clan wars", "last man standing", "lms" }
 ```
 The type flags that mark a world as dangerous, and lowercase pieces of activity text for PvP worlds the server doesn't flag (Wilderness PK, PvP Arena, Clan Wars). `rows` and `worlds` skip matching worlds unless called with `safe = false`.
 
@@ -84,7 +84,7 @@ Definition:
 ```luau
 function WorldSwitcher.rows(safe: boolean?): { Row }?
 ```
-Every world in the list, top to bottom, including ones scrolled out of view. The switcher has to be open. With `safe` (the default), dangerous worlds are left out: any with a type flag in `WorldSwitcher.UNSAFE_TYPES` (PvP, bounty, high risk, deadman, tournament, beta, seasonal, fresh start, speedrunning, no-save, PvP arena) or an activity containing one of `WorldSwitcher.UNSAFE_ACTIVITIES`. Pass `false` to get every world.
+Every world in the list, top to bottom, including ones scrolled out of view. The switcher has to be open. With `safe` (the default), dangerous worlds are left out: any with a type flag in `WorldSwitcher.UNSAFE_TYPES` (PvP, bounty, high risk, deadman, tournament, beta, seasonal, fresh start, speedrunning, no-save, PvP arena, last man standing) or an activity containing one of `WorldSwitcher.UNSAFE_ACTIVITIES`. Pass `false` to get every world.
 
 Example:
 ```luau

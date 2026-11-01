@@ -20,8 +20,8 @@ local Logout = require("@lib/main/interfaces/gametabs/logout")
 local Mouse = require("@lib/utils/input/mouse")
 local Random = require("@lib/utils/math/random")
 local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
-local Stats = require("@lib/main/interfaces/gametabs/stats")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 local Box = Geometry.Box
 type Box = Geometry.Box
 
@@ -55,7 +55,7 @@ WorldSwitcher.cooldown_ms = 7000
 WorldSwitcher.UNSAFE_TYPES = LoginWorldSwitcher.DANGEROUS
 
 -- activities that are PvP but carry no type flag (lowercase, matched as substrings)
-WorldSwitcher.UNSAFE_ACTIVITIES = { "pvp", "wilderness", "clan wars" }
+WorldSwitcher.UNSAFE_ACTIVITIES = { "pvp", "wilderness", "clan wars", "last man standing", "lms" }
 
 export type Row = {
 	world: number,

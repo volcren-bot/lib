@@ -39,6 +39,7 @@ LoginWorldSwitcher.DANGEROUS = bit32.bor(
 	LoginWorldSwitcher.PVP_ARENA,
 	LoginWorldSwitcher.QUEST_SPEEDRUNNING,
 	LoginWorldSwitcher.HIGH_RISK,
+	LoginWorldSwitcher.LAST_MAN_STANDING,
 	LoginWorldSwitcher.BETA_WORLD,
 	LoginWorldSwitcher.NOSAVE_MODE,
 	LoginWorldSwitcher.TOURNAMENT_WORLD,
