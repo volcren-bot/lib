@@ -1,18 +1,18 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local widget = Host.widget
 local widget_children = Host.widget_children
 local sub_interfaces = Host.sub_interfaces
 local sleep = Host.sleep
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
-local Interact = require("../../interact")
-local Log = require("../../../utils/log")
-local Mouse = require("../../../utils/input/mouse")
-local Player = require("../../player")
-local SidePanels = require("./side_panels")
-local Stats = require("./stats")
-local Varbits = require("../../varbits")
+local Interact = require("@lib/main/interact")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local Player = require("@lib/main/player")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
+local Varbits = require("@lib/main/varbits")
 
 local Prayer = {}
 

@@ -1,21 +1,21 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local sleep = Host.sleep
 local time = Host.time
 type CameraState = Host.CameraState
 type Tile = Host.Tile
-local Geometry = require("../utils/math/geometry")
-local Keyboard = require("../utils/input/keyboard")
-local Mouse = require("../utils/input/mouse")
-local Random = require("../utils/math/random")
+local Geometry = require("@lib/utils/math/geometry")
+local Keyboard = require("@lib/utils/input/keyboard")
+local Mouse = require("@lib/utils/input/mouse")
+local Random = require("@lib/utils/math/random")
 local Box = Geometry.Box
 local Point = Geometry.Point
 type Box = Geometry.Box
 type Point = Geometry.Point
-local Biometrics = require("./antiban/biometrics")
-local Log = require("../utils/log")
-local Toplevel = require("./interfaces/mainscreen/toplevel")
+local Biometrics = require("@lib/main/antiban/biometrics")
+local Log = require("@lib/utils/log")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 export type Method = "mouse" | "keys"
 

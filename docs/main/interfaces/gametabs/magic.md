@@ -3,7 +3,7 @@
 The spellbook tab: which spellbook you're on, which spells you can cast, casting them, and the spell waiting for a target.
 
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 ```
 
 Nothing here looks at the screen's colours. The spells (names, levels, runes, icons, which button they are) come from the game files, the spellbook from a game setting, and whether a spell can be cast from the icon its button shows. The spell waiting for a target is read from the game.
@@ -70,7 +70,7 @@ The spellbook you're on: `"standard"`, `"ancient"`, `"lunar"` or `"arceuus"`.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.spellbook())
 ```
@@ -85,7 +85,7 @@ Whether you're on that spellbook.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 if Magic.is_spellbook("lunar") then
 	print("on lunars")
@@ -102,7 +102,7 @@ Every spell of a spellbook, the one you're on by default. The standard book incl
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 for _, spell in ipairs(Magic.spells("ancient") or {}) do
 	print(spell.level, spell.name)
@@ -119,7 +119,7 @@ Looks a spell up by name in a spellbook, the one you're on by default. When it i
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 local alch = Magic.spell("High Level Alchemy")
 print(alch and alch.level)
@@ -136,7 +136,7 @@ How many spells a spellbook has, the one you're on by default. Menu buttons like
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.spell_count())
 ```
@@ -151,7 +151,7 @@ Whether the spellbook tab is open.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.is_open())
 ```
@@ -166,7 +166,7 @@ Opens the spellbook tab.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 assert(Magic.open())
 ```
@@ -181,7 +181,7 @@ The spell's button, whether the tab is open or not (it is hidden while the tab i
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 local button = Magic.widget("Wind Strike")
 print(button and button.sprite)
@@ -197,7 +197,7 @@ Whether you can cast the spell: you have the level, the runes and whatever unloc
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 if Magic.can_cast("High Level Alchemy") then
 	print("ready to alch")
@@ -222,7 +222,7 @@ Other filters are left alone.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 local button = Magic.find("Lvl-1 Enchant")
 print(button and button.x, button and button.y)
@@ -238,7 +238,7 @@ Whether the spell is on your spellbook and can be put on screen (see `Magic.find
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.contains("Teleport to House"))
 ```
@@ -253,7 +253,7 @@ Whether spell filtering is on. The filters only hide spells while it is.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.is_filtering())
 ```
@@ -268,7 +268,7 @@ Turns spell filtering on or off from the tab button's right-click menu.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 Magic.set_filtering(false)
 ```
@@ -283,7 +283,7 @@ Whether a filter (`"combat"`, `"teleport"`, `"utility"`, `"level"`, `"runes"` or
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.is_filter_on("combat"))
 ```
@@ -298,7 +298,7 @@ Whether the spell filters panel is open. The spells are hidden while it is.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.is_filters_open())
 ```
@@ -313,7 +313,7 @@ Opens the spell filters panel. Returns `false` when spell filtering is off, sinc
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 Magic.open_filters()
 ```
@@ -328,7 +328,7 @@ Closes the spell filters panel.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 Magic.close_filters()
 ```
@@ -343,7 +343,7 @@ Sets a filter to hide its spells (`hide` true) or show them, by clicking its lin
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 Magic.set_filter("teleport", false)
 Magic.close_filters()
@@ -359,7 +359,7 @@ The frame of the box the tab shows about the hovered spell (name, description, r
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 local box = Magic.info_box()
 if box then
@@ -377,7 +377,7 @@ Whether the info box about a spell is shown.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.is_info_open())
 ```
@@ -392,7 +392,7 @@ Closes the info box by moving the mouse just outside the spellbook, past its nea
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 if Magic.is_info_open() then
 	Magic.close_info()
@@ -409,7 +409,7 @@ What is waiting for a target: a spell you clicked that needs something to be cas
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 local selected = Magic.selected()
 print(selected and selected.name)
@@ -425,7 +425,7 @@ The spell waiting for a target, `nil` when no spell is.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 local spell = Magic.selected_spell()
 print(spell and spell.name)
@@ -441,7 +441,7 @@ Whether something is waiting for a target.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.has_selected())
 ```
@@ -456,7 +456,7 @@ Whether that spell is the one waiting for a target.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 print(Magic.is_selected("High Level Alchemy"))
 ```
@@ -471,7 +471,7 @@ Cancels what is waiting for a target: clicks the selected spell when its button 
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 assert(Magic.deselect())
 ```
@@ -486,7 +486,7 @@ Moves the mouse onto the spell, opening the tab and the jewellery menu as needed
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 Magic.hover("High Level Alchemy")
 ```
@@ -501,7 +501,7 @@ Clicks the spell's button (left by default) without checking what the click did.
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 Magic.click("Camelot Teleport", "right")
 ```
@@ -516,7 +516,7 @@ Picks an option on the spell's button, its left-click option by default ("Cast",
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 Magic.interact("Camelot Teleport", "Seers'")
 ```
@@ -531,7 +531,7 @@ Whether the game did what casting the spell does: the spell is waiting for a tar
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 Magic.click("Varrock Teleport")
 print(Magic.was_cast("Varrock Teleport"))
@@ -547,8 +547,8 @@ Casts the spell. A spell cast on something is left waiting for its target (click
 
 Example:
 ```luau
-local Magic = require("../main/interfaces/gametabs/magic")
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 if Magic.cast("High Level Alchemy") then
 	print("now click the item to alch", Inventory.index_of("Yew longbow"))

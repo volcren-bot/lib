@@ -3,7 +3,7 @@
 How hurt an NPC is. The game client shows the exact hitpoints of the NPC you are fighting in its target display (top left), and only that one. `target` reads it and `set` takes it as the truth for that NPC; for the others the client keeps only their last hitsplats, so this adds up the damage of every hit it sees and takes it off the maximum.
 
 ```luau
-local NpcHealth = require("../main/entities/npc_health")
+local NpcHealth = require("@lib/main/entities/npc_health")
 ```
 
 Call `NpcHealth.update` every tick with the indices of the NPCs around you (a hitsplat is replaced by the next hit in its slot, so reading less often can miss hits). An NPC that is already hurt when it is first seen counts from there on, and healing is not seen, until it is the NPC you fight and `set` corrects it. See `Host.npc_hitsplats`.
@@ -34,7 +34,7 @@ The name, hitpoints and maximum hitpoints the target display shows (the NPC you 
 
 Example:
 ```luau
-local NpcHealth = require("../main/entities/npc_health")
+local NpcHealth = require("@lib/main/entities/npc_health")
 
 local name, hp, max = NpcHealth.target()
 print(name, hp, max)
@@ -50,7 +50,7 @@ Takes `hp` of `max_hp` as the truth for the NPC with `index`: the damage seen be
 
 Example:
 ```luau
-local NpcHealth = require("../main/entities/npc_health")
+local NpcHealth = require("@lib/main/entities/npc_health")
 
 local _, hp, max = NpcHealth.target()
 if hp and max then
@@ -68,7 +68,7 @@ The maximum hitpoints the target display showed for the NPC, `nil` when it never
 
 Example:
 ```luau
-local NpcHealth = require("../main/entities/npc_health")
+local NpcHealth = require("@lib/main/entities/npc_health")
 
 print(NpcHealth.max_hp(1234))
 ```
@@ -83,8 +83,8 @@ Reads the hitsplats of the NPCs with `indices` and adds the hits that are new. N
 
 Example:
 ```luau
-local Host = require("../host")
-local NpcHealth = require("../main/entities/npc_health")
+local Host = require("@lib/host")
+local NpcHealth = require("@lib/main/entities/npc_health")
 
 local indices = {}
 for _, npc in ipairs(Host.npcs() or {}) do
@@ -103,7 +103,7 @@ The damage seen on the NPC so far, 0 for one not seen.
 
 Example:
 ```luau
-local NpcHealth = require("../main/entities/npc_health")
+local NpcHealth = require("@lib/main/entities/npc_health")
 
 print(NpcHealth.damage(1234))
 ```
@@ -118,7 +118,7 @@ The hitpoints left of an NPC that has `max_hp`, at least 0.
 
 Example:
 ```luau
-local NpcHealth = require("../main/entities/npc_health")
+local NpcHealth = require("@lib/main/entities/npc_health")
 
 print(NpcHealth.remaining(1234, 80))
 ```
@@ -133,7 +133,7 @@ How much of its hitpoints an NPC that has `max_hp` has left, from 1 (unhurt) to 
 
 Example:
 ```luau
-local NpcHealth = require("../main/entities/npc_health")
+local NpcHealth = require("@lib/main/entities/npc_health")
 
 print(NpcHealth.fraction(1234, 80))
 ```
@@ -148,7 +148,7 @@ Forgets everything seen, for a new fight.
 
 Example:
 ```luau
-local NpcHealth = require("../main/entities/npc_health")
+local NpcHealth = require("@lib/main/entities/npc_health")
 
 NpcHealth.reset()
 ```

@@ -2,9 +2,9 @@
 -- Prints each projectile once as it appears and marks the ones in flight on screen, for 30 seconds.
 local SECONDS = 30
 
-local Draw = require("../utils/draw")
-local Host = require("../host")
-local Projectiles = require("../main/entities/projectiles")
+local Draw = require("@lib/utils/draw")
+local Host = require("@lib/host")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 local seen: { [string]: boolean } = {}
 local start = Host.time()

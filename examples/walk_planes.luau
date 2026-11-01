@@ -1,9 +1,9 @@
 --!strict
 -- Walks to a tile on another plane: the ladders, staircases and doors on the way are found in the scene.
-local Host = require("../host")
+local Host = require("@lib/host")
 local form = Host.form
-local Player = require("../main/player")
-local Walker = require("../main/walker")
+local Player = require("@lib/main/player")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local plane = assert(Player.plane())

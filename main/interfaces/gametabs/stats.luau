@@ -1,12 +1,12 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local widget = Host.widget
 type Skill = Host.Skill
-local Geometry = require("../../../utils/math/geometry")
-local Log = require("../../../utils/log")
-local Mouse = require("../../../utils/input/mouse")
-local SidePanels = require("./side_panels")
+local Geometry = require("@lib/utils/math/geometry")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 local Box = Geometry.Box
 local Stats = {}
 

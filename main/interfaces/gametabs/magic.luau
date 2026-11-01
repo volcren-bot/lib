@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local widget = Host.widget
 local widget_children = Host.widget_children
 local enum_def = Host.enum_def
@@ -11,14 +11,14 @@ local sleep = Host.sleep
 type Widget = Host.Widget
 type SelectedWidget = Host.SelectedWidget
 type MenuEntry = Host.MenuEntry
-local Geometry = require("../../../utils/math/geometry")
-local Interact = require("../../interact")
-local Log = require("../../../utils/log")
-local Minimenu = require("../minimenu")
-local Mouse = require("../../../utils/input/mouse")
-local SidePanels = require("./side_panels")
-local Stats = require("./stats")
-local Varbits = require("../../varbits")
+local Geometry = require("@lib/utils/math/geometry")
+local Interact = require("@lib/main/interact")
+local Log = require("@lib/utils/log")
+local Minimenu = require("@lib/main/interfaces/minimenu")
+local Mouse = require("@lib/utils/input/mouse")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
+local Varbits = require("@lib/main/varbits")
 type Point = Geometry.Point
 
 local Magic = {}

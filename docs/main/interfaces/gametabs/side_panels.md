@@ -3,7 +3,7 @@
 The row of tabs next to the inventory: combat, skills, prayer, spells, settings, logout and so on. Check which one is open and open another.
 
 ```luau
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 ```
 
 A tab can be given by its number or by its name (`"inventory"`, `"stats"`, `"prayerbook"`...).
@@ -42,7 +42,7 @@ The name of a tab from its number.
 
 Example:
 ```luau
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 print(SidePanels.name(SidePanels.INVENTORY)) -- inventory
 ```
@@ -57,7 +57,7 @@ Turns a tab number or name into its number. Returns an error for an unknown tab.
 
 Example:
 ```luau
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 print(SidePanels.resolve("prayerbook")) -- 5
 ```
@@ -72,7 +72,7 @@ The number of the tab that is open now.
 
 Example:
 ```luau
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 print(SidePanels.name(SidePanels.current() or -1))
 ```
@@ -87,7 +87,7 @@ Whether a given tab is the open one.
 
 Example:
 ```luau
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 print("inventory open:", SidePanels.is_open("inventory"))
 ```
@@ -102,7 +102,7 @@ The clickable button for a tab. Returns an error if you aren't in game.
 
 Example:
 ```luau
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 local button = SidePanels.button("stats")
 print(button and button.x, button and button.y)
@@ -118,8 +118,8 @@ The key bound to a tab (a `Keyboard.keys` code), or `nil` if it's unbound or you
 
 Example:
 ```luau
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
-local Keyboard = require("../utils/input/keyboard")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 print(SidePanels.key("inventory") == Keyboard.keys.ESCAPE)
 ```
@@ -136,7 +136,7 @@ If the tab has a key bound (see `SidePanels.key`), it presses it with the chance
 
 Example:
 ```luau
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 print(SidePanels.open("inventory"))
 print(SidePanels.open("stats", 0)) -- always with the mouse
@@ -152,7 +152,7 @@ Like `SidePanels.open`, but queues the key press or click as async input and ret
 
 Example:
 ```luau
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 SidePanels.open_async("inventory")
 ```

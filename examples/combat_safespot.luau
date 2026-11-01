@@ -8,9 +8,9 @@ local AVOID = { "Lesser demon", "Black demon" }
 local FOOD = { "Shark", "Cake", "2/3 cake", "Slice of cake" }
 local EAT_AT, STOP_AT = 60, 30
 
-local CombatSafeSpot = require("../main/combat_safespot")
-local Inventory = require("../main/interfaces/gametabs/inventory")
-local Player = require("../main/player")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
+local Player = require("@lib/main/player")
 
 local function eat(): boolean
 	local items = Inventory.items() or {}

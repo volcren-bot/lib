@@ -1,10 +1,10 @@
 --!strict
 -- Walks back and forth between two tiles on any planes, through the doors, ladders and staircases on the way.
-local Host = require("../host")
+local Host = require("@lib/host")
 local form = Host.form
 local time = Host.time
-local Random = require("../utils/math/random")
-local Walker = require("../main/walker")
+local Random = require("@lib/utils/math/random")
+local Walker = require("@lib/main/walker")
 
 local values = assert(form({
 	title = "Walk back and forth",

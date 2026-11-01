@@ -1,11 +1,11 @@
 --!strict
 -- Draws the walking path from the player to a tile on the minimap and in view.
-local Host = require("../host")
+local Host = require("@lib/host")
 local form = Host.form
-local Draw = require("../utils/draw")
-local Minimap = require("../main/interfaces/minimap")
-local Projection = require("../main/projection/projection")
-local Walker = require("../main/walker")
+local Draw = require("@lib/utils/draw")
+local Minimap = require("@lib/main/interfaces/minimap")
+local Projection = require("@lib/main/projection/projection")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local values = assert(form({

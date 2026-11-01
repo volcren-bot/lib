@@ -2,12 +2,12 @@
 local NAME = "Bank chest"
 local OPTION = "Use"
 
-local Host = require("../host")
+local Host = require("@lib/host")
 local sleep = Host.sleep
-local Clickbox = require("../main/clickbox")
-local Draw = require("../utils/draw")
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Clickbox = require("@lib/main/clickbox")
+local Draw = require("@lib/utils/draw")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local loc = Objects.nearest(NAME, me)

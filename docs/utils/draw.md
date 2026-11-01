@@ -3,7 +3,7 @@
 Drawing shapes on top of the game. Handy for seeing what a script is looking at or about to click. Drawings stay until you call `Draw.clear`. To redraw everything at once without flicker, wrap the drawing in `Draw.batch`.
 
 ```luau
-local Draw = require("../utils/draw")
+local Draw = require("@lib/utils/draw")
 ```
 
 Colors are tables with `r`, `g`, `b` (0 to 255) and an optional `a` for transparency. Every drawing function takes an optional color and uses red when you leave it out.
@@ -26,7 +26,7 @@ Makes a color. `a` is how solid it is (255, the default, is fully solid).
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
+local Draw = require("@lib/utils/draw")
 
 local orange = Draw.color(255, 140, 0)
 Draw.rect(20, 20, 120, 80, orange)
@@ -42,7 +42,7 @@ Draws a rectangle from its top-left corner to its bottom-right corner.
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
+local Draw = require("@lib/utils/draw")
 
 Draw.rect(50, 50, 200, 120, Draw.GREEN)
 ```
@@ -57,8 +57,8 @@ Draws a rectangle given as `{ x, y, width, height }`, like the position and size
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
-local Host = require("../host")
+local Draw = require("@lib/utils/draw")
+local Host = require("@lib/host")
 
 local w = Host.widget(149, 0)
 if w then
@@ -76,7 +76,7 @@ Draws a rectangle given as `{ x1, y1, x2, y2 }`.
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
+local Draw = require("@lib/utils/draw")
 
 Draw.button({ x1 = 10, y1 = 10, x2 = 90, y2 = 40 }, Draw.CYAN)
 ```
@@ -91,7 +91,7 @@ Draws a line between two points.
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
+local Draw = require("@lib/utils/draw")
 
 Draw.line({ x = 0, y = 0 }, { x = 200, y = 100 }, Draw.MAGENTA)
 ```
@@ -106,7 +106,7 @@ Draws many lines in one go. Each segment is a pair of points. This is much faste
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
+local Draw = require("@lib/utils/draw")
 
 Draw.lines({
 	{ { x = 0, y = 0 }, { x = 100, y = 0 } },
@@ -124,7 +124,7 @@ Draws the outline of a shape with any number of corners.
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
+local Draw = require("@lib/utils/draw")
 
 Draw.polygon({ { x = 50, y = 50 }, { x = 150, y = 60 }, { x = 100, y = 140 } }, Draw.YELLOW)
 ```
@@ -139,9 +139,9 @@ Draws the outline of a four-cornered shape, such as a tile on screen.
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
-local Projection = require("../main/projection/projection")
-local Walker = require("../main/walker")
+local Draw = require("@lib/utils/draw")
+local Projection = require("@lib/main/projection/projection")
+local Walker = require("@lib/main/walker")
 
 local quad = Projection.tile(assert(Walker.position()))
 if quad then
@@ -159,9 +159,9 @@ Draws a 3D box from its bottom and top quads.
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
-local Host = require("../host")
-local Projection = require("../main/projection/projection")
+local Draw = require("@lib/utils/draw")
+local Host = require("@lib/host")
+local Projection = require("@lib/main/projection/projection")
 
 local me = (Host.game_state() or {}).position
 local cuboid = me and Projection.cuboid(me.local_x, me.local_y)
@@ -180,8 +180,8 @@ Removes everything drawn so far.
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
-local Host = require("../host")
+local Draw = require("@lib/utils/draw")
+local Host = require("@lib/host")
 
 Draw.rect(20, 20, 120, 80)
 Host.sleep(2000)
@@ -198,8 +198,8 @@ Runs `paint` and shows everything it draws at once, as one update. Inside it, th
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
-local Host = require("../host")
+local Draw = require("@lib/utils/draw")
+local Host = require("@lib/host")
 
 for i = 0, 100 do
 	Draw.batch(function()
@@ -221,7 +221,7 @@ Draws digits, `.`, `-`, `#` and `/` as lines, starting at the top left corner (`
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
+local Draw = require("@lib/utils/draw")
 
 Draw.batch(function()
 	Draw.clear()

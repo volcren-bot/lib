@@ -3,7 +3,7 @@
 Looking up readable names for the game's internal numbers: objects, NPCs, interfaces, animations and more.
 
 ```luau
-local GameVal = require("../utils/game_val")
+local GameVal = require("@lib/utils/game_val")
 ```
 
 ## Constants
@@ -37,7 +37,7 @@ The readable name of one thing.
 
 Example:
 ```luau
-local GameVal = require("../utils/game_val")
+local GameVal = require("@lib/utils/game_val")
 
 print(GameVal.name(GameVal.OBJ, 995))
 ```
@@ -52,7 +52,7 @@ The readable names of many things of the same kind at once.
 
 Example:
 ```luau
-local GameVal = require("../utils/game_val")
+local GameVal = require("@lib/utils/game_val")
 
 for _, name in ipairs(GameVal.names(GameVal.NPC, { 1, 2, 3 }) or {}) do
 	print(name)
@@ -69,7 +69,7 @@ The readable name of an interface from its group number.
 
 Example:
 ```luau
-local GameVal = require("../utils/game_val")
+local GameVal = require("@lib/utils/game_val")
 
 print(GameVal.interface(149))
 ```

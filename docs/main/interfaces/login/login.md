@@ -18,7 +18,7 @@ Returns `false` if you aren't on the login screen or it has no such button.
 
 Example:
 ```luau
-local Login = require("../main/interfaces/login/login")
+local Login = require("@lib/main/interfaces/login/login")
 
 print("pressed:", Login.login())
 ```
@@ -38,7 +38,7 @@ the whole thing.
 
 Example:
 ```luau
-local Login = require("../main/interfaces/login/login")
+local Login = require("@lib/main/interfaces/login/login")
 
 local ok = Login.sign_in()
 print(if ok then "in game" else `login failed`)

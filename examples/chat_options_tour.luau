@@ -3,10 +3,10 @@
 local NAMES = { "Captain Pudi", "Gita Prymes", "Mr McGroot", "Aggy", "Rocky", "Phoenix", "Taiman" }
 local MAX_MENUS = 12
 
-local ChatOptions = require("../main/interfaces/chatbox/chat_options")
-local Host = require("../host")
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
+local Host = require("@lib/host")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local function talk(name: string): boolean
 	local npc = Npcs.nearest(name, assert(Walker.position()))

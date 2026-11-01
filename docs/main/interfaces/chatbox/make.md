@@ -5,7 +5,7 @@ The "What would you like to make?" menu in the chatbox. It opens when you use a 
 Options and buttons are read from the client's widgets, and an option's item name is read by hovering it (the menu's top entry is "Make" on that option, with the item as its target), so nothing is clicked to read them.
 
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 ```
 
 ## Constants
@@ -56,7 +56,7 @@ Whether the menu is open.
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 print("make menu open:", Make.is_open())
 ```
@@ -71,7 +71,7 @@ Waits until the menu opens. `false` (and an error) when it doesn't open within `
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 print(Make.wait_open(3000))
 ```
@@ -86,7 +86,7 @@ Waits until the menu closes (after an option is picked, for example). `false` wh
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 print(Make.wait_closed(2000))
 ```
@@ -101,7 +101,7 @@ The quantity buttons on the menu, left to right. Empty when the menu isn't open.
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 for _, amount in ipairs(Make.amounts() or {}) do
 	print(amount.label, amount.selected)
@@ -118,7 +118,7 @@ The label of the selected quantity button ("All", "1", ...), or `nil` when none 
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 print("quantity:", Make.amount())
 ```
@@ -133,7 +133,7 @@ Sets the quantity. A label (`"1"`, `"5"`, `"10"`, `"All"`) clicks that button. A
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 print(Make.set_amount("All"))
 print(Make.set_amount(10))
@@ -149,7 +149,7 @@ Queues the click on the amount button `label` (`"1"`, `"5"`, `"10"`, `"All"`) as
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 print(Make.set_amount_async("All"))
 ```
@@ -164,7 +164,7 @@ The options on the menu, left to right. Each name is read by hovering the option
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 for _, option in ipairs(Make.options() or {}) do
 	print(option.name)
@@ -181,7 +181,7 @@ The option whose item is `name` (not case sensitive). `nil` with an error when t
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 local option = Make.option("Oak longbow")
 print(option and option.box)
@@ -197,7 +197,7 @@ Makes the item `name`: sets the quantity to `amount` first (see `set_amount`), i
 
 Example:
 ```luau
-local Make = require("../main/interfaces/chatbox/make")
+local Make = require("@lib/main/interfaces/chatbox/make")
 
 print(Make.make("Oak shortbow", "All"))
 print(Make.wait_closed(5000))

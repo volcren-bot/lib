@@ -1,5 +1,5 @@
 --!strict
-local Draw = require("../utils/draw")
+local Draw = require("@lib/utils/draw")
 -- cleared and drawn in one overlay update
 Draw.batch(function()
 	Draw.clear()

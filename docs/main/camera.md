@@ -3,7 +3,7 @@
 Reading and changing the camera: which way it faces, how far it tilts and how zoomed in it is.
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 ```
 
 Angles are measured in "units" where a full turn is 16384. Most functions have a `_degrees` twin that uses degrees instead. `yaw` is the left/right direction, `pitch` is how much you look down from above.
@@ -70,7 +70,7 @@ Everything about the camera in one table: position, angles, focal point and zoom
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 local cam = Camera.state()
 print(if cam then `yaw {cam.yaw}, pitch {cam.pitch}` else "unavailable")
@@ -89,7 +89,7 @@ Converts a yaw to a compass bearing in degrees (0 is north, 90 is east).
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.yaw_to_degrees(12288)) -- 90
 ```
@@ -107,7 +107,7 @@ The opposite of `yaw_to_degrees`: a compass bearing to a yaw.
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.degrees_to_yaw(90)) -- 12288
 ```
@@ -125,7 +125,7 @@ Converts a pitch to degrees above the horizon.
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.pitch_to_degrees(2048)) -- 45
 ```
@@ -143,7 +143,7 @@ Converts degrees above the horizon to a pitch.
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.degrees_to_pitch(45)) -- 2048
 ```
@@ -161,7 +161,7 @@ Which way the camera faces, in units (0 is north, turning towards the west as it
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print("yaw:", Camera.yaw())
 ```
@@ -179,7 +179,7 @@ Which way the camera faces as a compass bearing in degrees.
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print("facing", Camera.yaw_degrees(), "degrees")
 ```
@@ -197,7 +197,7 @@ How far the camera is tilted, in units. Higher looks more from above.
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print("pitch:", Camera.pitch())
 ```
@@ -215,7 +215,7 @@ How far the camera is tilted, in degrees.
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print("pitch:", Camera.pitch_degrees(), "degrees")
 ```
@@ -233,7 +233,7 @@ How zoomed in the camera is, from `ZOOM_MIN` (farthest) to `ZOOM_MAX` (closest).
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print("zoom:", Camera.zoom())
 ```
@@ -251,7 +251,7 @@ Turns the camera to face a direction given in units.
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.set_yaw(4096))
 ```
@@ -269,7 +269,7 @@ Turns the camera to face a compass bearing (0 north, 90 east, 180 south, 270 wes
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.set_yaw_degrees(0)) -- face north
 ```
@@ -287,7 +287,7 @@ Tilts the camera to a pitch in units. Values outside the allowed range are limit
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.set_pitch(Camera.PITCH_MAX))
 ```
@@ -305,7 +305,7 @@ Tilts the camera to an angle in degrees above the horizon.
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.set_pitch_degrees(50))
 ```
@@ -323,7 +323,7 @@ Sets the direction and tilt together. With the mouse method this is a single dra
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.set_angles(0, 2048))
 ```
@@ -341,7 +341,7 @@ Zooms in or out with the mouse wheel until the camera reaches the zoom level you
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.set_zoom(Camera.ZOOM_MAX)) -- as close as possible
 ```
@@ -360,7 +360,7 @@ Queues a drag that turns the camera towards `yaw`. Open loop, see above.
 
 Example:
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 Camera.set_yaw_async(0)
 ```
@@ -375,7 +375,7 @@ Like `Camera.set_yaw_async`, with the angle in degrees.
 
 Example:
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 Camera.set_yaw_degrees_async((Camera.yaw_degrees() or 0) + 10)
 ```
@@ -390,7 +390,7 @@ Queues a drag that tilts the camera towards `pitch`, kept between `Camera.PITCH_
 
 Example:
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 Camera.set_pitch_async(Camera.PITCH_MAX)
 ```
@@ -405,7 +405,7 @@ Queues one drag that turns towards both `yaw` and `pitch`. Open loop.
 
 Example:
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 Camera.set_angles_async(0, 2800)
 ```
@@ -420,7 +420,7 @@ Queues the wheel notches (about `Camera.ZOOM_STEP` of zoom each) that take the z
 
 Example:
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 Camera.set_zoom_async(Camera.ZOOM_MAX)
 ```
@@ -438,7 +438,7 @@ The chance (0 to 1) that `Camera.face` turns for a thing `tiles` away, read off 
 Example:
 
 ```luau
-local Camera = require("../main/camera")
+local Camera = require("@lib/main/camera")
 
 print(Camera.face_chance(2), Camera.face_chance(7), Camera.face_chance(12), Camera.face_chance(25)) -- 0.1 0.45 0.8 1
 ```
@@ -458,8 +458,8 @@ The entities (through `Clickbox.hover`, `click`, `interact` and `approach`) and 
 Example:
 
 ```luau
-local Camera = require("../main/camera")
-local Walker = require("../main/walker")
+local Camera = require("@lib/main/camera")
+local Walker = require("@lib/main/walker")
 
 print(Camera.face(assert(Walker.relative(0, -5)))) -- the tile 5 south of the player
 ```

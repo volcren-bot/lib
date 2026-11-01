@@ -3,7 +3,7 @@
 Your skill levels and experience.
 
 ```luau
-local Stats = require("../main/interfaces/gametabs/stats")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 ```
 
 Skills are looked up by name (not case sensitive), like `"Mining"` or `"Hitpoints"`. A skill has `name`, `level` (current, including boosts), `real_level` and `xp`.
@@ -18,8 +18,8 @@ The sum of the experience of all the skills in the list you give it.
 
 Example:
 ```luau
-local Host = require("../host")
-local Stats = require("../main/interfaces/gametabs/stats")
+local Host = require("@lib/host")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 local state = Host.game_state()
 print(Stats.total_experience(state and state.skills))
@@ -35,8 +35,8 @@ The sum of the real levels of all the skills in the list you give it.
 
 Example:
 ```luau
-local Host = require("../host")
-local Stats = require("../main/interfaces/gametabs/stats")
+local Host = require("@lib/host")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 local state = Host.game_state()
 print(Stats.total_level(state and state.skills))
@@ -52,7 +52,7 @@ One skill, with all its numbers.
 
 Example:
 ```luau
-local Stats = require("../main/interfaces/gametabs/stats")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 local mining = Stats.get("Mining")
 if mining then
@@ -70,7 +70,7 @@ The current level of a skill, including any boost or drain.
 
 Example:
 ```luau
-local Stats = require("../main/interfaces/gametabs/stats")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 print("current strength:", Stats.level("Strength"))
 ```
@@ -85,7 +85,7 @@ The real level of a skill, ignoring boosts and drain.
 
 Example:
 ```luau
-local Stats = require("../main/interfaces/gametabs/stats")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 print("real strength:", Stats.real_level("Strength"))
 ```
@@ -100,7 +100,7 @@ The experience of a skill.
 
 Example:
 ```luau
-local Stats = require("../main/interfaces/gametabs/stats")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 print("mining xp:", Stats.xp("Mining"))
 ```
@@ -115,7 +115,7 @@ Opens the stats tab and moves the mouse over a skill's box (`"total"` is the box
 
 Example:
 ```luau
-local Stats = require("../main/interfaces/gametabs/stats")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 print(Stats.hover("Fishing"))
 ```
@@ -130,7 +130,7 @@ Like `Stats.hover`, but queues opening the tab and moving over the skill's box a
 
 Example:
 ```luau
-local Stats = require("../main/interfaces/gametabs/stats")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 print(Stats.hover_async("Fishing"))
 ```

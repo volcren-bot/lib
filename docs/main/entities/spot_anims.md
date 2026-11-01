@@ -3,7 +3,7 @@
 Finding the spot animations on tiles: the effects the server places at a spot, such as an impact, a splash or a falling rock.
 
 ```luau
-local SpotAnims = require("../main/entities/spot_anims")
+local SpotAnims = require("@lib/main/entities/spot_anims")
 ```
 
 RuneLite calls these graphics objects. A spot animation is a `Host.SpotAnim`:
@@ -34,7 +34,7 @@ Lists the spot animations on tiles. Give a graphic id or a list of ids to only g
 
 Example:
 ```luau
-local SpotAnims = require("../main/entities/spot_anims")
+local SpotAnims = require("@lib/main/entities/spot_anims")
 
 for _, spot in ipairs(SpotAnims.find() or {}) do
 	print(spot.id, spot.x, spot.y, spot.plane)
@@ -51,8 +51,8 @@ The spot animations on a world tile, optionally only those with the given graphi
 
 Example:
 ```luau
-local SpotAnims = require("../main/entities/spot_anims")
-local Walker = require("../main/walker")
+local SpotAnims = require("@lib/main/entities/spot_anims")
+local Walker = require("@lib/main/walker")
 
 local here = assert(Walker.position())
 if #(SpotAnims.at(here) or {}) > 0 then
@@ -70,7 +70,7 @@ The world tile a spot animation is on.
 
 Example:
 ```luau
-local SpotAnims = require("../main/entities/spot_anims")
+local SpotAnims = require("@lib/main/entities/spot_anims")
 
 for _, spot in ipairs(SpotAnims.find() or {}) do
 	local tile = SpotAnims.tile(spot)
@@ -88,7 +88,7 @@ How long until a spot animation starts playing, 0 once it has.
 
 Example:
 ```luau
-local SpotAnims = require("../main/entities/spot_anims")
+local SpotAnims = require("@lib/main/entities/spot_anims")
 
 for _, spot in ipairs(SpotAnims.find() or {}) do
 	print(spot.id, SpotAnims.starts_in_ms(spot))
@@ -105,7 +105,7 @@ How long a spot animation has been playing, 0 while it waits to start.
 
 Example:
 ```luau
-local SpotAnims = require("../main/entities/spot_anims")
+local SpotAnims = require("@lib/main/entities/spot_anims")
 
 for _, spot in ipairs(SpotAnims.find() or {}) do
 	print(spot.id, SpotAnims.age_ms(spot))

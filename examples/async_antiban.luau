@@ -1,11 +1,11 @@
 --!strict
 -- Checks the async twins and the async antiban tasks against a live client, logged in: only tabs, hovers and menu-free clicks.
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
-local Host = require("../host")
-local Mouse = require("../utils/input/mouse")
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
-local Stats = require("../main/interfaces/gametabs/stats")
-local Tasks = require("../main/antiban/antiban_tasks")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
+local Host = require("@lib/host")
+local Mouse = require("@lib/utils/input/mouse")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
+local Stats = require("@lib/main/interfaces/gametabs/stats")
+local Tasks = require("@lib/main/antiban/antiban_tasks")
 
 local function check(name: string, ok: boolean)
 	print(`[{if ok then "ok" else "FAIL"}] {name}`)

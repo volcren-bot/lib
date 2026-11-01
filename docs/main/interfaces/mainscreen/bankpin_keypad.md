@@ -41,7 +41,7 @@ Returns one of:
 
 Example:
 ```luau
-local BankpinKeypad = require("../main/interfaces/mainscreen/bankpin_keypad")
+local BankpinKeypad = require("@lib/main/interfaces/mainscreen/bankpin_keypad")
 
 if BankpinKeypad.is_open() then
 	print("bank PIN:", BankpinKeypad.enter())

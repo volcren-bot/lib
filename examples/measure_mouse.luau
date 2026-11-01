@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local connection = Host.connection
 local sleep = Host.sleep
 local conn = connection()

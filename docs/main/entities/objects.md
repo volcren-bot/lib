@@ -3,7 +3,7 @@
 Finding and interacting with objects in the world: trees, rocks, doors, bank booths, stairs and so on. The game calls them "locs".
 
 ```luau
-local Objects = require("../main/entities/objects")
+local Objects = require("@lib/main/entities/objects")
 ```
 
 An object is a table with `id`, `name` (can be `nil`), `x`, `y` (its south-west tile), `size_x`, `size_y`, `kind` and `clickable`. Names are matched ignoring upper/lower case.
@@ -29,8 +29,8 @@ How many tiles it is from a tile to the nearest tile the object covers. Big obje
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local tree = Objects.nearest("Tree", me)
@@ -47,7 +47,7 @@ Lists the clickable objects around you. Give a name or an id to only get matchin
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
+local Objects = require("@lib/main/entities/objects")
 
 for _, loc in ipairs(Objects.find("Bank booth") or {}) do
 	print(loc.x, loc.y)
@@ -64,8 +64,8 @@ The closest matching object to a tile.
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local tree = Objects.nearest("Tree", assert(Walker.position()))
 print(if tree then `tree at {tree.x}, {tree.y}` else "no tree around")
@@ -81,8 +81,8 @@ The shape of the object as drawn on screen right now.
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local tree = Objects.nearest("Tree", assert(Walker.position()))
 local model = tree and Objects.model(tree)
@@ -99,9 +99,9 @@ The area on screen where a click lands on the object. See [Clickbox](../clickbox
 
 Example:
 ```luau
-local Clickbox = require("../main/clickbox")
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Clickbox = require("@lib/main/clickbox")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local tree = Objects.nearest("Tree", assert(Walker.position()))
 local box = tree and Objects.clickbox(tree)
@@ -120,9 +120,9 @@ Whether a right-click menu line belongs to this kind of object. The menu doesn't
 
 Example:
 ```luau
-local Host = require("../host")
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Host = require("@lib/host")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local tree = Objects.nearest("Tree", assert(Walker.position()))
 if tree then
@@ -142,8 +142,8 @@ Whether the game currently has the mouse on this object.
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local tree = Objects.nearest("Tree", assert(Walker.position()))
 if tree then
@@ -161,8 +161,8 @@ Moves the mouse onto the object until the game confirms it is there. If the obje
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local tree = Objects.nearest("Tree", assert(Walker.position()))
 if tree then
@@ -180,8 +180,8 @@ Hovers the object and clicks it (left button by default).
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local tree = Objects.nearest("Tree", assert(Walker.position()))
 if tree then
@@ -204,8 +204,8 @@ Picks an option (such as `"Chop down"` or `"Open"`) on the object. Retries if th
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local tree = Objects.nearest("Tree", assert(Walker.position()))
 if tree then
@@ -224,8 +224,8 @@ The loc's box as the camera will show it once the player stands on `at` (add a `
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local loc = assert(Objects.nearest("Ferry", assert(Walker.position())))
 local box = Objects.projected(loc, { x = loc.x, y = loc.y })
@@ -241,8 +241,8 @@ Walks to the loc and picks the first of `options` its menu has, walking early on
 
 Example:
 ```luau
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 local loc = assert(Objects.nearest("Ferry", assert(Walker.position())))
 local ok = Objects.approach(loc, { "Board", "Examine" })

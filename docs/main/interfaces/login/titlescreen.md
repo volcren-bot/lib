@@ -12,7 +12,7 @@ the client can show.
 
 Example:
 ```luau
-local TitleScreen = require("../main/interfaces/login/titlescreen")
+local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
 
 print(TitleScreen.name(TitleScreen.PLAY_NOW))
 ```
@@ -38,7 +38,7 @@ Gets the readable name of a screen id, or `nil` if it isn't one we know.
 
 Example:
 ```luau
-local TitleScreen = require("../main/interfaces/login/titlescreen")
+local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
 
 print(TitleScreen.name(TitleScreen.CREDENTIALS)) -- credentials
 ```
@@ -52,8 +52,8 @@ Gets every button on the screen you're on, by name. Empty if the screen isn't on
 
 Example:
 ```luau
-local Host = require("../host")
-local TitleScreen = require("../main/interfaces/login/titlescreen")
+local Host = require("@lib/host")
+local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
 
 local state = Host.game_state()
 if state and state.login then
@@ -72,9 +72,9 @@ Gets one button of the screen you're on by name, or `nil` if it has no such butt
 
 Example:
 ```luau
-local Host = require("../host")
-local TitleScreen = require("../main/interfaces/login/titlescreen")
-local Mouse = require("../utils/input/mouse")
+local Host = require("@lib/host")
+local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
+local Mouse = require("@lib/utils/input/mouse")
 
 local state = Host.game_state()
 local button = state and state.login and TitleScreen.button(state.login, "play_now")

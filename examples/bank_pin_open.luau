@@ -1,17 +1,16 @@
 --!strict
--- Opens the nearest bank and lets the injector enter the account's saved bank PIN if the keypad shows up.
--- Run it from the loader with the account saved on the Accounts page (it needs the loader to answer the PIN request).
+-- Opens the nearest bank and lets the injector enter the saved bank PIN if the keypad shows up (run it from the loader with a saved account).
 local NAME = "Bank booth"
 local OPTION = "Bank"
 local TIMEOUT_MS = 20000
 
-local Host = require("../host")
+local Host = require("@lib/host")
 local sleep = Host.sleep
 local time = Host.time
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
-local BankpinKeypad = require("../main/interfaces/mainscreen/bankpin_keypad")
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
+local BankpinKeypad = require("@lib/main/interfaces/mainscreen/bankpin_keypad")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 
 if Bankmain.is_open() then
 	print("the bank is already open")

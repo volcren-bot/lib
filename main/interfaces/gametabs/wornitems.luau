@@ -1,15 +1,15 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local item_container = Host.item_container
 local widget = Host.widget
 type ItemSlot = Host.ItemSlot
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
-local Item = require("../../../utils/item")
+local Item = require("@lib/utils/item")
 type Item = Item.Item
-local Interact = require("../../interact")
-local Inv = require("../inv")
-local SidePanels = require("./side_panels")
+local Interact = require("@lib/main/interact")
+local Inv = require("@lib/main/interfaces/inv")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 local CONTAINER = 94
 local SIZE = 14

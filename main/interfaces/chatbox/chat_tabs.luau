@@ -1,12 +1,12 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local widget = Host.widget
 local varc = Host.varc
 local sleep = Host.sleep
-local Chat = require("./chat")
-local Interact = require("../../interact")
-local Log = require("../../../utils/log")
-local Widgets = require("../widgets")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
+local Interact = require("@lib/main/interact")
+local Log = require("@lib/utils/log")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local ChatTabs = {}
 

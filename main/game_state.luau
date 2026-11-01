@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local GameState = {
 	STARTING = 0,

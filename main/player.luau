@@ -1,13 +1,13 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local sleep = Host.sleep
 local time = Host.time
 type Tile = Host.Tile
-local GameState = require("./game_state")
-local Log = require("../utils/log")
-local Position = require("./position")
-local Varps = require("./varps")
+local GameState = require("@lib/main/game_state")
+local Log = require("@lib/utils/log")
+local Position = require("@lib/main/position")
+local Varps = require("@lib/main/varps")
 
 local Player = {}
 

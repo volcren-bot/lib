@@ -1,6 +1,6 @@
 --!strict
 -- Turns Thick Skin and Burst of Strength on, prints what is active, then turns everything off.
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 local points, level = Prayer.points()
 print(`prayer points: {points}/{level}`)

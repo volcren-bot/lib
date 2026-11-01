@@ -1,7 +1,7 @@
 --!strict
 -- Prints the last chat messages, the displayed rows, the input line, the account type and the tabs.
-local Chat = require("../main/interfaces/chatbox/chat")
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
 local messages = assert(Chat.messages())
 print(`{#messages} messages, the last 10:`)

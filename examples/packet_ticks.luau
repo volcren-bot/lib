@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 
 -- Prints each game tick as the server's tick packet (2) arrives, with the time since the last one. Callbacks run inside Host.sleep.
 local last: number? = nil

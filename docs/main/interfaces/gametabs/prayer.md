@@ -3,7 +3,7 @@
 The prayer tab: which prayers are active, what you can activate, and switching them on and off.
 
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 ```
 
 Nothing here looks at the screen's colours. Whether a prayer is active is read from its game setting (a varbit), so it works with the tab closed. Activating and deactivating click the prayer's slot in the tab (component group 541) and wait for the setting to change.
@@ -56,7 +56,7 @@ Every prayer, in the order of the tab.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 for _, p in ipairs(Prayer.PRAYERS) do
 	print(p.level, p.name)
@@ -73,7 +73,7 @@ Looks a prayer up by name. Returns `nil` (and logs) for a name that isn't a pray
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.prayer("piety").level) -- 70
 ```
@@ -88,7 +88,7 @@ Whether the prayer tab is open.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.is_open())
 ```
@@ -103,7 +103,7 @@ Opens the prayer tab. Returns `true` if it is open in the end.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 assert(Prayer.open())
 ```
@@ -118,7 +118,7 @@ Your prayer points and your Prayer level (the points when full).
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 local points, level = Prayer.points()
 print(`{points}/{level}`)
@@ -134,7 +134,7 @@ The prayer's slot in the tab. `nil` when the interface isn't loaded.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 local slot = Prayer.widget("Smite")
 ```
@@ -149,7 +149,7 @@ Whether the prayer's slot is showing. It is hidden while the tab is closed, and 
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.is_visible("Piety"))
 ```
@@ -164,7 +164,7 @@ Whether the prayer is unlocked. Only Rigour, Augury and Preserve are checked, th
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.is_unlocked("Rigour"))
 ```
@@ -179,7 +179,7 @@ Whether the prayer is active. Eagle Eye and Mystic Might also count as active wh
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.is_on("Protect from Melee"))
 ```
@@ -194,7 +194,7 @@ Whether all the prayers are active.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 if Prayer.is_active({ "Piety", "Protect from Melee" }) then
 	print("both are on")
@@ -211,7 +211,7 @@ Whether any prayer is active.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.is_any_active())
 ```
@@ -226,7 +226,7 @@ Every active prayer.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 for _, p in ipairs(Prayer.active()) do
 	print(p.name)
@@ -243,7 +243,7 @@ Whether you have what the prayer needs: prayer points, the Prayer level, the Def
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.can_activate("Rigour"))
 ```
@@ -258,7 +258,7 @@ Opens the tab and moves the mouse over the prayer's slot. Returns `false` if the
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 Prayer.hover("Piety")
 ```
@@ -273,7 +273,7 @@ Turns one prayer on or off and waits for it to change. Does nothing if it is alr
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 Prayer.set("Protect from Melee", true)
 ```
@@ -288,7 +288,7 @@ Turns on each of the prayers that is off. Tries all of them, and returns `true` 
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 if not Prayer.activate({ "Piety", "Protect from Melee" }) then
 	print("couldn't turn the prayers on")
@@ -305,7 +305,7 @@ Turns off each of the prayers that is on. Returns `true` if all are off in the e
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 Prayer.deactivate("Piety")
 ```
@@ -320,7 +320,7 @@ Turns off every active prayer.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 Prayer.deactivate_all()
 ```
@@ -335,7 +335,7 @@ The keys of the prayers in the order of the quick prayer setup's slots. The sele
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.QUICK_ORDER[1]) -- thick_skin
 ```
@@ -350,7 +350,7 @@ Whether the prayer is one of your quick prayers. Reads a game setting, so no pan
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.is_quick_selected("Piety"))
 ```
@@ -365,7 +365,7 @@ Your quick prayers.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 for _, p in ipairs(Prayer.quick_prayers()) do
 	print(p.name)
@@ -382,7 +382,7 @@ Whether the quick prayers are on.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.is_quick_active())
 ```
@@ -397,7 +397,7 @@ Turns the quick prayers on or off from the minimap orb and waits for it to chang
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 Prayer.set_quick_active(true)
 ```
@@ -412,7 +412,7 @@ Whether the quick prayer setup panel is open.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 print(Prayer.is_quick_setup_open())
 ```
@@ -427,7 +427,7 @@ Opens the quick prayer setup from the orb's right-click menu.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 assert(Prayer.open_quick_setup())
 ```
@@ -442,7 +442,7 @@ Closes the quick prayer setup with its Done button.
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 Prayer.close_quick_setup()
 ```
@@ -457,7 +457,7 @@ Makes these your quick prayers: opens the setup, deselects the other prayers, se
 
 Example:
 ```luau
-local Prayer = require("../main/interfaces/gametabs/prayer")
+local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 if not Prayer.set_quick_prayers({ "Piety", "Protect from Melee" }) then
 	print("couldn't set the quick prayers")

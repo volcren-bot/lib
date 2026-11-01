@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Format check (StyLua) and lint (luau-analyze) for the Luau code.
-#   tools/lint.sh           check only; fails on format diffs or lint warnings
-#   tools/lint.sh --fix     format in place first
-#   tools/lint.sh --types   also report type errors (noisy: the sandbox's API is not known to luau-analyze)
+# Format check (StyLua) and lint (luau-analyze) for the Luau code; usage: tools/lint.sh [--fix | --types].
 set -euo pipefail
 
 cd "$(dirname -- "${BASH_SOURCE[0]}")/.."

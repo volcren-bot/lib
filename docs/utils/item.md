@@ -3,7 +3,7 @@
 Describing items by id or by name, including ranges like `"Potion (1..4)"`, and checking whether an item matches.
 
 ```luau
-local Item = require("../utils/item")
+local Item = require("@lib/utils/item")
 ```
 
 An item is either its id (a number) or its name (a text).
@@ -18,7 +18,7 @@ The name of an item from its id.
 
 Example:
 ```luau
-local Item = require("../utils/item")
+local Item = require("@lib/utils/item")
 
 print(Item.name(995))
 ```
@@ -33,7 +33,7 @@ The names of many items at once.
 
 Example:
 ```luau
-local Item = require("../utils/item")
+local Item = require("@lib/utils/item")
 
 for _, name in ipairs(Item.names({ 995, 554, 555 }) or {}) do
 	print(name)
@@ -50,7 +50,7 @@ Whether an item name ends with a bracket, like `"Potion (3)"`. Items with doses 
 
 Example:
 ```luau
-local Item = require("../utils/item")
+local Item = require("@lib/utils/item")
 
 print(Item.has_amount("Potion (3)")) -- true
 print(Item.has_amount("Logs")) -- false
@@ -66,7 +66,7 @@ Expands a range such as `"Potion (1..4)"` into `"Potion (1)"`, `"Potion (2)"`, `
 
 Example:
 ```luau
-local Item = require("../utils/item")
+local Item = require("@lib/utils/item")
 
 print(table.concat(Item.spread("Potion (1..4)") :: { string }, ", "))
 ```
@@ -81,7 +81,7 @@ Builds a quick lookup out of one item or a list of items (ids, names and ranges)
 
 Example:
 ```luau
-local Item = require("../utils/item")
+local Item = require("@lib/utils/item")
 
 local wanted = Item.matcher({ 995, "Logs", "Potion (1..4)" })
 print(Item.matches(wanted, 995, nil)) -- true
@@ -97,7 +97,7 @@ Whether the matcher contains any names. If not, you can match using ids only and
 
 Example:
 ```luau
-local Item = require("../utils/item")
+local Item = require("@lib/utils/item")
 
 print(Item.needs_names(Item.matcher({ 995 }))) -- false
 print(Item.needs_names(Item.matcher({ "Logs" }))) -- true
@@ -113,7 +113,7 @@ Whether an item (given by id and, if known, name) is one of the items in the mat
 
 Example:
 ```luau
-local Item = require("../utils/item")
+local Item = require("@lib/utils/item")
 
 local wanted = Item.matcher({ "Logs" })
 print(Item.matches(wanted, 1511, "Logs")) -- true

@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local players = Host.players
 local player_model = Host.player_model
@@ -8,8 +8,8 @@ type PlayerInfo = Host.PlayerInfo
 type MenuEntry = Host.MenuEntry
 type NpcModel = Host.NpcModel
 type Tile = Host.Tile
-local Clickbox = require("../clickbox")
-local Mouse = require("../../utils/input/mouse")
+local Clickbox = require("@lib/main/clickbox")
+local Mouse = require("@lib/utils/input/mouse")
 type Clickbox = Clickbox.Clickbox
 local Players = {}
 

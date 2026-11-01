@@ -1,7 +1,7 @@
 --!strict
 -- Switches chat tabs, changes the trade filter and back, and hides and shows the chatbox.
-local Chat = require("../main/interfaces/chatbox/chat")
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
 local start = assert(ChatTabs.active())
 print("active:", start)

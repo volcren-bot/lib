@@ -3,7 +3,7 @@
 Doing something to a thing on screen: move the mouse there, choose an option such as "Talk-to" or "Take", and wait until you've arrived.
 
 ```luau
-local Interact = require("../main/interact")
+local Interact = require("@lib/main/interact")
 ```
 
 ## Constants
@@ -25,8 +25,8 @@ Waits for the menu to offer an option (for example `"Talk-to"`) and returns its 
 
 Example:
 ```luau
-local Interact = require("../main/interact")
-local Mouse = require("../utils/input/mouse")
+local Interact = require("@lib/main/interact")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move({ x = 300, y = 200 })
 print(Interact.wait_option("Walk here"))
@@ -42,7 +42,7 @@ Moves to a spot, picks the option and checks that the game really did what you a
 
 Example:
 ```luau
-local Interact = require("../main/interact")
+local Interact = require("@lib/main/interact")
 
 local ok = Interact.with({ x1 = 300, y1 = 200, x2 = 340, y2 = 240 }, "Walk here")
 print(ok)
@@ -58,7 +58,7 @@ Deals with a minimenu left open (after a misclick, say) before an interaction. I
 
 Example:
 ```luau
-local Interact = require("../main/interact")
+local Interact = require("@lib/main/interact")
 
 local handled, ok = Interact.open_menu({ "Talk-to" }, "Captain")
 print(handled, ok)

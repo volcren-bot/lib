@@ -3,7 +3,7 @@
 The "what do you want to make?" menu that appears in the chat area when you can craft several things at once (for example choosing between several items to cook or fletch).
 
 ```luau
-local Skillmulti = require("../main/interfaces/chatbox/skillmulti")
+local Skillmulti = require("@lib/main/interfaces/chatbox/skillmulti")
 ```
 
 ## Constants
@@ -24,7 +24,7 @@ Whether the menu is open.
 
 Example:
 ```luau
-local Skillmulti = require("../main/interfaces/chatbox/skillmulti")
+local Skillmulti = require("@lib/main/interfaces/chatbox/skillmulti")
 
 print("menu open:", Skillmulti.is_open())
 ```

@@ -2,10 +2,10 @@
 -- Prints each spot animation once as it appears and marks its tile on screen, for 30 seconds.
 local SECONDS = 30
 
-local Draw = require("../utils/draw")
-local Host = require("../host")
-local Projection = require("../main/projection/projection")
-local SpotAnims = require("../main/entities/spot_anims")
+local Draw = require("@lib/utils/draw")
+local Host = require("@lib/host")
+local Projection = require("@lib/main/projection/projection")
+local SpotAnims = require("@lib/main/entities/spot_anims")
 
 local seen: { [string]: boolean } = {}
 local start = Host.time()

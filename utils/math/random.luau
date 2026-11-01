@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local sleep = Host.sleep
 local sleep_async = Host.sleep_async
 

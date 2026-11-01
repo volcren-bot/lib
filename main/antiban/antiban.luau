@@ -1,14 +1,14 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local sleep = Host.sleep
-local Biometrics = require("./biometrics")
-local Camera = require("../camera")
-local GameState = require("../game_state")
-local Log = require("../../utils/log")
-local Login = require("../interfaces/login/login")
-local Logout = require("../interfaces/gametabs/logout")
-local Mouse = require("../../utils/input/mouse")
-local Random = require("../../utils/math/random")
+local Biometrics = require("@lib/main/antiban/biometrics")
+local Camera = require("@lib/main/camera")
+local GameState = require("@lib/main/game_state")
+local Log = require("@lib/utils/log")
+local Login = require("@lib/main/interfaces/login/login")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
+local Mouse = require("@lib/utils/input/mouse")
+local Random = require("@lib/utils/math/random")
 
 local Antiban = {}
 
@@ -266,9 +266,7 @@ local function sleep_key(cfg: Host.SleepConfig): string
 	return `{cfg.time}|{cfg.length}|{cfg.randomness}|{cfg.logout_chance}`
 end
 
--- Skips the next occurrence of the breaks and sleeps the user pressed "Skip next" on in the Breaks tab. The break or
--- sleep that comes after keeps its planned cadence: it is due one interval (or one day) after the skipped one was.
--- Returns true if anything was skipped.
+-- Skips the next occurrence of the breaks and sleeps the user pressed "Skip next" on, and returns true if anything was skipped.
 function Antiban.apply_skips(): boolean
 	local skipped = false
 	for _, skip in Host.antiban_skips() do
@@ -296,9 +294,7 @@ end
 
 local config_version = -1
 
--- Plans the breaks and sleeps from the loader's config, if it changed since the last call. A break or sleep that
--- stays the same keeps its due time, and one whose interval or time of day stays the same keeps it too, so editing
--- the config never loses the time already waited. Returns true if anything changed.
+-- Plans the breaks and sleeps from the loader's config if it changed, keeping due times of unchanged ones; returns true if anything changed.
 function Antiban.sync_config(): boolean
 	local skipped = Antiban.apply_skips()
 	local config = Host.antiban_config()

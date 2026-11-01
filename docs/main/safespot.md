@@ -3,7 +3,7 @@
 Safe spotting: standing where an NPC that wants to hit you can't get to you. It works out how an NPC walks at you over the scene's collision, finds the tiles where it gets stuck, and walks you there.
 
 ```luau
-local SafeSpot = require("../main/safespot")
+local SafeSpot = require("@lib/main/safespot")
 ```
 
 ## How NPCs chase you
@@ -57,7 +57,7 @@ The live collision of your plane in an area of the loaded scene (all of it witho
 
 Example:
 ```luau
-local SafeSpot = require("../main/safespot")
+local SafeSpot = require("@lib/main/safespot")
 
 local grid = assert(SafeSpot.grid())
 print(`{grid.width}x{grid.height} tiles from {grid.x},{grid.y}`)
@@ -73,8 +73,8 @@ The grid `radius` tiles around a tile, with room around it for NPCs walking in f
 
 Example:
 ```luau
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local grid = assert(SafeSpot.grid_around(assert(Walker.position()), 10))
 print(grid.x, grid.y)
@@ -90,8 +90,8 @@ A tile's collision flags (`SafeSpot.FLAG`); a tile outside the grid has them all
 
 Example:
 ```luau
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local grid = assert(SafeSpot.grid_around(me, 1))
@@ -109,9 +109,9 @@ An NPC's size in tiles as the game has it (`Host.npc_sizes`), or guessed with `g
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local demon = assert(Npcs.nearest("Greater demon", assert(Walker.position())))
 local c = SafeSpot.chaser(demon, SafeSpot.size(demon))
@@ -128,8 +128,8 @@ An NPC's size when you don't know it: 2 when it stands drawn on a tile corner (a
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
 
 for _, npc in ipairs(Npcs.find("Cow") or {}) do
 	print(npc.index, SafeSpot.guess_size(npc))
@@ -146,9 +146,9 @@ Marks the tiles the NPCs around stand on in `grid.occupied`, leaving out the NPC
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local guard = assert(Npcs.nearest("Guard", me))
@@ -167,8 +167,8 @@ Whether something of `size` (1 by default) with its south-west tile on `x, y` ca
 
 Example:
 ```luau
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local grid = assert(SafeSpot.grid_around(me, 2))
@@ -185,9 +185,9 @@ Whether the NPC can hit `target` in melee: next to it north, east, south or west
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local guard = assert(Npcs.nearest("Guard", me))
@@ -204,7 +204,7 @@ Whether `target` is one of the NPC's tiles. Standing under an NPC isn't safe: it
 
 Example:
 ```luau
-local SafeSpot = require("../main/safespot")
+local SafeSpot = require("@lib/main/safespot")
 
 print(SafeSpot.under({ x = 3200, y = 3200, size = 2 }, { x = 3201, y = 3201 })) -- true
 ```
@@ -219,7 +219,7 @@ The south-west tile the NPC heads for to hit `target` (step 2 above).
 
 Example:
 ```luau
-local SafeSpot = require("../main/safespot")
+local SafeSpot = require("@lib/main/safespot")
 
 -- diagonal to you, south-west: it goes for the tile south of you
 local to = SafeSpot.destination({ x = 99, y = 99, size = 1 }, { x = 100, y = 100 })
@@ -236,8 +236,8 @@ The NPC's south-west tile after its next step chasing `target`, or `nil` when it
 
 Example:
 ```luau
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local grid = assert(SafeSpot.grid_around(me, 10))
@@ -255,9 +255,9 @@ Plays out the NPC chasing you to the end, one step a tick. Without `route` you s
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local guard = assert(Npcs.nearest("Guard", me))
@@ -275,9 +275,9 @@ Whether the NPC, from where it is, can never reach you standing on `target`.
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local guard = assert(Npcs.nearest("Guard", me))
@@ -294,9 +294,9 @@ The NPC's south-west tile (`size` 1 by default), from where it's drawn. While it
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local cow = assert(Npcs.nearest("Cow", assert(Walker.position())))
 local c = SafeSpot.chaser(cow, 2)
@@ -313,9 +313,9 @@ The chaser of the NPC with `index`, looked at twice `SafeSpot.LOCATE_MS` apart t
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local guard = assert(Npcs.nearest("Guard", assert(Walker.position())))
 local c = SafeSpot.locate(guard.index)
@@ -341,9 +341,9 @@ The tiles around you where none of `chasers` can reach you, nearest walk first. 
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local guards = {}
@@ -369,9 +369,9 @@ Waits until the NPC has stood on one tile out of your reach for `SafeSpot.SETTLE
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local guard = assert(Npcs.nearest("Guard", assert(Walker.position())))
 local at, why = SafeSpot.wait_trapped(guard.index)
@@ -388,9 +388,9 @@ Gets the NPC with `index` stuck where it can't hit you: walks to the best tile `
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local frog = assert(Npcs.nearest("Giant frog", assert(Walker.position())))
 -- a giant frog is 2x2; attack it first, so it chases you

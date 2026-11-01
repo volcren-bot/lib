@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local spot_anims = Host.spot_anims
 type SpotAnim = Host.SpotAnim
 type Tile = Host.Tile

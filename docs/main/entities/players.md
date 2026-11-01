@@ -3,7 +3,7 @@
 Finding and interacting with other players: follow them, trade with them or just look at who is around.
 
 ```luau
-local Players = require("../main/entities/players")
+local Players = require("@lib/main/entities/players")
 ```
 
 A player is a table with `index`, `name`, `x`, `y` (world tile) and `local_x`, `local_y`. Names are matched ignoring upper/lower case.
@@ -18,7 +18,7 @@ How many tiles apart two tiles are (diagonal steps count as one).
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
+local Players = require("@lib/main/entities/players")
 
 print(Players.distance({ x = 10, y = 10 }, { x = 14, y = 12 })) -- 4
 ```
@@ -33,7 +33,7 @@ Lists the players around you, or only those with the given name.
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
+local Players = require("@lib/main/entities/players")
 
 for _, p in ipairs(Players.find() or {}) do
 	print(p.name, p.x, p.y)
@@ -50,7 +50,7 @@ Your own character in the list of players.
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
+local Players = require("@lib/main/entities/players")
 
 local me = Players.me()
 print(me and me.name)
@@ -66,8 +66,8 @@ The closest other player to a tile (never yourself).
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
-local Walker = require("../main/walker")
+local Players = require("@lib/main/entities/players")
+local Walker = require("@lib/main/walker")
 
 local other = Players.nearest(assert(Walker.position()))
 print(if other then other.name else "nobody else around")
@@ -83,8 +83,8 @@ Gets the up-to-date version of a player you found earlier. Returns `nil` if they
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
-local Walker = require("../main/walker")
+local Players = require("@lib/main/entities/players")
+local Walker = require("@lib/main/walker")
 
 local other = Players.nearest(assert(Walker.position()))
 if other then
@@ -102,8 +102,8 @@ The shape of the player as drawn on screen right now.
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
-local Walker = require("../main/walker")
+local Players = require("@lib/main/entities/players")
+local Walker = require("@lib/main/walker")
 
 local other = Players.nearest(assert(Walker.position()))
 local model = other and Players.model(other)
@@ -120,9 +120,9 @@ The area on screen where a click lands on the player. See [Clickbox](../clickbox
 
 Example:
 ```luau
-local Clickbox = require("../main/clickbox")
-local Players = require("../main/entities/players")
-local Walker = require("../main/walker")
+local Clickbox = require("@lib/main/clickbox")
+local Players = require("@lib/main/entities/players")
+local Walker = require("@lib/main/walker")
 
 local other = Players.nearest(assert(Walker.position()))
 local box = other and Players.clickbox(other)
@@ -141,9 +141,9 @@ Whether a right-click menu line belongs to this player (its text starts with the
 
 Example:
 ```luau
-local Host = require("../host")
-local Players = require("../main/entities/players")
-local Walker = require("../main/walker")
+local Host = require("@lib/host")
+local Players = require("@lib/main/entities/players")
+local Walker = require("@lib/main/walker")
 
 local other = Players.nearest(assert(Walker.position()))
 if other then
@@ -163,8 +163,8 @@ Whether the game currently has the mouse on this player.
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
-local Walker = require("../main/walker")
+local Players = require("@lib/main/entities/players")
+local Walker = require("@lib/main/walker")
 
 local other = Players.nearest(assert(Walker.position()))
 if other then
@@ -182,8 +182,8 @@ Moves the mouse onto the player, aiming again if they move, until the game confi
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
-local Walker = require("../main/walker")
+local Players = require("@lib/main/entities/players")
+local Walker = require("@lib/main/walker")
 
 local other = Players.nearest(assert(Walker.position()))
 if other then
@@ -201,7 +201,7 @@ Like `Players.hover`, but queues the move as async input and returns at once, wi
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
+local Players = require("@lib/main/entities/players")
 
 local found = Players.find()
 if found and #found > 0 then
@@ -219,8 +219,8 @@ Hovers the player and clicks them (left button by default).
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
-local Walker = require("../main/walker")
+local Players = require("@lib/main/entities/players")
+local Walker = require("@lib/main/walker")
 
 local other = Players.nearest(assert(Walker.position()))
 if other then
@@ -238,8 +238,8 @@ Picks an option (such as `"Trade with"` or `"Follow"`) on the player. Retries if
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
-local Walker = require("../main/walker")
+local Players = require("@lib/main/entities/players")
+local Walker = require("@lib/main/walker")
 
 local other = Players.nearest(assert(Walker.position()))
 if other then

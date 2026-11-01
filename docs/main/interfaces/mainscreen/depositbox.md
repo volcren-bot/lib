@@ -3,7 +3,7 @@
 The bank's item deposit box (interface group 192). Its 28 slots show your inventory, which is what the deposits come from, and its 11 equipment slots show your worn items. The buttons under them deposit the inventory, the worn items or the looting bag, and the quantity buttons on the right set how many one click deposits.
 
 ```luau
-local DepositBox = require("../main/interfaces/mainscreen/depositbox")
+local DepositBox = require("@lib/main/interfaces/mainscreen/depositbox")
 ```
 
 ## Constants
@@ -128,7 +128,7 @@ Like `DepositBox.select_quantity`, but queues the click as async input and retur
 
 Example:
 ```luau
-local DepositBox = require("../main/interfaces/mainscreen/depositbox")
+local DepositBox = require("@lib/main/interfaces/mainscreen/depositbox")
 
 print(DepositBox.select_quantity_async("ALL"))
 ```

@@ -3,7 +3,7 @@
 A tool for looking inside any item container: your inventory, worn items, the bank and so on. You create one for the container you care about and then ask it questions: what's in it, how many of something, whether something is there.
 
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 ```
 
 Items can be given by id (`995`), by name (`"Logs"`, not case sensitive) or as a range of doses (`"Potion (1..4)"`). Wherever a function takes `items`, you can give one of them or a list.
@@ -30,7 +30,7 @@ export type View = {
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 local backpack = Inv.new(93, 28)
 for _, item in ipairs(backpack.items() or {}) do
@@ -48,7 +48,7 @@ Every slot of the container. Empty slots have an `id` of `-1` (only listed when 
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 local backpack = Inv.new(93, 28)
 print("slots:", #(backpack.slots() or {}))
@@ -64,7 +64,7 @@ Only the slots that hold something, each with `slot`, `id`, `quantity` and `name
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 for _, item in ipairs(Inv.new(93, 28).items() or {}) do
 	print(item.name, item.quantity)
@@ -81,7 +81,7 @@ The slot numbers (starting at 0) of every matching item.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 local slots = Inv.new(93, 28).indices_of("Logs")
 print(slots and #slots, "stacks of logs")
@@ -97,7 +97,7 @@ The slot number of the first matching item, or `nil` if there is none. `inv.find
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).index_of("Logs"))
 ```
@@ -112,7 +112,7 @@ Same as `index_of`.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).find({ "Logs", "Oak logs" }))
 ```
@@ -127,7 +127,7 @@ Whether the container holds that item.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print("has logs:", Inv.new(93, 28).contains("Logs"))
 ```
@@ -142,7 +142,7 @@ Whether the container holds at least one of the items.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).contains_any({ "Logs", "Oak logs" }))
 ```
@@ -157,7 +157,7 @@ Whether the container holds every one of the items.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).contains_all({ "Logs", "Tinderbox" }))
 ```
@@ -172,7 +172,7 @@ How many slots hold a matching item. A stack of 100 coins counts as one.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).count("Logs"), "slots with logs")
 ```
@@ -187,7 +187,7 @@ The total quantity of matching items: a stack of 100 coins counts as 100.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).count_ex("Coins"), "coins")
 ```
@@ -202,7 +202,7 @@ Waits until exactly `count` slots hold a matching item. Returns `false` if that 
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 local backpack = Inv.new(93, 28)
 print(backpack.wait_count("Logs", 28, 5000))
@@ -218,7 +218,7 @@ The item in `slot` with its `id`, `quantity` and `name`, or `nil` (and no error)
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 local first = Inv.new(93, 28).item(0)
 print(first and first.name)
@@ -234,7 +234,7 @@ The slots that hold something other than `items`.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print("slots to bank:", #(Inv.new(93, 28).find_different({ "Knife", "Logs" }) or {}))
 ```
@@ -249,7 +249,7 @@ Whether any slot holds something other than `items`.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).contains_different("Logs"))
 ```
@@ -264,7 +264,7 @@ The quantity in the first slot holding a matching item, `0` when there's none. A
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print("coins:", Inv.new(93, 28).quantity("Coins"))
 ```
@@ -279,7 +279,7 @@ The quantity in `slot`, `0` when it's empty.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).slot_quantity(0))
 ```
@@ -294,7 +294,7 @@ The slots that hold something.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(#(Inv.new(93, 28).used() or {}), "slots used")
 ```
@@ -309,7 +309,7 @@ The empty slots. It needs the container's `size`.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 local free = Inv.new(93, 28).empty()
 print("first free slot:", free and free[1])
@@ -325,7 +325,7 @@ Whether `slot` holds something.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).is_used(27))
 ```
@@ -340,7 +340,7 @@ Whether `slot` is empty.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).is_empty(27))
 ```
@@ -355,7 +355,7 @@ How many slots hold something.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).count_used())
 ```
@@ -370,7 +370,7 @@ How many slots are empty. It needs the container's `size`.
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).count_empty())
 ```
@@ -385,7 +385,7 @@ Waits until exactly `count` slots hold something, like `wait_count` does for ite
 
 Example:
 ```luau
-local Inv = require("../main/interfaces/inv")
+local Inv = require("@lib/main/interfaces/inv")
 
 print(Inv.new(93, 28).wait_used(0, 3000))
 ```
@@ -400,7 +400,7 @@ Brings up the interface that shows the container (the view's `open`).
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.open())
 ```
@@ -415,7 +415,7 @@ The slot components keyed by slot number (from 0), only those of `slots` when gi
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 for slot, box in pairs(Inventory.boxes(Inventory.used() or {}) or {}) do
 	print(slot, box.x, box.y)
@@ -432,7 +432,7 @@ The component of one slot.
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 local box = Inventory.box(0)
 print(box and box.width, box and box.height)
@@ -448,7 +448,7 @@ The slot under `at` (the mouse by default), `nil` when it's over none.
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print("mouse over slot", Inventory.slot_at())
 ```
@@ -463,7 +463,7 @@ Those of `slots` within `max_dist` (60 by default) of `slot`, nearest first. Dis
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(table.concat(Inventory.near(13, Inventory.used() or {}) or {}, ", "))
 ```
@@ -484,7 +484,7 @@ A random one of `slots` near `slot` (within `max_dist`, 800 by default). With `"
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.random_near(13, Inventory.used() or {}))
 ```
@@ -499,7 +499,7 @@ Opens the interface and moves the mouse onto `slot`.
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 Inventory.hover_slot(0)
 ```
@@ -514,7 +514,7 @@ Opens the interface and clicks `slot`, empty or not.
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 Inventory.click_slot(0, "right")
 ```
@@ -529,7 +529,7 @@ Picks `option` on the item in `slot` (its left-click option when not given): a l
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.interact_slot(0, "Drink"))
 ```
@@ -544,7 +544,7 @@ Drags the item in `slot` onto `destination` and waits for the container to show 
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.move_slot(0, 27))
 ```
@@ -559,7 +559,7 @@ Moves the mouse onto the first matching item. `false` when there's none.
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 Inventory.hover("Knife")
 ```
@@ -574,7 +574,7 @@ Clicks the first matching item.
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 Inventory.click("Knife")
 ```
@@ -589,7 +589,7 @@ interact: (items: Item | { Item }, option: string?) -> boolean
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.interact("Prayer potion(1..4)", "Drink"))
 ```
@@ -604,7 +604,7 @@ Drags the matching item nearest to `destination` there. Returns `true` right awa
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.move("Knife", 0))
 ```

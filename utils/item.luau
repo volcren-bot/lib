@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local item_name = Host.item_name
 local item_names = Host.item_names
 

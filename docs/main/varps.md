@@ -3,7 +3,7 @@
 Named access to the game's saved settings ("varps"): run toggle, special attack, poison and so on.
 
 ```luau
-local Varps = require("../main/varps")
+local Varps = require("@lib/main/varps")
 ```
 
 ## Constants
@@ -34,7 +34,7 @@ Reads one setting.
 
 Example:
 ```luau
-local Varps = require("../main/varps")
+local Varps = require("@lib/main/varps")
 
 print("run toggle:", Varps.get(Varps.RUN))
 ```
@@ -49,7 +49,7 @@ Reads every setting at once, as a table keyed by id.
 
 Example:
 ```luau
-local Varps = require("../main/varps")
+local Varps = require("@lib/main/varps")
 
 local all = Varps.all()
 if all then
@@ -70,8 +70,8 @@ Compares two snapshots from `Varps.all` and returns only the settings that chang
 
 Example:
 ```luau
-local Host = require("../host")
-local Varps = require("../main/varps")
+local Host = require("@lib/host")
+local Varps = require("@lib/main/varps")
 
 local before = assert(Varps.all())
 print("change something in the game, you have 5 seconds")
@@ -92,7 +92,7 @@ Turns the poison setting's value into `"healthy"`, `"poisoned"` or `"envenomed"`
 
 Example:
 ```luau
-local Varps = require("../main/varps")
+local Varps = require("@lib/main/varps")
 
 print(Varps.poison_state(Varps.get(Varps.POISON) or 0))
 ```

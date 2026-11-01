@@ -1,9 +1,9 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local widget = Host.widget
 type Widget = Host.Widget
 type Area = Host.Area
-local Mouse = require("../../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 type Button = Mouse.Button
 local Widgets = {}
 

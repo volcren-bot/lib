@@ -1,6 +1,6 @@
 --!strict
-local Chatbox = require("../main/interfaces/chatbox/chatbox")
-local GameVal = require("../utils/game_val")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
+local GameVal = require("@lib/utils/game_val")
 
 local groups = Chatbox.interfaces()
 if groups == nil or #groups == 0 then

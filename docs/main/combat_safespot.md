@@ -3,7 +3,7 @@
 Safe spots to fight from: tiles where a melee monster chases you, gets stuck where it can't hit you, and stays where you can still hit it with a bow, a crossbow or a spell. It's built on [SafeSpot](safespot.md), which works out how NPCs chase you; read its "How NPCs chase you" first.
 
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
 ```
 
 What makes a good spot:
@@ -30,9 +30,9 @@ Whether a projectile flies from one tile to another, as the game checks it: a li
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local grid = assert(SafeSpot.grid_around(me, 10))
@@ -49,7 +49,7 @@ The tile of the NPC nearest to you, the one ranges and lines of sight are measur
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
 
 local t = CombatSafeSpot.nearest_tile({ x = 100, y = 100, size = 3 }, { x = 105, y = 101 })
 print(t.x, t.y) -- 102 101
@@ -65,7 +65,7 @@ How far you are from the NPC's nearest tile, diagonal steps counting as one: wha
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
 
 print(CombatSafeSpot.distance({ x = 100, y = 100, size = 3 }, { x = 105, y = 101 })) -- 3
 ```
@@ -80,10 +80,10 @@ Whether you can hit the NPC from `me` with an attack range of `range`: within ra
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
-local Npcs = require("../main/entities/npcs")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local demon = assert(Npcs.nearest("Greater demon", me))
@@ -101,7 +101,7 @@ Your attack range: the range of the weapon you wear (its param 13; 7 for a cross
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
 
 print("range:", CombatSafeSpot.weapon_range())
 ```
@@ -123,9 +123,9 @@ Tiles to fight `target` from. It chases you there (played out while you walk, as
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local demon = assert(CombatSafeSpot.free_target("Black demon"))
 local target = SafeSpot.chaser(demon, SafeSpot.size(demon))
@@ -145,8 +145,8 @@ The NPCs called one of `names` (any case) within `AVOID_RADIUS` of `center`, as 
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
-local Walker = require("../main/walker")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
+local Walker = require("@lib/main/walker")
 
 local around = CombatSafeSpot.chasers({ "Lesser demon", "Black demon" }, assert(Walker.position()))
 print(#around, "demons around")
@@ -162,9 +162,9 @@ The name of another player fighting the NPC with `index` (it's their target), or
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local demon = assert(Npcs.nearest("Greater demon", assert(Walker.position())))
 print(CombatSafeSpot.fought_by(demon.index) or "free")
@@ -180,7 +180,7 @@ The nearest NPC called `name` (any case) to `from` (default you) that no other p
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
 
 local demon = CombatSafeSpot.free_target("Lesser demon")
 print(demon and demon.index)
@@ -201,9 +201,9 @@ Fights the NPC with `index` from a safe spot until it's gone (killed) or `on_tic
 
 Example:
 ```luau
-local CombatSafeSpot = require("../main/combat_safespot")
-local Inventory = require("../main/interfaces/gametabs/inventory")
-local Player = require("../main/player")
+local CombatSafeSpot = require("@lib/main/combat_safespot")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
+local Player = require("@lib/main/player")
 
 local demon = assert(CombatSafeSpot.free_target("Lesser demon"))
 local killed, why = CombatSafeSpot.fight(demon.index, {

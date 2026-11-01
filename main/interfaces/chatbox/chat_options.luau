@@ -1,18 +1,18 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local widget = Host.widget
 local widget_children = Host.widget_children
 local sleep = Host.sleep
 local time = Host.time
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
-local Biometrics = require("../../antiban/biometrics")
-local Chat = require("./chat")
-local Chatbox = require("./chatbox")
-local Interact = require("../../interact")
-local Keyboard = require("../../../utils/input/keyboard")
-local Log = require("../../../utils/log")
-local Random = require("../../../utils/math/random")
+local Biometrics = require("@lib/main/antiban/biometrics")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
+local Interact = require("@lib/main/interact")
+local Keyboard = require("@lib/utils/input/keyboard")
+local Log = require("@lib/utils/log")
+local Random = require("@lib/utils/math/random")
 
 local ChatOptions = {}
 

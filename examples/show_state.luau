@@ -1,11 +1,11 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local players = Host.players
-local Inventory = require("../main/interfaces/gametabs/inventory")
-local Npcs = require("../main/entities/npcs")
-local SidePanels = require("../main/interfaces/gametabs/side_panels")
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
+local Npcs = require("@lib/main/entities/npcs")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 local state = game_state()
 local run_energy, weight = state.run_energy, state.weight

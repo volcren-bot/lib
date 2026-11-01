@@ -10,7 +10,7 @@ Moves the mouse a short way (50 to 350 px) in a random direction. It starts the 
 
 Example:
 ```luau
-local Tasks = require("../main/antiban/antiban_tasks")
+local Tasks = require("@lib/main/antiban/antiban_tasks")
 
 Tasks.small_random_mouse()
 ```
@@ -241,7 +241,7 @@ Opens a random side tab, sometimes two with a pause between. With `async` it que
 
 Example:
 ```luau
-local Tasks = require("../main/antiban/antiban_tasks")
+local Tasks = require("@lib/main/antiban/antiban_tasks")
 
 Tasks.random_tab()
 ```

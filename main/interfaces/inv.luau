@@ -1,21 +1,21 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local item_container = Host.item_container
 local game_state = Host.game_state
 local sleep = Host.sleep
 type ItemSlot = Host.ItemSlot
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
-local Item = require("../../utils/item")
+local Item = require("@lib/utils/item")
 type Item = Item.Item
-local Geometry = require("../../utils/math/geometry")
-local Random = require("../../utils/math/random")
+local Geometry = require("@lib/utils/math/geometry")
+local Random = require("@lib/utils/math/random")
 type Point = Geometry.Point
-local Mouse = require("../../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 type Button = Mouse.Button
-local Interact = require("../interact")
-local Log = require("../../utils/log")
-local Minimenu = require("./minimenu")
+local Interact = require("@lib/main/interact")
+local Log = require("@lib/utils/log")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 export type Slot = {
 	slot: number,

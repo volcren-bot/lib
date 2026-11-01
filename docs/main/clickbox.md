@@ -5,7 +5,7 @@ Aiming the mouse at characters and objects. A "clickbox" is the area on screen w
 You normally use this through [Npcs](entities/npcs.md), [Objects](entities/objects.md) and [Players](entities/players.md), which build the clickbox for you.
 
 ```luau
-local Clickbox = require("../main/clickbox")
+local Clickbox = require("@lib/main/clickbox")
 ```
 
 ## Settings
@@ -47,8 +47,8 @@ Builds a clickbox from the outline the game drew for a character or object. `wha
 
 Example:
 ```luau
-local Host = require("../host")
-local Clickbox = require("../main/clickbox")
+local Host = require("@lib/host")
+local Clickbox = require("@lib/main/clickbox")
 
 local npcs = Host.npcs() or {}
 if npcs[1] then
@@ -70,9 +70,9 @@ Picks a spot inside the clickbox that isn't covered by any interface, leaning to
 
 Example:
 ```luau
-local Clickbox = require("../main/clickbox")
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Clickbox = require("@lib/main/clickbox")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local npc = Npcs.nearest("Man", me)
@@ -92,9 +92,9 @@ Makes sure the thing is on the screen. If it isn't, it zooms out until it is, as
 
 Example:
 ```luau
-local Clickbox = require("../main/clickbox")
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Clickbox = require("@lib/main/clickbox")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local npc = Npcs.nearest("Man", me)
@@ -122,8 +122,8 @@ Moves the mouse onto the thing and waits until the game confirms (through `hover
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local npc = Npcs.nearest("Man", me)
@@ -161,8 +161,8 @@ Hovers the thing (see `hover`) and clicks it with the given mouse button (left b
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local npc = Npcs.nearest("Man", me)
@@ -189,8 +189,8 @@ Hovers the thing and picks an option on it (like "Talk-to"), then waits until yo
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local npc = Npcs.nearest("Man", me)
@@ -209,9 +209,9 @@ Draws the clickbox on top of the game, which is useful to see what a script is a
 
 Example:
 ```luau
-local Clickbox = require("../main/clickbox")
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Clickbox = require("@lib/main/clickbox")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local npc = Npcs.nearest("Man", me)
@@ -231,8 +231,8 @@ A clickbox from a projected cuboid (see `Projection.cuboid`): its outline is the
 
 Example:
 ```luau
-local Projection = require("../main/projection/projection")
-local Clickbox = require("../main/clickbox")
+local Projection = require("@lib/main/projection/projection")
+local Clickbox = require("@lib/main/clickbox")
 
 local cuboid = assert(Projection.cuboid(5824, 7104))
 local box = Clickbox.from_cuboid(cuboid)
@@ -253,8 +253,8 @@ The aim for a thing (see `Clickbox.hover`). Called without `lead_ms` it's the cl
 
 Example:
 ```luau
-local Clickbox = require("../main/clickbox")
-local Npcs = require("../main/entities/npcs")
+local Clickbox = require("@lib/main/clickbox")
+local Npcs = require("@lib/main/entities/npcs")
 
 local aim = Clickbox.walking(function()
 	return Npcs.clickbox(npc)
@@ -283,8 +283,8 @@ Walks to the thing and picks `options` on it (see `Clickbox.interact`), so the p
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = assert(Npcs.nearest("Ferryman Nathwood", assert(Walker.position())))
 -- picks Examine as soon as it can, or walks next to the ferryman and picks it there

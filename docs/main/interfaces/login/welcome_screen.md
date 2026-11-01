@@ -10,7 +10,7 @@ The lobby itself. The constants are the interface ids of the screen and its play
 
 Example:
 ```luau
-local WelcomeScreen = require("../main/interfaces/login/welcome_screen")
+local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
 
 print(WelcomeScreen.GROUP, WelcomeScreen.PLAY_BUTTON)
 ```
@@ -24,8 +24,8 @@ Checks if the lobby is showing, given the client state.
 
 Example:
 ```luau
-local Host = require("../host")
-local WelcomeScreen = require("../main/interfaces/login/welcome_screen")
+local Host = require("@lib/host")
+local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
 
 local state = Host.game_state()
 if state then
@@ -42,7 +42,7 @@ Gets the lobby's play button.
 
 Example:
 ```luau
-local WelcomeScreen = require("../main/interfaces/login/welcome_screen")
+local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
 
 local button = WelcomeScreen.play_button()
 print(if button then "found the play button" else `not found`)
@@ -57,7 +57,7 @@ Clicks the lobby's play button. Returns `false` if the lobby isn't open.
 
 Example:
 ```luau
-local WelcomeScreen = require("../main/interfaces/login/welcome_screen")
+local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
 
 print("clicked play:", WelcomeScreen.play())
 ```

@@ -1,6 +1,6 @@
 --!strict
 -- Read only: dumps every open interface's text while a level up shows.
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local function scan(tag: string)
 	local open = Host.sub_interfaces() or {}

@@ -3,7 +3,7 @@
 The equipment you are wearing. It has every function of [Inv](../inv.md) already set up for worn items (the slots on screen are components `387:15` to `387:25`), plus named slots and the tab's buttons.
 
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 ```
 
 ## Constants
@@ -38,7 +38,7 @@ The buttons under the slots: `stats` ("View equipment stats"), `prices` ("View g
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 print(Wornitems.BUTTONS.stats.option)
 ```
@@ -49,7 +49,7 @@ print(Wornitems.BUTTONS.stats.option)
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 print("arrows:", Wornitems.slot_quantity(Wornitems.AMMO))
 Wornitems.interact("Amulet of glory(1..6)", "Edgeville")
@@ -65,7 +65,7 @@ The name of a slot (`"head"`, `"weapon"`, `"ring"`...). Returns `nil` for slot n
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 print(Wornitems.slot_name(Wornitems.WEAPON)) -- weapon
 ```
@@ -80,7 +80,7 @@ The slot number of a slot name (`"head"`, `"Legs"`...; case doesn't matter). A s
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 print(Wornitems.slot("ring")) -- 12
 ```
@@ -95,7 +95,7 @@ What you wear, as a table keyed by slot name. Empty slots are left out.
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 local worn = Wornitems.worn()
 if worn and worn.weapon then
@@ -113,7 +113,7 @@ Whether you are wearing the item (given by id or name).
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 print("wearing a cape:", Wornitems.is_wearing("Cape of Legends"))
 ```
@@ -128,7 +128,7 @@ Whether the worn items tab is the open side panel.
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 print(Wornitems.is_open())
 ```
@@ -143,7 +143,7 @@ Takes off what's worn in `slot` (a number or a name) with its "Remove" option. `
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 print(Wornitems.remove("head"))
 print(Wornitems.wait_used(0, 2000))
@@ -159,7 +159,7 @@ The component of one of `BUTTONS`. Its position is known with the tab closed too
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 local stats = Wornitems.button("stats")
 print(stats and stats.x, stats and stats.y)
@@ -175,7 +175,7 @@ Opens the tab and presses one of `BUTTONS`, checking the client acted on it.
 
 Example:
 ```luau
-local Wornitems = require("../main/interfaces/gametabs/wornitems")
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 print(Wornitems.press("follower"))
 ```

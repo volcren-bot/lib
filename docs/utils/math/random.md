@@ -3,7 +3,7 @@
 Random numbers and waits that feel human. Unlike plain `math.random`, many of these favor one end of a range or the middle, the way people's timings naturally cluster.
 
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 ```
 
 ## Constants
@@ -24,7 +24,7 @@ Cuts off the decimals of a number, moving towards zero (`2.7` becomes `2`, `-2.7
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.trunc(2.7), Random.trunc(-2.7)) -- 2 -2
 ```
@@ -39,7 +39,7 @@ A random decimal number between `lo` and `hi`, all values equally likely.
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.float(1, 2))
 ```
@@ -54,7 +54,7 @@ A random whole number from `lo` up to just under `hi`, all values equally likely
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.int(10, 20))
 ```
@@ -69,7 +69,7 @@ Like `int`, but it doesn't matter which of the two numbers is bigger.
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.range(20, 10))
 ```
@@ -84,7 +84,7 @@ A random number between `lo` and `hi` that is most often close to `lo`. Good for
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.left(100, 500))
 ```
@@ -99,7 +99,7 @@ The opposite of `left`: most often close to `hi`.
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.right(100, 500))
 ```
@@ -114,7 +114,7 @@ A random number between `lo` and `hi` that is most often close to `mode`.
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.mode(300, 100, 500))
 ```
@@ -129,7 +129,7 @@ A random number between `lo` and `hi` that is most often close to the middle.
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.mean(0, 100))
 ```
@@ -144,7 +144,7 @@ A random number around `mean`. About two thirds of results land within `dev` of 
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.gauss(100, 10))
 ```
@@ -159,7 +159,7 @@ Returns `true` with the given probability (from 0 to 1; 0.5 by default).
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 if Random.chance(0.25) then
 	print("one in four")
@@ -176,7 +176,7 @@ Picks a position in a list of weights; bigger weights are picked more often, and
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 print(Random.weighted_index({ 1, 1, 8 })) -- mostly 3
 ```
@@ -191,7 +191,7 @@ Picks one item from a list, with each item's chance given by `weight(item)`.
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 local fruit = { { name = "apple", w = 5 }, { name = "pear", w = 1 } }
 local pick = Random.weighted(fruit, function(f)
@@ -210,7 +210,7 @@ Picks one item, favoring those with a small `distance(item)`. Every extra `fallo
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 local spots = { 1, 5, 20 }
 local pick = Random.nearest_weighted(spots, function(n)
@@ -229,7 +229,7 @@ Waits a random number of milliseconds between `min` and `max`. `dir` shapes it: 
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 Random.sleep(200, 800)
 Random.sleep(200, 800, "mean")
@@ -245,7 +245,7 @@ Like `Random.sleep`, but queues the wait behind the async input instead of block
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 Mouse.click_async()
 Random.sleep_async(200, 800)
@@ -262,7 +262,7 @@ A random world tile (`{ x, y }`) in the box from `(x1, y1)` to `(x2, y2)`. Both 
 
 Example:
 ```luau
-local Random = require("../utils/math/random")
+local Random = require("@lib/utils/math/random")
 
 local spot = Random.tile_in_box(3200, 3100, 3202, 3102)
 print(spot.x, spot.y) -- one of the 9 tiles from 3200,3100 to 3202,3102

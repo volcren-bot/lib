@@ -3,7 +3,7 @@
 Finding and interacting with NPCs (the non-player characters walking around): talk to them, attack them, trade with them.
 
 ```luau
-local Npcs = require("../main/entities/npcs")
+local Npcs = require("@lib/main/entities/npcs")
 ```
 
 An NPC is a table with `index`, `id`, `name`, `x`, `y` (world tile) and `local_x`, `local_y`. Names are matched ignoring upper/lower case.
@@ -18,7 +18,7 @@ An NPC's name without its colour tags. Some NPCs, minigame ones especially, come
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
+local Npcs = require("@lib/main/entities/npcs")
 
 for _, npc in ipairs(Npcs.find() or {}) do
 	print(Npcs.clean_name(npc.name))
@@ -35,7 +35,7 @@ How many tiles apart two tiles are (diagonal steps count as one).
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
+local Npcs = require("@lib/main/entities/npcs")
 
 print(Npcs.distance({ x = 3200, y = 3200 }, { x = 3203, y = 3201 })) -- 3
 ```
@@ -50,7 +50,7 @@ Lists the NPCs around you. Give a name or an id to only get matching ones, or no
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
+local Npcs = require("@lib/main/entities/npcs")
 
 for _, npc in ipairs(Npcs.find("Man") or {}) do
 	print(npc.name, npc.x, npc.y)
@@ -67,8 +67,8 @@ The closest matching NPC to a tile. Returns `nil` when there is none.
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local npc = Npcs.nearest("Man", me)
@@ -85,8 +85,8 @@ Gets the up-to-date version of an NPC you found earlier (it may have walked some
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = Npcs.nearest("Man", assert(Walker.position()))
 if npc then
@@ -105,8 +105,8 @@ The shape of the NPC as drawn on screen right now.
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = Npcs.nearest("Man", assert(Walker.position()))
 local model = npc and Npcs.model(npc)
@@ -123,9 +123,9 @@ The area on screen where a click lands on the NPC. See [Clickbox](../clickbox.md
 
 Example:
 ```luau
-local Clickbox = require("../main/clickbox")
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Clickbox = require("@lib/main/clickbox")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = Npcs.nearest("Man", assert(Walker.position()))
 local box = npc and Npcs.clickbox(npc)
@@ -144,8 +144,8 @@ A good point on screen to click on the NPC.
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = Npcs.nearest("Man", assert(Walker.position()))
 local point = npc and Npcs.target(npc)
@@ -162,9 +162,9 @@ Whether a right-click menu line belongs to this exact NPC (and not another NPC w
 
 Example:
 ```luau
-local Host = require("../host")
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Host = require("@lib/host")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = Npcs.nearest("Man", assert(Walker.position()))
 if npc then
@@ -184,8 +184,8 @@ Whether the game currently has the mouse on this NPC.
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = Npcs.nearest("Man", assert(Walker.position()))
 if npc then
@@ -203,8 +203,8 @@ Moves the mouse onto the NPC, aiming again if it walks away, until the game conf
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = Npcs.nearest("Man", assert(Walker.position()))
 if npc then
@@ -222,7 +222,7 @@ Like `Npcs.hover`, but queues the move as async input and returns at once, witho
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
+local Npcs = require("@lib/main/entities/npcs")
 
 local found = Npcs.find()
 if found and #found > 0 then
@@ -240,8 +240,8 @@ Hovers the NPC and clicks it (left button by default).
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = Npcs.nearest("Man", assert(Walker.position()))
 if npc then
@@ -259,8 +259,8 @@ Picks an option (such as `"Talk-to"` or `"Attack"`) on this NPC. Retries if the 
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = Npcs.nearest("Man", assert(Walker.position()))
 if npc then
@@ -279,8 +279,8 @@ The NPC's box as the camera will show it once the player stands on `at`: the cub
 
 Example:
 ```luau
-local Walker = require("../main/walker")
-local Npcs = require("../main/entities/npcs")
+local Walker = require("@lib/main/walker")
+local Npcs = require("@lib/main/entities/npcs")
 
 local npc = assert(Npcs.nearest("Ferryman Nathwood", assert(Walker.position())))
 local box = Npcs.projected(npc, { x = npc.x, y = npc.y })
@@ -296,8 +296,8 @@ Walks to the NPC and picks the first of `options` its menu has, walking early on
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local npc = assert(Npcs.nearest("Ferryman Nathwood", assert(Walker.position())))
 local ok = Npcs.approach(npc, { "Talk-to", "Examine" })

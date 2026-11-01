@@ -3,7 +3,7 @@
 Finding the projectiles in flight: arrows, bolts, spells and the attacks monsters throw at you.
 
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 ```
 
 A projectile is a `Host.Projectile`:
@@ -35,7 +35,7 @@ Lists the projectiles in flight, or about to leave. Give a graphic id or a list 
 
 Example:
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 for _, p in ipairs(Projectiles.find() or {}) do
 	print(p.id, p.x, p.y, p.height, p.end_cycle - p.cycle)
@@ -52,9 +52,9 @@ The projectiles flying at an NPC, optionally only those with the given graphic i
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Projectiles = require("../main/entities/projectiles")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Projectiles = require("@lib/main/entities/projectiles")
+local Walker = require("@lib/main/walker")
 
 local cow = Npcs.nearest("Cow", assert(Walker.position()))
 if cow then
@@ -72,8 +72,8 @@ The projectiles flying at a player, optionally only those with the given graphic
 
 Example:
 ```luau
-local Players = require("../main/entities/players")
-local Projectiles = require("../main/entities/projectiles")
+local Players = require("@lib/main/entities/players")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 for _, player in ipairs(Players.find() or {}) do
 	print(player.name, #(Projectiles.at_player(player) or {}))
@@ -90,7 +90,7 @@ The projectiles flying at you, optionally only those with the given graphic ids.
 
 Example:
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 for _, p in ipairs(Projectiles.at_me() or {}) do
 	print(`graphic {p.id} lands in {Projectiles.remaining_ms(p)} ms`)
@@ -107,9 +107,9 @@ The projectiles an NPC launched, optionally only those with the given graphic id
 
 Example:
 ```luau
-local Npcs = require("../main/entities/npcs")
-local Projectiles = require("../main/entities/projectiles")
-local Walker = require("../main/walker")
+local Npcs = require("@lib/main/entities/npcs")
+local Projectiles = require("@lib/main/entities/projectiles")
+local Walker = require("@lib/main/walker")
 
 local xil = Npcs.nearest("Tok-Xil", assert(Walker.position()))
 if xil then
@@ -127,7 +127,7 @@ How long until it lands, in ms (0 once it has).
 
 Example:
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 local next = Projectiles.first_landing()
 print(next and Projectiles.remaining_ms(next))
@@ -143,7 +143,7 @@ How long until it leaves, in ms (0 once it is moving).
 
 Example:
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 for _, p in ipairs(Projectiles.find() or {}) do
 	if not p.moving then
@@ -162,7 +162,7 @@ How long the whole flight takes, from leaving to landing, in ms.
 
 Example:
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 for _, p in ipairs(Projectiles.find() or {}) do
 	print(p.id, Projectiles.flight_ms(p))
@@ -179,7 +179,7 @@ How far along its flight it is, from 0 (not left yet) to 1 (landed).
 
 Example:
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 for _, p in ipairs(Projectiles.find() or {}) do
 	print(p.id, string.format("%.0f%%", Projectiles.progress(p) * 100))
@@ -196,7 +196,7 @@ The world tile it is over now.
 
 Example:
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 for _, p in ipairs(Projectiles.find() or {}) do
 	local tile = Projectiles.tile(p)
@@ -214,7 +214,7 @@ The world tile it was sent at. A projectile aimed at an actor follows it, so loo
 
 Example:
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 for _, p in ipairs(Projectiles.find() or {}) do
 	local target = Projectiles.target(p)
@@ -232,8 +232,8 @@ Where it is drawn on the screen now, or `nil` when it can't be projected.
 
 Example:
 ```luau
-local Draw = require("../utils/draw")
-local Projectiles = require("../main/entities/projectiles")
+local Draw = require("@lib/utils/draw")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 for _, p in ipairs(Projectiles.find() or {}) do
 	local at = Projectiles.screen(p)
@@ -253,7 +253,7 @@ The projectile that lands first, optionally among those with the given graphic i
 
 Example:
 ```luau
-local Projectiles = require("../main/entities/projectiles")
+local Projectiles = require("@lib/main/entities/projectiles")
 
 local next = Projectiles.first_landing()
 if next then

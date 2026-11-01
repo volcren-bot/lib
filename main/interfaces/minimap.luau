@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local widget = Host.widget
 local sleep_async = Host.sleep_async
@@ -7,15 +7,15 @@ type ClientState = Host.ClientState
 type CameraState = Host.CameraState
 type MinimapState = Host.MinimapState
 type Widget = Host.Widget
-local Geometry = require("../../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 local Circle = Geometry.Circle
 type Point = Geometry.Point
-local Projection = require("../projection/projection")
+local Projection = require("@lib/main/projection/projection")
 type Tile = Projection.Tile
-local Log = require("../../utils/log")
-local Mouse = require("../../utils/input/mouse")
-local Random = require("../../utils/math/random")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local Random = require("@lib/utils/math/random")
 
 local Minimap = {}
 

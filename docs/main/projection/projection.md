@@ -3,7 +3,7 @@
 Turning places in the world into places on your screen: the outline of a tile, or a box standing on the ground.
 
 ```luau
-local Projection = require("../main/projection/projection")
+local Projection = require("@lib/main/projection/projection")
 ```
 
 ## Constants
@@ -24,7 +24,7 @@ The world tile at the corner of the area the game currently has loaded. Mostly u
 
 Example:
 ```luau
-local Projection = require("../main/projection/projection")
+local Projection = require("@lib/main/projection/projection")
 
 local base = Projection.base()
 print(if base then `{base.x}, {base.y}` else "unavailable")
@@ -40,7 +40,7 @@ Converts points in the loaded area (in fine coordinates, 128 per tile, with a ne
 
 Example:
 ```luau
-local Projection = require("../main/projection/projection")
+local Projection = require("@lib/main/projection/projection")
 
 local screen = Projection.points({ { x = 6400, y = 6400, z = 0 } })
 print(screen and screen[1].x, screen and screen[1].y)
@@ -56,8 +56,8 @@ The four corners on screen of a world tile, as a quad. `height` lifts the quad a
 
 Example:
 ```luau
-local Projection = require("../main/projection/projection")
-local Walker = require("../main/walker")
+local Projection = require("@lib/main/projection/projection")
+local Walker = require("@lib/main/walker")
 
 local quad = Projection.tile(assert(Walker.relative(1, 0)))
 print(quad and quad.top.x, quad and quad.top.y)
@@ -80,8 +80,8 @@ A box standing on the ground, centered on a point, as a bottom and a top quad on
 
 Example:
 ```luau
-local Host = require("../host")
-local Projection = require("../main/projection/projection")
+local Host = require("@lib/host")
+local Projection = require("@lib/main/projection/projection")
 
 local state = Host.game_state()
 local me = state and state.position
@@ -101,8 +101,8 @@ The smallest rectangle on screen that contains the whole box.
 
 Example:
 ```luau
-local Host = require("../host")
-local Projection = require("../main/projection/projection")
+local Host = require("@lib/host")
+local Projection = require("@lib/main/projection/projection")
 
 local me = (Host.game_state() or {}).position
 local cuboid = me and Projection.cuboid(me.local_x, me.local_y)
@@ -122,8 +122,8 @@ Whether a rectangle is fully inside the game window.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
-local Projection = require("../main/projection/projection")
+local Geometry = require("@lib/utils/math/geometry")
+local Projection = require("@lib/main/projection/projection")
 
 print(Projection.box_on_screen(Geometry.Box.new(10, 10, 100, 100)))
 ```
@@ -138,8 +138,8 @@ Whether all four corners of a quad are inside the game window.
 
 Example:
 ```luau
-local Projection = require("../main/projection/projection")
-local Walker = require("../main/walker")
+local Projection = require("@lib/main/projection/projection")
+local Walker = require("@lib/main/walker")
 
 local quad = Projection.tile(assert(Walker.position()))
 print(quad and Projection.on_screen(quad))
@@ -155,8 +155,8 @@ The fine offset the camera moves by once the player stands on `at` instead of wh
 
 Example:
 ```luau
-local Projection = require("../main/projection/projection")
-local Walker = require("../main/walker")
+local Projection = require("@lib/main/projection/projection")
+local Walker = require("@lib/main/walker")
 
 local here = assert(Walker.position())
 local shift = Projection.arrival({ x = here.x + 5, y = here.y })
@@ -172,8 +172,8 @@ Like `Projection.points`, but as the camera will show the points once it has mov
 
 Example:
 ```luau
-local Projection = require("../main/projection/projection")
-local Walker = require("../main/walker")
+local Projection = require("@lib/main/projection/projection")
+local Walker = require("@lib/main/walker")
 
 local shift = Walker.ahead(300)
 local soon = shift and Projection.shifted({ { x = 6400, y = 6400, z = 0 } }, shift)

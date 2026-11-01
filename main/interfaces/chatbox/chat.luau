@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local widget = Host.widget
 local widget_children = Host.widget_children
 local chat_messages = Host.chat_messages
@@ -8,12 +8,12 @@ local game_state = Host.game_state
 local sleep = Host.sleep
 type Widget = Host.Widget
 type ChatMessage = Host.ChatMessage
-local Keyboard = require("../../../utils/input/keyboard")
-local Log = require("../../../utils/log")
-local Player = require("../../player")
-local Random = require("../../../utils/math/random")
-local Varbits = require("../../varbits")
-local Widgets = require("../widgets")
+local Keyboard = require("@lib/utils/input/keyboard")
+local Log = require("@lib/utils/log")
+local Player = require("@lib/main/player")
+local Random = require("@lib/utils/math/random")
+local Varbits = require("@lib/main/varbits")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Chat = {}
 

@@ -1,14 +1,14 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local projectiles = Host.projectiles
 type Projectile = Host.Projectile
 type Npc = Host.Npc
 type PlayerInfo = Host.PlayerInfo
 type Tile = Host.Tile
-local Geometry = require("../../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 type Point = Geometry.Point
-local Players = require("./players")
-local Projection = require("../projection/projection")
+local Players = require("@lib/main/entities/players")
+local Projection = require("@lib/main/projection/projection")
 local Projectiles = {}
 
 -- the client cycle is 50 a second

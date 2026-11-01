@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local collision = Host.collision
 local game_state = Host.game_state
 local npcs = Host.npcs
@@ -7,10 +7,10 @@ local sleep = Host.sleep
 local time = Host.time
 type Npc = Host.Npc
 type Tile = Host.Tile
-local Log = require("../utils/log")
-local Player = require("./player")
-local Ticks = require("../utils/ticks")
-local Walker = require("./walker")
+local Log = require("@lib/utils/log")
+local Player = require("@lib/main/player")
+local Ticks = require("@lib/utils/ticks")
+local Walker = require("@lib/main/walker")
 
 local band = bit32.band
 

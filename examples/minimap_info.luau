@@ -1,8 +1,8 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local sleep = Host.sleep
-local Camera = require("../main/camera")
-local Minimap = require("../main/interfaces/minimap")
+local Camera = require("@lib/main/camera")
+local Minimap = require("@lib/main/interfaces/minimap")
 
 while true do
 	local minimap = Minimap.state()

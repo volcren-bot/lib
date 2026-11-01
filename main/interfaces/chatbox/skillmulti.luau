@@ -1,5 +1,5 @@
 --!strict
-local Chatbox = require("./chatbox")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
 
 local Skillmulti = {
 	GROUP = Chatbox.SKILLMULTI,

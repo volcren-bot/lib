@@ -1,11 +1,11 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local draw_rect = Host.draw_rect
 local clear_overlay = Host.clear_overlay
 local draw_line = Host.draw_line
 local draw_lines = Host.draw_lines
 local draw_batch = Host.draw_batch
-local Geometry = require("./math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 type Point = Geometry.Point
 type Quad = Geometry.Quad
 type Area = Host.Area

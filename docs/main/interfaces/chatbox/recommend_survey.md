@@ -15,7 +15,7 @@ constants (`YES`, `NO`, `SKIP`, `DONT_ASK`, `DONT_ASK_BOX`, ...) are the ids of 
 
 Example:
 ```luau
-local RecommendSurvey = require("../main/interfaces/chatbox/recommend_survey")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 
 print("survey group:", RecommendSurvey.GROUP)
 ```
@@ -29,7 +29,7 @@ Checks if the survey is currently showing.
 
 Example:
 ```luau
-local RecommendSurvey = require("../main/interfaces/chatbox/recommend_survey")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 
 local open = RecommendSurvey.is_open()
 print("survey open:", open)
@@ -44,7 +44,7 @@ Answers "Yes" and waits for the survey to close.
 
 Example:
 ```luau
-local RecommendSurvey = require("../main/interfaces/chatbox/recommend_survey")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 
 print("answered yes:", RecommendSurvey.yes())
 ```
@@ -58,7 +58,7 @@ Answers "No" and waits for the survey to close.
 
 Example:
 ```luau
-local RecommendSurvey = require("../main/interfaces/chatbox/recommend_survey")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 
 print("answered no:", RecommendSurvey.no())
 ```
@@ -72,7 +72,7 @@ Skips the survey without answering and waits for it to close.
 
 Example:
 ```luau
-local RecommendSurvey = require("../main/interfaces/chatbox/recommend_survey")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 
 if RecommendSurvey.is_open() then
 	print("skipped:", RecommendSurvey.skip())
@@ -88,7 +88,7 @@ Checks if the "Don't ask again" box is ticked.
 
 Example:
 ```luau
-local RecommendSurvey = require("../main/interfaces/chatbox/recommend_survey")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 
 print("don't ask again:", RecommendSurvey.dont_ask())
 ```
@@ -103,7 +103,7 @@ specific state.
 
 Example:
 ```luau
-local RecommendSurvey = require("../main/interfaces/chatbox/recommend_survey")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 
 print("clicked:", RecommendSurvey.toggle_dont_ask())
 ```
@@ -117,7 +117,7 @@ Makes sure the "Don't ask again" box is ticked or unticked, clicking it only if 
 
 Example:
 ```luau
-local RecommendSurvey = require("../main/interfaces/chatbox/recommend_survey")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 
 if RecommendSurvey.is_open() then
 	print("ticked:", RecommendSurvey.set_dont_ask(true))

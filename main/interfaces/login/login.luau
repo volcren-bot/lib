@@ -1,14 +1,14 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local sleep = Host.sleep
 type ClientState = Host.ClientState
-local GameState = require("../../game_state")
-local Log = require("../../../utils/log")
-local Mouse = require("../../../utils/input/mouse")
-local RecommendSurvey = require("../chatbox/recommend_survey")
-local TitleScreen = require("./titlescreen")
-local WelcomeScreen = require("./welcome_screen")
+local GameState = require("@lib/main/game_state")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
+local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
+local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
 
 local Login = {}
 

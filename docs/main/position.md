@@ -3,7 +3,7 @@
 A small helper for a position in the world and the 64x64 map chunk it belongs to.
 
 ```luau
-local Position = require("../main/position")
+local Position = require("@lib/main/position")
 ```
 
 ## Position.new
@@ -16,7 +16,7 @@ Creates a position from its tile inside the loaded area (`local_x`, `local_y`), 
 
 Example:
 ```luau
-local Position = require("../main/position")
+local Position = require("@lib/main/position")
 
 local pos = Position.new(52, 52, 3200, 3200)
 print(pos.x, pos.y)
@@ -32,7 +32,7 @@ Returns the 64x64 tile chunk that this position is in.
 
 Example:
 ```luau
-local Position = require("../main/position")
+local Position = require("@lib/main/position")
 
 local chunk = Position.new(0, 0, 3200, 3200):chunk()
 print(chunk.x, chunk.y)
@@ -48,7 +48,7 @@ Whether this position is inside an instance (a minigame, raid or other private c
 
 Example:
 ```luau
-local Position = require("../main/position")
+local Position = require("@lib/main/position")
 
 print(Position.new(0, 0, 13265, 14527):in_instance()) -- true
 print(Position.new(0, 0, 3140, 2839):in_instance()) -- false
@@ -72,7 +72,7 @@ Creates a 64x64 chunk from its coordinates (a tile's x and y divided by 64, roun
 
 Example:
 ```luau
-local Position = require("../main/position")
+local Position = require("@lib/main/position")
 
 local chunk = Position.Chunk.new(47, 44)
 print(chunk:id()) -- 12076
@@ -88,7 +88,7 @@ A single number that identifies the chunk (its `x` and `y` combined).
 
 Example:
 ```luau
-local Position = require("../main/position")
+local Position = require("@lib/main/position")
 
 local chunk = Position.new(0, 0, 3200, 3200):chunk()
 print("chunk id:", chunk:id())

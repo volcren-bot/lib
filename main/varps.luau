@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local varp = Host.varp
 local varps = Host.varps
 local Varps = {}

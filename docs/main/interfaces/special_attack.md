@@ -3,7 +3,7 @@
 The special attack orb on the minimap: whether the weapon in your hands has a special attack, how much energy you have, and switching it on for the next attack.
 
 ```luau
-local SpecialAttack = require("../main/interfaces/special_attack")
+local SpecialAttack = require("@lib/main/interfaces/special_attack")
 ```
 
 The orb is hidden while the weapon has no special attack, so `available` also tells you whether the weapon has one. The energy and the switch are read from the game (`Player.special_attack`, `Player.special_attack_enabled`), so they work with any tab open.
@@ -29,7 +29,7 @@ The orb's button and its child number, or `nil` when it isn't showing.
 
 Example:
 ```luau
-local SpecialAttack = require("../main/interfaces/special_attack")
+local SpecialAttack = require("@lib/main/interfaces/special_attack")
 
 print(SpecialAttack.orb())
 ```
@@ -44,7 +44,7 @@ Whether the weapon in your hands has a special attack.
 
 Example:
 ```luau
-local SpecialAttack = require("../main/interfaces/special_attack")
+local SpecialAttack = require("@lib/main/interfaces/special_attack")
 
 print("special attack:", SpecialAttack.available())
 ```
@@ -59,7 +59,7 @@ Your special attack energy from 0 to 100.
 
 Example:
 ```luau
-local SpecialAttack = require("../main/interfaces/special_attack")
+local SpecialAttack = require("@lib/main/interfaces/special_attack")
 
 print("energy:", SpecialAttack.energy())
 ```
@@ -74,7 +74,7 @@ Whether the special attack is switched on for the next attack.
 
 Example:
 ```luau
-local SpecialAttack = require("../main/interfaces/special_attack")
+local SpecialAttack = require("@lib/main/interfaces/special_attack")
 
 print("on:", SpecialAttack.is_enabled())
 ```
@@ -89,7 +89,7 @@ Switches the special attack on or off from the orb and waits for it to change. D
 
 Example:
 ```luau
-local SpecialAttack = require("../main/interfaces/special_attack")
+local SpecialAttack = require("@lib/main/interfaces/special_attack")
 
 SpecialAttack.set(true)
 ```
@@ -104,7 +104,7 @@ Switches the special attack on when there is at least `cost` energy (50 by defau
 
 Example:
 ```luau
-local SpecialAttack = require("../main/interfaces/special_attack")
+local SpecialAttack = require("@lib/main/interfaces/special_attack")
 
 if SpecialAttack.enable(50) then
 	print("the next attack is a special attack")

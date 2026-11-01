@@ -4,13 +4,13 @@ local NAME = "Lesser demon"
 -- how long to show the tiles for
 local SHOW_MS = 5000
 
-local Host = require("../host")
+local Host = require("@lib/host")
 local sleep = Host.sleep
-local Draw = require("../utils/draw")
-local Npcs = require("../main/entities/npcs")
-local Projection = require("../main/projection/projection")
-local SafeSpot = require("../main/safespot")
-local Walker = require("../main/walker")
+local Draw = require("@lib/utils/draw")
+local Npcs = require("@lib/main/entities/npcs")
+local Projection = require("@lib/main/projection/projection")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
 
 local me = Walker.position()
 if me == nil then

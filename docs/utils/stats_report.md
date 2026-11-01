@@ -3,7 +3,7 @@
 Reports what a script gains (experience, gold, your own counters) to Volcren, so it shows up in the script's totals. It remembers the last values it saw, works out the difference and sends it once a minute, so a script only has to hand it the current numbers.
 
 ```luau
-local StatsReport = require("../utils/stats_report")
+local StatsReport = require("@lib/utils/stats_report")
 ```
 
 ## Constants
@@ -24,7 +24,7 @@ Creates a tracker. Make one when the script starts and keep it. `interval_ms` ch
 
 Example:
 ```luau
-local StatsReport = require("../utils/stats_report")
+local StatsReport = require("@lib/utils/stats_report")
 
 local tracker = StatsReport.new()
 ```
@@ -65,8 +65,8 @@ Call this every time through the main loop with the skills from `Host.game_state
 
 Example:
 ```luau
-local Host = require("../host")
-local StatsReport = require("../utils/stats_report")
+local Host = require("@lib/host")
+local StatsReport = require("@lib/utils/stats_report")
 
 local tracker = StatsReport.new()
 while true do

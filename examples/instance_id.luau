@@ -1,7 +1,7 @@
 --!strict
 -- Prints the instance flag, source map chunks and position whenever the instance changes; stops after RUN_MS.
-local Host = require("../host")
-local Player = require("../main/player")
+local Host = require("@lib/host")
+local Player = require("@lib/main/player")
 
 local RUN_MS = 30 * 60 * 1000
 local POLL_MS = 500

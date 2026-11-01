@@ -3,7 +3,7 @@
 Logging out of the game, and (optionally) rating it before you leave. It also handles the world switcher that can be showing instead of the logout buttons.
 
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 ```
 
 ## Constants
@@ -32,7 +32,7 @@ Whether the logout tab is the open tab.
 
 Example:
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 print("open:", Logout.is_open())
 ```
@@ -47,7 +47,7 @@ Whether the logout tab currently shows the world switcher instead of the logout 
 
 Example:
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 print("switcher showing:", Logout.shows_world_switcher())
 ```
@@ -62,7 +62,7 @@ Opens the logout tab, and closes the world switcher if it was showing.
 
 Example:
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 print(Logout.open())
 ```
@@ -77,7 +77,7 @@ The buttons of the logout tab: the five rating stars (`ratings`), the world swit
 
 Example:
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 Logout.open()
 local buttons = Logout.buttons()
@@ -94,7 +94,7 @@ The number of stars you gave this session (1 to 5), or 0 if you haven't rated.
 
 Example:
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 print("rating:", Logout.rating())
 ```
@@ -109,7 +109,7 @@ Whether you already gave a rating this session.
 
 Example:
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 print("rated:", Logout.is_rated())
 ```
@@ -124,7 +124,7 @@ Gives the game a rating from 1 to 5 stars. Does nothing if that's already your r
 
 Example:
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 print(Logout.rate(5))
 ```
@@ -139,7 +139,7 @@ Logs out using the button at the bottom of the world switcher. It presses up to 
 
 Example:
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 print(Logout.logout_from_world_switcher())
 ```
@@ -154,7 +154,7 @@ Logs you out. It opens the logout tab, sometimes rates the game first (how often
 
 Example:
 ```luau
-local Logout = require("../main/interfaces/gametabs/logout")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 local ok = Logout.logout()
 print(if ok then "logged out" else "unavailable")

@@ -1,10 +1,10 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local sleep = Host.sleep
-local Draw = require("../utils/draw")
-local TitleScreen = require("../main/interfaces/login/titlescreen")
-local WelcomeScreen = require("../main/interfaces/login/welcome_screen")
+local Draw = require("@lib/utils/draw")
+local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
+local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
 
 local function box(x1: number, y1: number, x2: number, y2: number, label: string)
 	Draw.rect(x1, y1, x2, y2, Draw.GREEN)

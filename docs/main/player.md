@@ -3,7 +3,7 @@
 Information about your own character: name, position, plane, run energy, health, poison and whether you are walking.
 
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 ```
 
 Most functions return the value, or `nil` and an error message when it can't be read.
@@ -27,7 +27,7 @@ Tells you whether you are logged in and in the game.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("logged in:", Player.is_logged_in())
 ```
@@ -42,7 +42,7 @@ Your character's display name.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("I am", Player.name())
 ```
@@ -57,7 +57,7 @@ Where you are standing, as a [Position](position.md), including the plane.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 local pos = Player.position()
 if pos then
@@ -75,7 +75,7 @@ The 64x64 map chunks the scene around you is built from, as the game client list
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 for _, chunk in ipairs(Player.map_chunks() or {}) do
 	print(chunk.x, chunk.y, chunk:id())
@@ -92,7 +92,7 @@ Whether you are inside an instance (a minigame, raid or other private copy of an
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 if Player.in_instance() then
 	print("in an instance")
@@ -109,7 +109,7 @@ The 64x64 map chunks the instance you are in was copied from, as the game client
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 for _, chunk in ipairs(Player.instance_chunks() or {}) do
 	print(chunk.x, chunk.y, chunk:id())
@@ -126,7 +126,7 @@ The id (`x * 256 + y`, see `Chunk.id`) of the map chunk the instance you are in 
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 local TEMPOROSS = 12076
 if Player.instance_id() == TEMPOROSS then
@@ -144,7 +144,7 @@ The plane (floor) you are on: 0 is the ground floor, 1 the floor above, up to 3.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 if Player.plane() == 1 then
 	print("upstairs")
@@ -161,7 +161,7 @@ Your run energy as a percentage from 0 to 100.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("run energy:", Player.run_energy())
 ```
@@ -176,7 +176,7 @@ The weight you are carrying.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("weight:", Player.weight())
 ```
@@ -191,7 +191,7 @@ Your current hitpoints, followed by your real (unboosted) level.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 local current, max = Player.hitpoints()
 print(`{current}/{max}`)
@@ -207,7 +207,7 @@ Your current prayer points, followed by your real (unboosted) level.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 local current, max = Player.prayer()
 print(`{current}/{max}`)
@@ -223,7 +223,7 @@ Whether run mode is switched on.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("running:", Player.is_running())
 ```
@@ -238,7 +238,7 @@ Your special attack energy as a percentage from 0 to 100.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("special:", Player.special_attack())
 ```
@@ -253,7 +253,7 @@ Whether the special attack is currently switched on.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("special on:", Player.special_attack_enabled())
 ```
@@ -268,7 +268,7 @@ Your poison status: `"healthy"`, `"poisoned"` or `"envenomed"`.
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print(Player.poison())
 ```
@@ -283,7 +283,7 @@ Tells you whether the server moved you to another tile in the last game tick, or
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("moving:", Player.is_moving())
 ```
@@ -298,7 +298,7 @@ The tile you are walking to (where the flag on the minimap is). `nil` when you a
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 local to = Player.destination()
 print(if to then `walking to {to.x}, {to.y}` else "not walking")
@@ -314,7 +314,7 @@ Waits until you have stopped moving. Returns `false` if you are still moving aft
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("stopped:", Player.wait_still(5000))
 ```
@@ -329,7 +329,7 @@ Waits until the server stops moving you: it returns at the first game tick that 
 
 Example:
 ```luau
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 print("stopped:", Player.wait_server_still(5000))
 ```
@@ -344,8 +344,8 @@ Call this right after clicking somewhere. If the click didn't make you walk it r
 
 Example:
 ```luau
-local Player = require("../main/player")
-local Walker = require("../main/walker")
+local Player = require("@lib/main/player")
+local Walker = require("@lib/main/walker")
 
 Walker.click_tile(assert(Walker.relative(5, 0)))
 print("arrived:", Player.wait_walk())

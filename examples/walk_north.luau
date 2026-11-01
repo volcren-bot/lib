@@ -1,9 +1,9 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 local sleep = Host.sleep
-local Draw = require("../utils/draw")
-local Projection = require("../main/projection/projection")
-local Walker = require("../main/walker")
+local Draw = require("@lib/utils/draw")
+local Projection = require("@lib/main/projection/projection")
+local Walker = require("@lib/main/walker")
 
 local target = assert(Walker.relative(0, 5))
 print(`walking to {target.x}, {target.y}`)

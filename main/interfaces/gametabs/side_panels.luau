@@ -1,17 +1,17 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local widget = Host.widget
 local varc = Host.varc
 local sleep = Host.sleep
 type Widget = Host.Widget
-local Biometrics = require("../../antiban/biometrics")
-local GameState = require("../../game_state")
-local GameVal = require("../../../utils/game_val")
-local Keyboard = require("../../../utils/input/keyboard")
-local Log = require("../../../utils/log")
-local Mouse = require("../../../utils/input/mouse")
-local Random = require("../../../utils/math/random")
+local Biometrics = require("@lib/main/antiban/biometrics")
+local GameState = require("@lib/main/game_state")
+local GameVal = require("@lib/utils/game_val")
+local Keyboard = require("@lib/utils/input/keyboard")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local Random = require("@lib/utils/math/random")
 
 local SidePanels = {}
 

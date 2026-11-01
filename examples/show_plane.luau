@@ -1,5 +1,5 @@
 --!strict
-local Player = require("../main/player")
+local Player = require("@lib/main/player")
 
 local plane = Player.plane()
 print("plane:", plane)

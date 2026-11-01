@@ -3,7 +3,7 @@
 Waiting in game time. The game advances in "ticks" of 0.6 seconds, and many things (walking, skilling, combat) happen once per tick, so waiting for ticks is more reliable than waiting for a fixed number of milliseconds.
 
 ```luau
-local Ticks = require("../utils/ticks")
+local Ticks = require("@lib/utils/ticks")
 ```
 
 ## Constants
@@ -25,7 +25,7 @@ The number of the current tick (it counts up as the game runs).
 
 Example:
 ```luau
-local Ticks = require("../utils/ticks")
+local Ticks = require("@lib/utils/ticks")
 
 print("tick:", Ticks.current())
 ```
@@ -40,7 +40,7 @@ Waits until `count` new ticks (default 1) have passed and returns the tick numbe
 
 Example:
 ```luau
-local Ticks = require("../utils/ticks")
+local Ticks = require("@lib/utils/ticks")
 
 local now = Ticks.wait(3)
 print(if now then `reached tick {now}` else "unavailable")

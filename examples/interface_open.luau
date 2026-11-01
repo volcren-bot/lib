@@ -1,6 +1,6 @@
 --!strict
-local GameVal = require("../utils/game_val")
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local GameVal = require("@lib/utils/game_val")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 local open = Toplevel.interfaces()
 if open == nil or #open == 0 then

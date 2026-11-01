@@ -1,6 +1,6 @@
 --!strict
 -- Tiles where a melee NPC gets stuck and can't hit you, but you can still hit it from range.
-local Host = require("../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local item_container = Host.item_container
 local item_params = Host.item_params
@@ -9,11 +9,11 @@ local players = Host.players
 local varp = Host.varp
 type Npc = Host.Npc
 type Tile = Host.Tile
-local Log = require("../utils/log")
-local Npcs = require("./entities/npcs")
-local SafeSpot = require("./safespot")
-local Ticks = require("../utils/ticks")
-local Walker = require("./walker")
+local Log = require("@lib/utils/log")
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Ticks = require("@lib/utils/ticks")
+local Walker = require("@lib/main/walker")
 type Grid = SafeSpot.Grid
 type Chaser = SafeSpot.Chaser
 type Chase = SafeSpot.Chase

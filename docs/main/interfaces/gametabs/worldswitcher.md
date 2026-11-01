@@ -3,7 +3,7 @@
 Changing worlds in game with the world switcher panel: open it, read the list of worlds, scroll to one and hop to it.
 
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 ```
 
 A row of the list has `world`, `players`, `activity`, `members` (members-only world), `available` (your account can use it), `visible` (fully shown in the scrolled list) and `box` (where it is on screen).
@@ -51,7 +51,7 @@ Whether the world switcher is showing.
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print("open:", WorldSwitcher.is_open())
 ```
@@ -66,7 +66,7 @@ The number of the world you're on.
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print("world", WorldSwitcher.current())
 ```
@@ -81,7 +81,7 @@ Every world in the list, top to bottom, including ones scrolled out of view. The
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 WorldSwitcher.open()
 for _, row in ipairs(WorldSwitcher.rows() or {}) do
@@ -99,7 +99,7 @@ Only the worlds you can currently see in the list (not scrolled out of view).
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 WorldSwitcher.open()
 print("shown:", #(WorldSwitcher.worlds() or {}))
@@ -115,7 +115,7 @@ The row of one world, shown or not. Returns `nil` if the world isn't in the list
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 WorldSwitcher.open()
 local row = WorldSwitcher.find(301)
@@ -132,7 +132,7 @@ Whether the list is still empty because the worlds haven't loaded yet.
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print("loading:", WorldSwitcher.is_loading())
 ```
@@ -147,7 +147,7 @@ Waits until the list has loaded (up to 2.4 seconds by default). Returns whether 
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print(WorldSwitcher.wait_loading(5000))
 ```
@@ -162,7 +162,7 @@ Opens the world switcher from the logout tab and waits for the list to load (pas
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print(WorldSwitcher.open())
 ```
@@ -177,7 +177,7 @@ Closes the world switcher.
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print(WorldSwitcher.close())
 ```
@@ -192,7 +192,7 @@ Logs out using the button at the bottom of the world switcher. See [Logout](logo
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 WorldSwitcher.open()
 print(WorldSwitcher.logout())
@@ -208,7 +208,7 @@ The main buttons of the panel: `configure`, `close`, `logout` and `sort_world`.
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 WorldSwitcher.open()
 local buttons = WorldSwitcher.buttons()
@@ -225,7 +225,7 @@ Whether the list is sorted by world number, lowest first.
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print("sorted:", WorldSwitcher.is_sorted())
 ```
@@ -240,7 +240,7 @@ Clicks the "World" column heading until the list is sorted by world number, lowe
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 WorldSwitcher.open()
 print(WorldSwitcher.sort())
@@ -256,7 +256,7 @@ How many milliseconds are left before another hop is allowed. 0 when you can hop
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print("wait", WorldSwitcher.cooldown(), "ms")
 ```
@@ -271,7 +271,7 @@ After clicking a world, waits for the hop to start and finish and for you to arr
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print(WorldSwitcher.wait_switch(301))
 ```
@@ -286,7 +286,7 @@ Hops to a world. Opens the switcher, scrolls to the world, clicks it, confirms t
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 local ok = WorldSwitcher.switch(301)
 print(if ok then "hopped" else "unavailable")
@@ -302,7 +302,7 @@ Hops to the world after the current one in your list (or the first one if you're
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print(WorldSwitcher.next({ 301, 302, 303 }))
 ```
@@ -317,7 +317,7 @@ Hops to the world before the current one in your list (or the last one).
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print(WorldSwitcher.previous({ 301, 302, 303 }))
 ```
@@ -332,7 +332,7 @@ Hops to a random world from your list, other than the current one.
 
 Example:
 ```luau
-local WorldSwitcher = require("../main/interfaces/gametabs/worldswitcher")
+local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
 print(WorldSwitcher.random({ 301, 302, 303, 304 }))
 ```

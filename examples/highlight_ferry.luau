@@ -3,13 +3,13 @@
 local NAME = "Ferry"
 local SECONDS = 120
 
-local Host = require("../host")
+local Host = require("@lib/host")
 local time = Host.time
 local sleep = Host.sleep
-local Draw = require("../utils/draw")
-local Geometry = require("../utils/math/geometry")
-local Objects = require("../main/entities/objects")
-local Walker = require("../main/walker")
+local Draw = require("@lib/utils/draw")
+local Geometry = require("@lib/utils/math/geometry")
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
 type Point = Geometry.Point
 
 local me = assert(Walker.position())

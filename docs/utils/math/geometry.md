@@ -3,7 +3,7 @@
 Shapes on the screen, and ways to pick natural-looking random points inside them. Everything is built from points (`{ x, y }`).
 
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 ```
 
 The module holds six groups of functions: `Point`, `Box`, `Circle`, `Quad`, `Polygon` and `Triangle`.
@@ -38,7 +38,7 @@ Makes a point.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Point.new(10, 20)
 print(p.x, p.y)
@@ -54,7 +54,7 @@ The straight-line distance between two points.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 print(Point.distance(Point.new(0, 0), Point.new(3, 4))) -- 5
@@ -70,7 +70,7 @@ The direction from `a` to `b` in degrees, from 0 to 360, where 0 means straight 
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 print(Point.angle_between(Point.new(0, 0), Point.new(10, 0))) -- 0 is up, so this is 90
@@ -86,7 +86,7 @@ Turns a point around a center by an angle in radians.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local turned = Point.rotate(Point.new(10, 0), math.pi / 2, Point.new(0, 0))
@@ -103,7 +103,7 @@ A random point within `range` pixels of a point, in a square around it.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local p = Point.random(Point.new(100, 100), 5)
@@ -124,7 +124,7 @@ The size of the area a polygon covers, in square pixels.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local square = { { x = 0, y = 0 }, { x = 10, y = 0 }, { x = 10, y = 10 }, { x = 0, y = 10 } }
 print(Geometry.Polygon.area(square)) -- 100
@@ -140,7 +140,7 @@ Whether a point is inside a polygon.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local square = { { x = 0, y = 0 }, { x = 10, y = 0 }, { x = 10, y = 10 }, { x = 0, y = 10 } }
 print(Geometry.Polygon.contains(square, { x = 5, y = 5 })) -- true
@@ -157,7 +157,7 @@ The outline that wraps around a cloud of points, like a rubber band stretched ar
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local outline = Geometry.Polygon.convex_hull({
 	{ x = 0, y = 0 }, { x = 10, y = 0 }, { x = 5, y = 5 }, { x = 10, y = 10 }, { x = 0, y = 10 },
@@ -175,7 +175,7 @@ The point on the polygon's outline that is closest to `p`.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local square = { { x = 0, y = 0 }, { x = 10, y = 0 }, { x = 10, y = 10 }, { x = 0, y = 10 } }
 local edge = Geometry.Polygon.nearest_edge(square, { x = 20, y = 5 })
@@ -192,7 +192,7 @@ A random point inside the polygon that leans towards `from`. `weight` (default 1
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local square = { { x = 0, y = 0 }, { x = 100, y = 0 }, { x = 100, y = 100 }, { x = 0, y = 100 } }
 local p = Geometry.Polygon.random_weighted_point(square, { x = 10, y = 10 })
@@ -215,7 +215,7 @@ The size of a triangle, rounded up to a whole number of pixels.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 print(Geometry.Triangle.area({ { x = 0, y = 0 }, { x = 10, y = 0 }, { x = 0, y = 10 } })) -- 50
 ```
@@ -230,7 +230,7 @@ Whether a point is inside the triangle.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local tri = { { x = 0, y = 0 }, { x = 10, y = 0 }, { x = 0, y = 10 } }
 print(Geometry.Triangle.contains(tri, { x = 2, y = 2 })) -- true
@@ -246,7 +246,7 @@ The middle of the triangle.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local c = Geometry.Triangle.centroid({ { x = 0, y = 0 }, { x = 9, y = 0 }, { x = 0, y = 9 } })
 print(c.x, c.y) -- 3 3
@@ -262,7 +262,7 @@ A random point inside the triangle that leans towards `from`.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local tri = { { x = 0, y = 0 }, { x = 100, y = 0 }, { x = 0, y = 100 } }
 local p = Geometry.Triangle.random_weighted_point(tri, { x = 10, y = 10 })
@@ -279,7 +279,7 @@ A random point close to the triangle's middle, staying clear of its edges. A lar
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local tri = { { x = 0, y = 0 }, { x = 100, y = 0 }, { x = 0, y = 100 } }
 local p = Geometry.Triangle.random_point_near_center(tri)
@@ -309,7 +309,7 @@ Makes a box from its top-left and bottom-right corners.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local box = Geometry.Box.new(10, 10, 110, 60)
 print(box.x2 - box.x1)
@@ -325,7 +325,7 @@ Makes a box from a position and size (`{ x, y, width, height }`).
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local box = Geometry.Box.from_area({ x = 10, y = 10, width = 100, height = 50 })
 print(box.x2, box.y2) -- 109 59
@@ -341,7 +341,7 @@ Whether a point is inside the box.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local box = Geometry.Box.new(0, 0, 10, 10)
 print(Geometry.Box.contains(box, { x = 5, y = 5 })) -- true
@@ -357,7 +357,7 @@ The middle of the box.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local c = Geometry.Box.center(Geometry.Box.new(0, 0, 10, 20))
 print(c.x, c.y) -- 5 10
@@ -373,7 +373,7 @@ The four corners of the box as a list of points.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 print(#Geometry.Box.corners(Geometry.Box.new(0, 0, 10, 10))) -- 4
 ```
@@ -388,7 +388,7 @@ A random point in the box, evenly spread.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Box.random_point(Geometry.Box.new(0, 0, 100, 100))
 print(p.x, p.y)
@@ -404,7 +404,7 @@ A random point in the box, most likely near the middle.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Box.random_point_center(Geometry.Box.new(0, 0, 100, 100))
 print(p.x, p.y)
@@ -420,7 +420,7 @@ A random point in the box, leaning towards the side `from` is on, as if reaching
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Box.random_skewed_point(Geometry.Box.new(100, 100, 200, 200), { x = 0, y = 0 })
 print(p.x, p.y)
@@ -436,7 +436,7 @@ A random point in the box, leaning towards `from`.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Box.random_weighted_point(Geometry.Box.new(100, 100, 200, 200), { x = 0, y = 0 })
 print(p.x, p.y)
@@ -456,7 +456,7 @@ Makes a circle from its center and radius.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local circle = Geometry.Circle.new(100, 100, 20)
 print(circle.radius)
@@ -472,7 +472,7 @@ Whether a point is inside the circle.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 print(Geometry.Circle.contains(Geometry.Circle.new(0, 0, 10), { x = 3, y = 4 })) -- true
 ```
@@ -487,7 +487,7 @@ The point on the edge of the circle in a direction, where 0 is straight up and 9
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Circle.point_at_degrees(Geometry.Circle.new(100, 100, 10), 90)
 print(p.x, p.y) -- 110 100
@@ -503,7 +503,7 @@ A random point in the circle, evenly spread.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Circle.random_point(Geometry.Circle.new(100, 100, 20))
 print(p.x, p.y)
@@ -519,7 +519,7 @@ A random point in the circle, most likely near the middle.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Circle.random_point_center(Geometry.Circle.new(100, 100, 20))
 print(p.x, p.y)
@@ -535,7 +535,7 @@ A random point in the circle, leaning towards the side `from` is on.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Circle.random_skewed_point(Geometry.Circle.new(100, 100, 20), { x = 0, y = 0 })
 print(p.x, p.y)
@@ -551,7 +551,7 @@ A random point in the circle, leaning towards `from`.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 
 local p = Geometry.Circle.random_weighted_point(Geometry.Circle.new(100, 100, 20), { x = 0, y = 0 })
 print(p.x, p.y)
@@ -573,7 +573,7 @@ Makes a quad from its four corners.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local quad = Geometry.Quad.new(Point.new(50, 0), Point.new(100, 25), Point.new(50, 50), Point.new(0, 25))
@@ -590,7 +590,7 @@ The four corners as a list (top, right, bottom, left).
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local quad = Geometry.Quad.new(Point.new(50, 0), Point.new(100, 25), Point.new(50, 50), Point.new(0, 25))
@@ -607,7 +607,7 @@ The middle of the quad (the average of its corners).
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local quad = Geometry.Quad.new(Point.new(50, 0), Point.new(100, 25), Point.new(50, 50), Point.new(0, 25))
@@ -625,7 +625,7 @@ Whether a point is inside the quad.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local quad = Geometry.Quad.new(Point.new(50, 0), Point.new(100, 25), Point.new(50, 50), Point.new(0, 25))
@@ -642,7 +642,7 @@ The point on the quad's outline that is closest to `p`.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local quad = Geometry.Quad.new(Point.new(50, 0), Point.new(100, 25), Point.new(50, 50), Point.new(0, 25))
@@ -660,7 +660,7 @@ A random point in the quad, evenly spread.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local quad = Geometry.Quad.new(Point.new(50, 0), Point.new(100, 25), Point.new(50, 50), Point.new(0, 25))
@@ -678,7 +678,7 @@ A random point in the quad, most likely near the middle.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local quad = Geometry.Quad.new(Point.new(50, 0), Point.new(100, 25), Point.new(50, 50), Point.new(0, 25))
@@ -696,7 +696,7 @@ A random point in the quad, leaning towards the side `from` is on.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local quad = Geometry.Quad.new(Point.new(50, 0), Point.new(100, 25), Point.new(50, 50), Point.new(0, 25))
@@ -714,7 +714,7 @@ A random point in the quad, leaning towards `from`.
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 
 local quad = Geometry.Quad.new(Point.new(50, 0), Point.new(100, 25), Point.new(50, 50), Point.new(0, 25))

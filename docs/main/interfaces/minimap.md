@@ -3,7 +3,7 @@
 The small round map in the corner: finding where a world tile is on it, and changing its zoom.
 
 ```luau
-local Minimap = require("../main/interfaces/minimap")
+local Minimap = require("@lib/main/interfaces/minimap")
 ```
 
 ## Constants
@@ -26,7 +26,7 @@ The minimap's current settings (just its `zoom`).
 
 Example:
 ```luau
-local Minimap = require("../main/interfaces/minimap")
+local Minimap = require("@lib/main/interfaces/minimap")
 
 local state = Minimap.state()
 print(if state then state.zoom else "unavailable")
@@ -42,7 +42,7 @@ How zoomed in the minimap is, from 2 to 8 (4 by default).
 
 Example:
 ```luau
-local Minimap = require("../main/interfaces/minimap")
+local Minimap = require("@lib/main/interfaces/minimap")
 
 print("minimap zoom:", Minimap.zoom())
 ```
@@ -57,7 +57,7 @@ The interface piece the minimap is drawn on, with its position and size.
 
 Example:
 ```luau
-local Minimap = require("../main/interfaces/minimap")
+local Minimap = require("@lib/main/interfaces/minimap")
 
 local w = Minimap.widget()
 print(w and w.x, w and w.y, w and w.width)
@@ -73,8 +73,8 @@ Where a point in the loaded area (128 per tile) shows on the minimap, in screen 
 
 Example:
 ```luau
-local Host = require("../host")
-local Minimap = require("../main/interfaces/minimap")
+local Host = require("@lib/host")
+local Minimap = require("@lib/main/interfaces/minimap")
 
 local me = Host.game_state().position
 if me then
@@ -92,9 +92,9 @@ Where a world tile shows on the minimap, in screen pixels. Useful for clicking t
 
 Example:
 ```luau
-local Minimap = require("../main/interfaces/minimap")
-local Mouse = require("../utils/input/mouse")
-local Walker = require("../main/walker")
+local Minimap = require("@lib/main/interfaces/minimap")
+local Mouse = require("@lib/utils/input/mouse")
+local Walker = require("@lib/main/walker")
 
 local point = Minimap.tile_to_point(assert(Walker.relative(5, 5)))
 if point then
@@ -112,7 +112,7 @@ Zooms the minimap in or out with the mouse wheel until it reaches the zoom you a
 
 Example:
 ```luau
-local Minimap = require("../main/interfaces/minimap")
+local Minimap = require("@lib/main/interfaces/minimap")
 
 print(Minimap.set_zoom(6))
 ```

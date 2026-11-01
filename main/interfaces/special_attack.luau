@@ -1,13 +1,13 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local widget = Host.widget
 local sleep = Host.sleep
 local time = Host.time
 type MenuEntry = Host.MenuEntry
 type Widget = Host.Widget
-local Interact = require("../interact")
-local Log = require("../../utils/log")
-local Player = require("../player")
+local Interact = require("@lib/main/interact")
+local Log = require("@lib/utils/log")
+local Player = require("@lib/main/player")
 
 local SpecialAttack = {}
 

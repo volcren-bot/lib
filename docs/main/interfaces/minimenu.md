@@ -3,7 +3,7 @@
 The small menu that shows what a click will do, both the line at the top of the screen when you hover something ("Talk-to Man") and the full list when you right-click.
 
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 ```
 
 A menu line has an `option` ("Talk-to") and a `target` ("Man"). Functions that look for an option take an optional `target`: either a text that must appear in the line's target (not case sensitive), or a function that receives the line and returns `true` for the ones you want.
@@ -28,7 +28,7 @@ All lines of the menu, top line first. While the menu is open, these are exactly
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 for i, entry in ipairs(Minimenu.entries() or {}) do
 	print(i, entry.option, entry.target)
@@ -45,7 +45,7 @@ A line as readable text, like `"Talk-to Man"`.
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 local entries = Minimenu.entries() or {}
 if entries[1] then
@@ -63,7 +63,7 @@ The text of the top line: what the game says will happen if you left click. Empt
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 print(Minimenu.uptext())
 ```
@@ -78,7 +78,7 @@ Whether a line is the option (and target) you are looking for.
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 for _, entry in ipairs(Minimenu.entries() or {}) do
 	if Minimenu.matches(entry, "Walk here") then
@@ -97,7 +97,7 @@ Finds the position of an option in the menu. Returns the position, followed by a
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 local index = Minimenu.find("Walk here")
 print(index)
@@ -113,7 +113,7 @@ Whether the menu currently has that option.
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 print("can walk here:", Minimenu.has("Walk here"))
 ```
@@ -128,7 +128,7 @@ Where to click on line `index` of the open right-click menu (or of its open subm
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 local box = Minimenu.row(2)
 print(box and box.x1, box and box.y1)
@@ -144,8 +144,8 @@ Opens the right-click menu where the mouse is and clicks the option you asked fo
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
-local Mouse = require("../utils/input/mouse")
+local Minimenu = require("@lib/main/interfaces/minimenu")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move({ x = 300, y = 300 })
 print(Minimenu.select("Walk here"))
@@ -161,7 +161,7 @@ The line the game last acted on, with where the mouse was and how long ago. Retu
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 local click = Minimenu.clicked()
 print(click and Minimenu.text(click.entry))
@@ -177,8 +177,8 @@ After you click, waits for the game to react and tells you which line it acted o
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
-local Mouse = require("../utils/input/mouse")
+local Minimenu = require("@lib/main/interfaces/minimenu")
+local Mouse = require("@lib/utils/input/mouse")
 
 local before = Minimenu.clicked()
 Mouse.click({ x = 300, y = 300 })
@@ -196,7 +196,7 @@ Whether the choose-option menu (the right-click menu) is open. Read from the cli
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 print("menu open:", Minimenu.is_open())
 ```
@@ -211,8 +211,8 @@ Right-clicks where the mouse is and waits up to `timeout_ms` (default 600) for t
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
-local Mouse = require("../utils/input/mouse")
+local Minimenu = require("@lib/main/interfaces/minimenu")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move({ x = 300, y = 300 })
 print(Minimenu.open())
@@ -228,7 +228,7 @@ The area the open menu (or its open submenu `level` levels deep) covers in clien
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 local box = Minimenu.bounds()
 print(box and box.x1, box and box.y1, box and box.x2, box and box.y2)
@@ -244,7 +244,7 @@ The area, in client pixels, the mouse can move in without the client closing the
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 local area = Minimenu.hover_bounds()
 print(area and area.x1, area and area.x2)
@@ -260,7 +260,7 @@ Closes the menu by moving the mouse to a random spot in the client that is outsi
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 print(Minimenu.close())
 ```
@@ -279,7 +279,7 @@ The open submenu `level` levels deep (the deepest open one by default), as the c
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 local sub = Minimenu.submenu()
 if sub then
@@ -297,7 +297,7 @@ Whether the open menu has a line that opens a submenu (one matching `option` and
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 print(Minimenu.has_submenu("Reminisce"))
 ```
@@ -312,7 +312,7 @@ Whether a submenu `level` levels deep (default 1) is open.
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 print(Minimenu.is_submenu_open())
 ```
@@ -327,8 +327,8 @@ Opens the submenu of the menu's first line that has one (or the first matching `
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
-local Minimenu = require("../main/interfaces/minimenu")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 Inventory.hover_slot(0)
 print(Minimenu.open_submenu("Reminisce"))
@@ -344,7 +344,7 @@ The lines of the open submenu, top to bottom. When none is open, opens one first
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 for i, entry in ipairs(Minimenu.submenu_entries("Reminisce") or {}) do
 	print(i, entry.option)
@@ -361,7 +361,7 @@ The position of an option in the open submenu (the deepest one), followed by all
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 print(Minimenu.find_submenu("History and Hearsay"))
 ```
@@ -376,7 +376,7 @@ Moves the mouse onto the line of the open submenu matching `option` and `target`
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 if Minimenu.open_submenu("Reminisce") then
 	print(Minimenu.hover_submenu("History and Hearsay"))
@@ -393,8 +393,8 @@ Clicks `option` (and `target`) in the submenu opened from the menu's line `paren
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
-local Minimenu = require("../main/interfaces/minimenu")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 
 Inventory.hover_slot(0)
 print(Minimenu.select_submenu("A Dark Disposition", nil, "Reminisce"))
@@ -410,8 +410,8 @@ True when the minimenu is open and it, or one of its open submenus, covers `area
 
 Example:
 ```luau
-local Minimenu = require("../main/interfaces/minimenu")
-local Geometry = require("../utils/math/geometry")
+local Minimenu = require("@lib/main/interfaces/minimenu")
+local Geometry = require("@lib/utils/math/geometry")
 
 print(Minimenu.overlaps(Geometry.Box.new(300, 200, 340, 240)))
 ```

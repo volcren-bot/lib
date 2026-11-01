@@ -3,7 +3,7 @@
 The main game screen: which windows are open on top of it (bank, shop, dialogue...), where the 3D view is, and which parts of it are covered by panels. Use it to make sure a click lands on the game and not on something in the way.
 
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 ```
 
 An open window is a table with `group` (its interface number) and `slot` (`"modal"`, `"crm"` or `"floater"`: the layer it's in).
@@ -27,7 +27,7 @@ Every window open on the main screen, the most important first.
 
 Example:
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 for _, open in ipairs(Toplevel.interfaces() or {}) do
 	print(open.group, open.slot)
@@ -44,7 +44,7 @@ The interface number of the most important open window, or `nil` if none.
 
 Example:
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 print(Toplevel.interface())
 ```
@@ -59,7 +59,7 @@ The readable name of that window.
 
 Example:
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 print(Toplevel.interface_name())
 ```
@@ -74,8 +74,8 @@ Closes an interface of the main screen and waits for it to close (`timeout_ms` f
 
 Example:
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 Toplevel.close(Bankmain.GROUP, Bankmain.close_button)
 ```
@@ -109,7 +109,7 @@ Whether any window is open on the main screen.
 
 Example:
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 print("something open:", Toplevel.has_interface())
 ```
@@ -124,7 +124,7 @@ Whether a particular window is open, given by its number or name.
 
 Example:
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 print("bank open:", Toplevel.is_open(12))
 ```
@@ -139,7 +139,7 @@ The rectangle the 3D game world is drawn in.
 
 Example:
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 local view = Toplevel.viewport()
 print(view and view.x1, view and view.y1, view and view.x2, view and view.y2)
@@ -155,7 +155,7 @@ The rectangles drawn on top of the 3D view (side panels, chat, open windows), wh
 
 Example:
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 print("covering panels:", #(Toplevel.blockers() or {}))
 ```
@@ -170,7 +170,7 @@ Whether a point is on the 3D view and not covered by anything. You can pass `vie
 
 Example:
 ```luau
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 print(Toplevel.is_visible({ x = 300, y = 200 }))
 ```
@@ -185,8 +185,8 @@ Finds a point inside a rectangle that is on the 3D view and uncovered, as close 
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
-local Toplevel = require("../main/interfaces/mainscreen/toplevel")
+local Geometry = require("@lib/utils/math/geometry")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 print(Toplevel.visible_point(Geometry.Box.new(100, 100, 300, 300)))
 ```

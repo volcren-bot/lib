@@ -1,14 +1,14 @@
 --!strict
 
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local widget = Host.widget
 local menu = Host.menu
 local sleep = Host.sleep
 type Widget = Host.Widget
-local Chatbox = require("./chatbox")
-local Log = require("../../../utils/log")
-local Mouse = require("../../../utils/input/mouse")
-local Widgets = require("../widgets")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local RecommendSurvey = {
 	GROUP = Chatbox.RECOMMEND_SURVEY,

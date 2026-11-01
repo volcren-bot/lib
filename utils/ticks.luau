@@ -1,6 +1,6 @@
 --!strict
-local Host = require("../host")
-local Log = require("./log")
+local Host = require("@lib/host")
+local Log = require("@lib/utils/log")
 local game_state = Host.game_state
 local sleep = Host.sleep
 local Ticks = {}

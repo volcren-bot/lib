@@ -5,7 +5,7 @@ The functions the game client gives to every script: reading what is on screen, 
 Almost every function returns two values: the result, and an error message. When something goes wrong the result is `nil` and the second value tells you why.
 
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 ```
 
 ## Types
@@ -55,7 +55,7 @@ Reads a snapshot of the player and the client. This is the most used function: l
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local state = Host.game_state()
 if state.position then
@@ -73,7 +73,7 @@ Tells you about the connection to the client: its version, the window size and w
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local info = Host.connection()
 print(`client {info.version}, window {info.width}x{info.height}`)
@@ -89,7 +89,7 @@ Looks up one interface element by its group and child number.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local w = Host.widget(149, 0)
 if w then
@@ -107,7 +107,7 @@ Gets all the elements inside one interface element (for example every slot of a 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local children = Host.widget_children(149, 0)
 print("children:", if children then #children else 0)
@@ -123,7 +123,7 @@ Lists what is in an item container such as the inventory (`93`), worn items (`94
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local slots = Host.item_container(93)
 for _, slot in ipairs(slots or {}) do
@@ -143,7 +143,7 @@ The client tells the script the moment it makes the change, but a script is one 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.on_item_change(function(change)
 	if change.container == 93 and change.new_item ~= change.old_item then
@@ -173,7 +173,7 @@ Waits up to `ms` for the client to change an item container, runs the callbacks 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.on_item_change(function() end)
 if Host.wait_item_change(30000) then
@@ -193,7 +193,7 @@ Like item change callbacks, they run inside `Host.sleep`, `Host.wait_item_change
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local ticks = 0
 Host.on_packet({ 2 }, function()
@@ -221,7 +221,7 @@ Waits up to `ms` for the client to receive a packet whose id is in `opcodes` (wi
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 -- wait for the next game tick
 if Host.wait_packet({ 2 }, 1200) then
@@ -243,7 +243,7 @@ Turns points in the game world into points on your screen. `via` picks how it is
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local state = Host.game_state()
 if state and state.camera then
@@ -262,7 +262,7 @@ Shows a settings window and waits until the user presses the button. Returns the
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local values = Host.form({
 	title = "My script",
@@ -310,7 +310,7 @@ Lists the lines of the right-click menu. While it's open, they're the rows it sh
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, entry in ipairs(Host.menu() or {}) do
 	print(entry.option, entry.target)
@@ -327,7 +327,7 @@ Returns the menu line the client last acted on and where the mouse was. Returns 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local click = Host.menu_click()
 if click then
@@ -345,7 +345,7 @@ What is waiting for something to be used on, like a spell you clicked that now n
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local selected = Host.selected_widget()
 if selected then
@@ -363,7 +363,7 @@ Lists the interfaces currently open inside other interfaces.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, sub in ipairs(Host.sub_interfaces() or {}) do
 	print(sub.group, "inside", sub.parent_group)
@@ -380,7 +380,7 @@ Looks up the readable name of a game value (an object, NPC, interface...) from i
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 print(Host.game_val_name(0, 1))
 ```
@@ -395,7 +395,7 @@ Same as `game_val_name`, but for many numbers at once.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local names = Host.game_val_names(0, { 1, 2, 3 })
 print(names and #names)
@@ -411,7 +411,7 @@ Returns an item's name from its id.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 print(Host.item_name(995))
 ```
@@ -426,7 +426,7 @@ Same as `item_name`, but for many items at once.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local names = Host.item_names({ 995, 554 })
 print(names and names[1], names and names[2])
@@ -442,7 +442,7 @@ Reads one client setting value (a "varc").
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 print("zoom setting:", Host.varc(74))
 ```
@@ -457,7 +457,7 @@ Reads one saved game setting value (a "varp"). See [Varps](main/varps.md) for na
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 print("run toggle:", Host.varp(173))
 ```
@@ -472,7 +472,7 @@ Reads every game setting at once. The list is 1-based: id `n` is at position `n 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local all = Host.varps()
 print("settings:", all and #all)
@@ -488,7 +488,7 @@ Reads a "varbit": a few bits of a game setting. Which setting and which bits are
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 print("spellbook:", Host.varbit(4070))
 ```
@@ -503,7 +503,7 @@ Reads a table of keys and values (an "enum") from the game files. Returns `nil` 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local books = Host.enum_def(1981)
 for _, entry in ipairs(books and books.entries or {}) do
@@ -521,7 +521,7 @@ Reads the extra values ("params") the game files keep for each item, by param nu
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local params = Host.item_params({ 3281 })
 print(params and params[1] and params[1][601]) -- Wind Bolt
@@ -537,7 +537,7 @@ Lists the NPCs currently loaded around you.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, npc in ipairs(Host.npcs() or {}) do
 	print(npc.name, npc.x, npc.y)
@@ -554,7 +554,7 @@ Returns the on-screen outline of one NPC (by its `index`).
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local npcs = Host.npcs() or {}
 if npcs[1] then
@@ -573,7 +573,7 @@ The size in tiles (the side of the square it stands on) of the NPCs with these `
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local all = Host.npcs() or {}
 local indices = {}
@@ -596,7 +596,7 @@ The hitsplats on the NPCs with these `index`es, keyed by index; the NPCs that ar
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local all = Host.npcs() or {}
 local indices = {}
@@ -621,7 +621,7 @@ Lists the world objects (doors, trees, walls...) of the loaded scene on a plane 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, loc in ipairs(Host.locs() or {}) do
 	if loc.name == "Bank booth" then
@@ -640,7 +640,7 @@ Lists the world objects the game cache places on the map inside an area (`x1`, `
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local me = Host.game_state().position
 if me then
@@ -664,7 +664,7 @@ Returns the on-screen outline of a world object.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local locs = Host.locs() or {}
 if locs[1] then
@@ -682,7 +682,7 @@ Lists the items lying on the ground on your floor.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, item in ipairs(Host.ground_items() or {}) do
 	print(item.name, item.quantity, item.x, item.y)
@@ -699,7 +699,7 @@ Lists the projectiles in flight, and the ones the server sent that haven't left 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, p in ipairs(Host.projectiles() or {}) do
 	print(p.id, p.x, p.y, p.height, p.end_cycle - p.cycle)
@@ -716,7 +716,7 @@ Lists the spot animations on tiles in your scene: the ones the server placed wit
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, s in ipairs(Host.spot_anims() or {}) do
 	print(s.id, s.x, s.y, s.plane)
@@ -733,7 +733,7 @@ The map squares (64x64 tiles) the loaded scene is built from, each as `{ x, y }`
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, region in ipairs(Host.map_regions() or {}) do
 	print(region[1], region[2])
@@ -750,7 +750,7 @@ The game client's own flag for "the loaded scene is an instance". `nil` when it 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 print(Host.in_instance())
 ```
@@ -765,7 +765,7 @@ The tile the server last put you on. Your `position` in `Host.game_state` follow
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local tile = Host.server_tile()
 if tile then
@@ -783,7 +783,7 @@ Your server tile and whether the server moved you this tick. The agent looks at 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 -- print each tick whether you moved
 while Host.wait_packet({ 2 }, 1200) do
@@ -802,7 +802,7 @@ Lists the chat history, oldest first. The game keeps up to 100 messages of each 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, m in ipairs(Host.chat_messages() or {}) do
 	print(m.time_utc, m.kind, m.name, m.text)
@@ -819,7 +819,7 @@ Lists the other players loaded around you.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 for _, p in ipairs(Host.players() or {}) do
 	print(p.name, p.x, p.y)
@@ -836,7 +836,7 @@ Returns the on-screen outline of a player.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local players = Host.players() or {}
 if players[1] then
@@ -854,7 +854,7 @@ Finds a walking route between two tiles of a plane (yours by default), both incl
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local state = Host.game_state()
 local me = state and state.position
@@ -885,7 +885,7 @@ The plan's `tiles` are every tile walked, start first, each with its plane; `act
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local me = Host.game_state().position
 if me then
@@ -916,7 +916,7 @@ Passing `options` (even `{}`) returns a randomized route instead: the game's rou
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local state = Host.game_state()
 local me = state and state.position
@@ -938,7 +938,7 @@ The collision flags the game client keeps for your plane of the loaded scene, as
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local me = Host.game_state().position
 if me then
@@ -960,7 +960,7 @@ Reads the world switcher: whether it is open and the list of worlds.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local ws = Host.world_select()
 if ws then
@@ -978,7 +978,7 @@ Jumps the mouse to a point and clicks it, holding the button for `hold_ms` (60 b
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.click(100, 100)
 ```
@@ -993,7 +993,7 @@ Jumps the mouse to a point.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.move(200, 150)
 ```
@@ -1008,7 +1008,7 @@ Moves the mouse to a point along a curved, human-like path. Optional `speed`, `w
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.wind_mouse(300, 200, { speed = 12 })
 ```
@@ -1023,7 +1023,7 @@ Presses a mouse button and keeps it held.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.mouse_down()
 Host.sleep(100)
@@ -1040,7 +1040,7 @@ Releases a mouse button.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.mouse_up()
 ```
@@ -1055,7 +1055,7 @@ Turns the mouse wheel by that many notches.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.scroll(-3)
 ```
@@ -1070,7 +1070,7 @@ Presses a keyboard key and keeps it held.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.key_down(0x25)
 Host.sleep(300)
@@ -1087,7 +1087,7 @@ Releases a keyboard key.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.key_up(0x25)
 ```
@@ -1102,7 +1102,7 @@ Types a piece of text, optionally holding each key for `hold_ms`.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.type_text("hello")
 ```
@@ -1128,7 +1128,7 @@ Queues a click, like `Host.click`.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.click_async(100, 100)
 ```
@@ -1143,7 +1143,7 @@ Queues a jump of the mouse, like `Host.move`.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.move_async(200, 150)
 ```
@@ -1158,7 +1158,7 @@ Queues a human-like move, like `Host.wind_mouse`. The path starts from where the
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.wind_mouse_async(300, 200, { speed = 12 })
 ```
@@ -1173,7 +1173,7 @@ Queues typing, like `Host.type_text`.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.type_text_async("hello")
 ```
@@ -1188,7 +1188,7 @@ Queues pressing a mouse button and keeping it held, like `Host.mouse_down`. Canc
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.mouse_down_async("middle")
 Host.wind_mouse_async(400, 300)
@@ -1205,7 +1205,7 @@ Queues releasing a mouse button, like `Host.mouse_up`.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.mouse_up_async("middle")
 ```
@@ -1220,7 +1220,7 @@ Queues turning the mouse wheel, like `Host.scroll`.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.scroll_async(2)
 ```
@@ -1235,7 +1235,7 @@ Queues pressing a key and keeping it held, like `Host.key_down`. Cancelling rele
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.key_down_async(0x25)
 Host.sleep_async(300)
@@ -1252,7 +1252,7 @@ Queues releasing a key, like `Host.key_up`.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.key_up_async(0x25)
 ```
@@ -1267,7 +1267,7 @@ Queues a pause: the inputs queued after it start `ms` milliseconds later. Cancel
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.key_down_async(0x25)
 Host.sleep_async(300)
@@ -1284,7 +1284,7 @@ Whether async input is running or queued.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.move_async(200, 150)
 print(Host.input_busy())
@@ -1300,7 +1300,7 @@ Waits until all async input is done. Returns the error of an async input that fa
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.move_async(200, 150)
 local error = Host.input_wait()
@@ -1319,7 +1319,7 @@ Returns, without waiting, the error of an async input that failed since the last
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local error = Host.input_error()
 if error then
@@ -1337,7 +1337,7 @@ Stops async input and drops what was queued. Returns once nothing is being sent 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.move_async(200, 150)
 Host.input_cancel()
@@ -1363,7 +1363,7 @@ The loader makes the request, and only to hosts on the whitelist in its Settings
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local response, err = Host.http_request({ url = "https://api.volcren.com/health" })
 if not response then
@@ -1383,7 +1383,7 @@ Draws a colored rectangle on top of the game (colors 0 to 255). Handy for seeing
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.draw_rect(50, 50, 150, 100, 255, 0, 0)
 ```
@@ -1398,7 +1398,7 @@ Draws a colored line on top of the game.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.draw_line(0, 0, 200, 200, 0, 255, 0)
 ```
@@ -1413,7 +1413,7 @@ Draws many lines of one color in one go. Each line is `{ x1, y1, x2, y2 }`.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.draw_lines({ { 0, 0, 100, 0 }, { 100, 0, 100, 100 } }, 255, 255, 0)
 ```
@@ -1428,7 +1428,7 @@ Removes everything you drew on top of the game.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.clear_overlay()
 ```
@@ -1443,7 +1443,7 @@ Draws a list of shapes, in order, as one update: the game never shows it half dr
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.draw_batch({
 	{ kind = "clear" },
@@ -1462,7 +1462,7 @@ Pauses the script for that many milliseconds.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.sleep(1000)
 print("one second later")
@@ -1478,7 +1478,7 @@ Milliseconds since the script started. It never goes backwards, so it is good fo
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local start = Host.time()
 Host.sleep(500)
@@ -1495,7 +1495,7 @@ The global break and sleep config the loader sent (the default one when run with
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 print(#Host.antiban_config().breaks)
 ```
@@ -1534,7 +1534,7 @@ Seconds since local midnight on this computer, with the milliseconds as the frac
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local now = Host.clock()
 print("it's", math.floor(now // 3600), "o'clock")
@@ -1559,7 +1559,7 @@ Works in any run, and needs no store session. Values must be finite numbers.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.report_counters({
 	{ id = "games", label = "Games", value = 12 },
@@ -1578,7 +1578,7 @@ Writes a line to the loader's log in the warning color (yellow), for something t
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.report_warning("[Bank][00:01:02:003]: the bank is nearly full")
 ```
@@ -1593,7 +1593,7 @@ Shows the breaks and sleeps the script has scheduled in the loader's Breaks tab.
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.report_breaks({
 	breaks = { { remaining = 600000, length = 120000 } },
@@ -1613,7 +1613,7 @@ Send gains, not totals, and not too often: once a minute is plenty. `Utils.Stats
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 Host.report_stats(1250, 0)
 ```
@@ -1628,7 +1628,7 @@ Whether the client's choose-option menu is open. Returns an error when the agent
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 print(Host.menu_open())
 ```
@@ -1645,7 +1645,7 @@ The open right-click menu exactly as the client lays it out, in interface units 
 
 Example:
 ```luau
-local Host = require("../host")
+local Host = require("@lib/host")
 
 local menu = Host.menu_layout()
 if menu then

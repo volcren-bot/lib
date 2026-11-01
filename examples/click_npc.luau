@@ -2,12 +2,12 @@
 local NAME = "Spirit Angler"
 local OPTION = "Talk-to"
 
-local Host = require("../host")
+local Host = require("@lib/host")
 local sleep = Host.sleep
-local Clickbox = require("../main/clickbox")
-local Draw = require("../utils/draw")
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Clickbox = require("@lib/main/clickbox")
+local Draw = require("@lib/utils/draw")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 local npc = Npcs.nearest(NAME, me)

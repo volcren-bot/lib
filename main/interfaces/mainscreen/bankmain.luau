@@ -1,22 +1,22 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local widget_children = Host.widget_children
 type Widget = Host.Widget
-local Item = require("../../../utils/item")
+local Item = require("@lib/utils/item")
 type Item = Item.Item
-local BankpinKeypad = require("./bankpin_keypad")
-local Chat = require("../chatbox/chat")
-local Clickbox = require("../../clickbox")
-local Interact = require("../../interact")
-local Inv = require("../inv")
-local Log = require("../../../utils/log")
-local Minimenu = require("../minimenu")
-local Mouse = require("../../../utils/input/mouse")
-local Random = require("../../../utils/math/random")
-local Npcs = require("../../entities/npcs")
-local Objects = require("../../entities/objects")
-local Toplevel = require("./toplevel")
-local Walker = require("../../walker")
+local BankpinKeypad = require("@lib/main/interfaces/mainscreen/bankpin_keypad")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
+local Clickbox = require("@lib/main/clickbox")
+local Interact = require("@lib/main/interact")
+local Inv = require("@lib/main/interfaces/inv")
+local Log = require("@lib/utils/log")
+local Minimenu = require("@lib/main/interfaces/minimenu")
+local Mouse = require("@lib/utils/input/mouse")
+local Npcs = require("@lib/main/entities/npcs")
+local Objects = require("@lib/main/entities/objects")
+local Random = require("@lib/utils/math/random")
+local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
+local Walker = require("@lib/main/walker")
 type Loc = Host.Loc
 type Npc = Host.Npc
 type Tile = Host.Tile
@@ -285,7 +285,6 @@ function Bankmain.wait_open(timeout_ms: number?): boolean
 end
 
 -- How many tiles walking from the player to within reach of a bank takes (planned through doors, stairs and ladders), nil when no way is found.
--- A plan that stops short adds the straight distance left. Objects carry their plane; NPCs are on the player's.
 local function walk_cost(at: Tile, plane: number?): number?
 	local plan = Walker.plan(at, plane, { near = Clickbox.APPROACH_NEAR })
 	if plan == nil then
@@ -301,9 +300,7 @@ local function walk_cost(at: Tile, plane: number?): number?
 	return cost
 end
 
--- The bank that takes the fewest steps to walk to, from every booth, chest and banker loaded: the closest PLAN_CANDIDATES by straight distance are
--- planned (that is the expensive part), and the cheapest plan wins. Falls back to the closest by straight distance when none of them can be planned.
--- nil when none is loaded or the position is unknown.
+-- The bank with the fewest steps to walk to: the closest PLAN_CANDIDATES by straight distance are planned and the cheapest wins; nil when none is loaded.
 function Bankmain.nearest(): Source?
 	local me = Walker.position()
 	if me == nil then
@@ -373,8 +370,7 @@ function Bankmain.hover(source: Source?, walk: boolean?): boolean
 	return Npcs.hover(target.npc :: Npc)
 end
 
--- Opens the closest bank (or `source`) and waits for it, walking closer first unless `walk` is false. Another interface in the way is closed first.
--- true when the bank is open (a PIN keypad in the way is handled by is_open).
+-- Opens the closest bank (or `source`) and waits for it, walking closer first unless `walk` is false; true when the bank is open.
 function Bankmain.open(source: Source?, walk: boolean?): boolean
 	if BankpinKeypad.is_open() then
 		return Bankmain.wait_open()
@@ -694,8 +690,7 @@ function Bankmain.count_tabs(): number?
 	return count
 end
 
--- The tab a bank slot is in, 1 to 9, or 0 when it isn't in a tab. The container keeps each tab's items together, tab 1 first, then the others,
--- then the items that aren't in a tab, so a tab is a range of slots as long as its size.
+-- The tab a bank slot is in, 1 to 9, or 0 when it isn't in a tab; the container keeps each tab's items together, so a tab is a range of slots.
 function Bankmain.tab_of_slot(slot: number): number?
 	local sizes = Bankmain.tab_sizes()
 	if sizes == nil then
@@ -736,8 +731,7 @@ function Bankmain.is_slot_shown(slot: number): boolean
 	return shown ~= nil and shown[slot] ~= nil
 end
 
--- How far to scroll to bring the slot into the grid, in mouse wheel notches: positive down, negative up, 0 when it is already shown.
--- nil when the slot isn't in the open tab.
+-- How far to scroll to bring the slot into the grid, in mouse wheel notches (positive down); nil when the slot isn't in the open tab.
 function Bankmain.scroll_distance(slot: number): number?
 	local g, w = grid(), slot_widget(slot)
 	if g == nil or w == nil then
@@ -751,8 +745,7 @@ function Bankmain.scroll_distance(slot: number): number?
 	return if delta > 0 then math.ceil(delta / SCROLL_NOTCH) else math.floor(delta / SCROLL_NOTCH)
 end
 
--- Scrolls the grid until the slot is fully shown. A long way is scrolled in a few steps, aiming at a random place in the grid, and then fixed up by
--- what is left; a short way is just what is needed. The slot must be in the open tab (see show_slot). true when it is shown.
+-- Scrolls the grid until the slot is fully shown, a long way in a few steps aimed at a random place; the slot must be in the open tab.
 function Bankmain.scroll_to(slot: number, timeout_ms: number?): boolean
 	local deadline = Host.time() + (timeout_ms or SCROLL_TIMEOUT_MS)
 	local first = true
@@ -837,9 +830,6 @@ local function withdraw_option(amount: number): (string, boolean)
 	return "Withdraw-X", true
 end
 
--- Takes an item out of the bank into the inventory. `amount` is how many (1 if nil; 0 or less is all, ALL_BUT_ONE all but one), `noted` withdraws
--- as notes or items (nil leaves the setting alone), and unless `use_quantity_buttons` is false it selects the matching quantity button and clicks the
--- item, otherwise it picks the option from the item's menu. It opens the item's tab and scrolls to it. true once the bank holds less of it.
 function Bankmain.withdraw(
 	item: Item | { Item },
 	amount: number?,
@@ -935,9 +925,7 @@ local function deposit_slot(slot: number, amount: number, use_quantity_buttons: 
 	return true
 end
 
--- Puts an item from the inventory into the bank by clicking it. `amount` is how many (all of it if nil, 0 or less; the whole stack or more is all of
--- it too). By default it selects the quantity button for the amount and clicks the item, with `use_quantity_buttons` false it takes the option from
--- the item's menu. With several of an item in the inventory a random one is clicked. true once the inventory holds less of it.
+-- Puts an item from the inventory into the bank by clicking it; `amount` is how many (all if nil or 0 or less), true once the inventory holds less of it.
 function Bankmain.deposit(item: Item | { Item }, amount: number?, use_quantity_buttons: boolean?): boolean
 	if not Bankmain.is_open() then
 		return false

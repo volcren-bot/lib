@@ -1,5 +1,5 @@
 --!strict
-local Random = require("./random")
+local Random = require("@lib/utils/math/random")
 local trunc = Random.trunc
 
 export type Point = { x: number, y: number }

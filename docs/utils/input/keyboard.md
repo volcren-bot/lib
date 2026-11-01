@@ -3,7 +3,7 @@
 Pressing keys and typing text with human-like timing: every key is held for a slightly different time and there is a natural pause between letters.
 
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 ```
 
 ## Keyboard.keys
@@ -16,7 +16,7 @@ A table of key codes by name, such as `keys.A`, `keys.RETURN`, `keys.ESCAPE`, `k
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_press(Keyboard.keys.ESCAPE)
 ```
@@ -64,7 +64,7 @@ The shortest pause between two typed letters, in milliseconds.
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 print(Keyboard.interval_min())
 ```
@@ -79,7 +79,7 @@ The longest pause between two typed letters, in milliseconds.
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 print(Keyboard.interval_max())
 ```
@@ -94,8 +94,8 @@ Presses a key and keeps it held until you call `key_up`.
 
 Example:
 ```luau
-local Host = require("../host")
-local Keyboard = require("../utils/input/keyboard")
+local Host = require("@lib/host")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_down(Keyboard.keys.LEFT)
 Host.sleep(500)
@@ -112,7 +112,7 @@ Releases a key that is being held.
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_up(Keyboard.keys.LEFT)
 ```
@@ -127,7 +127,7 @@ Presses a key and releases it after a short, slightly random time.
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_press(Keyboard.keys.RETURN)
 ```
@@ -142,8 +142,8 @@ Queues pressing a key and keeping it held, and returns at once. A key held this 
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
-local Host = require("../host")
+local Keyboard = require("@lib/utils/input/keyboard")
+local Host = require("@lib/host")
 
 Keyboard.key_down_async(Keyboard.keys.LEFT)
 Host.sleep_async(300)
@@ -160,7 +160,7 @@ Queues releasing a key.
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_up_async(Keyboard.keys.LEFT)
 ```
@@ -175,7 +175,7 @@ Queues a key press: down, a short random pause, up. Cancelling during the pause 
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_press_async(Keyboard.keys.RETURN)
 ```
@@ -190,7 +190,7 @@ Queues typing text, like `Keyboard.send`, and returns at once.
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.send_async("hello", Keyboard.keys.RETURN)
 Keyboard.wait()
@@ -206,7 +206,7 @@ Whether async input (keyboard or mouse; they share one queue) is still running o
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_press_async(Keyboard.keys.RETURN)
 print(Keyboard.busy())
@@ -222,7 +222,7 @@ Waits for async input to finish. Returns `false`, after printing the reason, if 
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_press_async(Keyboard.keys.RETURN)
 Keyboard.wait()
@@ -238,7 +238,7 @@ Stops async input, releases the keys and buttons it holds, and drops what was qu
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_down_async(Keyboard.keys.LEFT)
 Keyboard.cancel()
@@ -254,7 +254,7 @@ Whether the script is currently holding that key.
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.key_down(Keyboard.keys.SHIFT)
 print(Keyboard.is_key_down(Keyboard.keys.SHIFT)) -- true
@@ -271,7 +271,7 @@ Types a piece of text one letter at a time, then optionally presses one more key
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.send("hello world", Keyboard.keys.RETURN)
 ```
@@ -286,7 +286,7 @@ Presses a random harmless key, most often an arrow key. A small thing a real per
 
 Example:
 ```luau
-local Keyboard = require("../utils/input/keyboard")
+local Keyboard = require("@lib/utils/input/keyboard")
 
 Keyboard.random_key()
 ```

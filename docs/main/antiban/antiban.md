@@ -5,7 +5,7 @@ The scheduler for antiban: timed tasks, breaks, sleeps and walking tasks. Schedu
 Times are in milliseconds, and the scheduling uses a running clock that freezes while antiban works, so the time spent on breaks and tasks doesn't count towards the next one.
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 ```
 
 ## Constants
@@ -24,7 +24,7 @@ Times in milliseconds, for writing intervals as `15 * Antiban.MINUTE`.
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.add_task(function() end, 15 * Antiban.MINUTE)
 ```
@@ -74,7 +74,7 @@ Schedules `method` every `interval` ms, give or take `randomness` (a fraction of
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.add_task(function()
 	-- hover a skill, move the mouse around, ...
@@ -94,7 +94,7 @@ Like `add_task`, for tasks that are fine to do while walking. They only run from
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.add_walk_task(function()
 	-- look at the camera, ...
@@ -114,7 +114,7 @@ Pushes the due time of every task and walking task back by `ms`, as if their tim
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 local started = Host.time()
 -- ... a minigame ...
@@ -138,8 +138,8 @@ A break or sleep that is still there after a change keeps its due time when its 
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
-local Biometrics = require("../main/antiban/biometrics")
+local Antiban = require("@lib/main/antiban/antiban")
+local Biometrics = require("@lib/main/antiban/biometrics")
 
 Biometrics.setup_player()
 Antiban.sync_config()
@@ -166,7 +166,7 @@ Runs whatever is due: tasks, breaks and sleeps (pass `false` to leave one kind o
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 while true do
 	Antiban.do_antiban()
@@ -187,7 +187,7 @@ Runs the walking tasks that are due. Call it while walking. Returns true if one 
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.do_walking_antiban()
 ```
@@ -205,7 +205,7 @@ Runs the tasks that are due, and returns true if one ran. `do_antiban` calls it;
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.do_task()
 ```
@@ -223,7 +223,7 @@ Runs the walking tasks that are due, and returns true if one ran.
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.do_walk_task()
 ```
@@ -241,7 +241,7 @@ Takes the breaks that are due, and returns true if one was taken.
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.do_break()
 ```
@@ -259,7 +259,7 @@ Takes the sleeps that are due, and returns true if one was taken.
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.do_sleep()
 ```
@@ -277,7 +277,7 @@ Takes the break `task` now, whether it's due or not. Waits out its length (about
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.sync_config()
 Antiban.take_break(Antiban.breaks[1])
@@ -296,7 +296,7 @@ Takes the sleep `task` now, whether it's due or not. Same as `take_break`, with 
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.sync_config()
 Antiban.take_sleep(Antiban.sleeps[1])
@@ -315,7 +315,7 @@ Moves the mouse off the game canvas, to one side, the way a player does when the
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.lose_focus()
 ```
@@ -333,7 +333,7 @@ The running time at which the time of day `value` ("HH:MM:SS") next comes, with 
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 local due = Antiban.time_running_at_clock("01:30:45", 0.1)
 ```
@@ -351,7 +351,7 @@ How long until the break is due, as "HH:MM:SS". Useful for showing the user.
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 print("next break in", Antiban.time_until_break(Antiban.breaks[1]))
 ```
@@ -369,7 +369,7 @@ How long until the sleep is due, as "HH:MM:SS".
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 print("next sleep in", Antiban.time_until_sleep(Antiban.sleeps[1]))
 ```
@@ -387,7 +387,7 @@ Simulates `botting_days` (1000 by default) days with the breaks set up and print
 Example:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.sync_config()
 Antiban.simulate_breaks()
@@ -413,7 +413,7 @@ Set any of these to run your own code at those points. `on_start_*` and `on_fini
 Example, walking to a safe spot before a break:
 
 ```luau
-local Antiban = require("../main/antiban/antiban")
+local Antiban = require("@lib/main/antiban/antiban")
 
 Antiban.on_start_break = function(task)
 	-- walk somewhere safe, ...

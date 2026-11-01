@@ -1,12 +1,12 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local sleep = Host.sleep
 local sleep_async = Host.sleep_async
-local Geometry = require("../../utils/math/geometry")
-local Log = require("../../utils/log")
-local Mouse = require("../../utils/input/mouse")
-local Player = require("../player")
-local Random = require("../../utils/math/random")
+local Geometry = require("@lib/utils/math/geometry")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local Player = require("@lib/main/player")
+local Random = require("@lib/utils/math/random")
 
 local Biometrics = {}
 

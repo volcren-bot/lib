@@ -1,7 +1,7 @@
 # Utils.Log
 
 ```luau
-local Log = require("../utils/log")
+local Log = require("@lib/utils/log")
 ```
 
 ## Log.log

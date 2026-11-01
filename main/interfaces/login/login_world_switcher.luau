@@ -1,16 +1,16 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local connection = Host.connection
 local world_select = Host.world_select
 local sleep = Host.sleep
 type World = Host.World
 type WorldSelect = Host.WorldSelect
-local GameState = require("../../game_state")
-local Geometry = require("../../../utils/math/geometry")
-local Log = require("../../../utils/log")
-local Mouse = require("../../../utils/input/mouse")
-local Random = require("../../../utils/math/random")
+local GameState = require("@lib/main/game_state")
+local Geometry = require("@lib/utils/math/geometry")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local Random = require("@lib/utils/math/random")
 local Box = Geometry.Box
 type Box = Geometry.Box
 

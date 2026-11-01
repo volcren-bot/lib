@@ -10,7 +10,7 @@ The world switcher of the login screen. Everything below needs you to be on the 
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 print("current world:", LoginWorldSwitcher.current())
 ```
@@ -27,7 +27,7 @@ Flags describing a world, found in `world.types`. Besides `MEMBERS` there is `PV
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local world = LoginWorldSwitcher.world(301)
 if world then
@@ -45,7 +45,7 @@ combined into one flag. `switch` refuses these worlds unless `allow_dangerous_wo
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local world = LoginWorldSwitcher.world(301)
 if world then
@@ -62,7 +62,7 @@ Set this to `true` to let `switch` pick dangerous worlds. It's `false` by defaul
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 LoginWorldSwitcher.allow_dangerous_worlds = true
 print("switched:", LoginWorldSwitcher.switch(318))
@@ -79,7 +79,7 @@ can be picked; `is_available` checks both for you.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 print(LoginWorldSwitcher.OFFLINE, LoginWorldSwitcher.FULL)
 ```
@@ -120,7 +120,7 @@ world, world list, scroll position, ...). Fails if you aren't on the login scree
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local select = LoginWorldSwitcher.state()
 if select then
@@ -139,7 +139,7 @@ Checks if the world list is open.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 print("open:", LoginWorldSwitcher.is_open())
 ```
@@ -154,7 +154,7 @@ returns `false`.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 print("opened in time:", LoginWorldSwitcher.wait_open(3000))
 ```
@@ -168,7 +168,7 @@ Gets the world you're set to log in to, the number on the "World N" button.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 print("current world:", LoginWorldSwitcher.current())
 ```
@@ -183,7 +183,7 @@ the switcher once.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 LoginWorldSwitcher.open()
 local worlds = LoginWorldSwitcher.worlds()
@@ -200,7 +200,7 @@ Gets a world by its number, or `nil` if it isn't in the list.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local world = LoginWorldSwitcher.world(301)
 if world then
@@ -217,7 +217,7 @@ Checks if a world has any of the given type flags (`MEMBERS`, `PVP`, ...).
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local world = LoginWorldSwitcher.world(301)
 if world then
@@ -234,7 +234,7 @@ Checks if a world is one `switch` would refuse by default (PvP, bounty, deadman,
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local world = LoginWorldSwitcher.world(318)
 if world then
@@ -251,7 +251,7 @@ Checks if a world can be joined, meaning it's neither offline nor full.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local world = LoginWorldSwitcher.world(301)
 if world then
@@ -268,7 +268,7 @@ Works out how `count` world boxes are arranged on screen. Returns `nil` if `coun
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local layout = LoginWorldSwitcher.layout(150)
 if layout then
@@ -298,7 +298,7 @@ Gets where every button of the switcher is on screen.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local buttons = LoginWorldSwitcher.buttons()
 if buttons then
@@ -317,7 +317,7 @@ Gets the world boxes shown on screen right now. The switcher has to be open.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 LoginWorldSwitcher.open()
 local shown = LoginWorldSwitcher.boxes()
@@ -338,7 +338,7 @@ Gets the world number in a visible box, where slot 1 is the top left one.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 LoginWorldSwitcher.open()
 print("top left world:", LoginWorldSwitcher.read(1))
@@ -354,7 +354,7 @@ Opens the world list by clicking the "World N" button. Does nothing if it's alre
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 print("opened:", LoginWorldSwitcher.open())
 ```
@@ -368,7 +368,7 @@ Closes the world list without picking a world. Does nothing if it's already clos
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 print("closed:", LoginWorldSwitcher.close())
 ```
@@ -382,7 +382,7 @@ Scrolls the world list one column to the left. Returns `false` if it can't scrol
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 LoginWorldSwitcher.open()
 print("scrolled:", LoginWorldSwitcher.previous_page())
@@ -398,7 +398,7 @@ Scrolls the world list one column to the right. Returns `false` if it can't scro
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 LoginWorldSwitcher.open()
 print("scrolled:", LoginWorldSwitcher.next_page())
@@ -415,7 +415,7 @@ Opens the switcher and scrolls until a world is on screen, then returns its box.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local found = LoginWorldSwitcher.find(301)
 if found then
@@ -434,7 +434,7 @@ Switches to a world, opening the list and scrolling as needed. Refuses dangerous
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 local switched = LoginWorldSwitcher.switch(301)
 print(if switched then "now on world 301" else `couldn't switch`)
@@ -450,7 +450,7 @@ to 5 times.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("../main/interfaces/login/login_world_switcher")
+local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
 
 print("on a good world:", LoginWorldSwitcher.switch_random({ 301, 302, 303, 304 }))
 ```

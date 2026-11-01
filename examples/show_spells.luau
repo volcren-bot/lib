@@ -1,6 +1,6 @@
 --!strict
 -- Prints the spellbook, which spells can be cast and which wait for a target.
-local Magic = require("../main/interfaces/gametabs/magic")
+local Magic = require("@lib/main/interfaces/gametabs/magic")
 
 local book = Magic.spellbook()
 assert(book, "the spellbook isn't readable")

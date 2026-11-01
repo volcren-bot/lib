@@ -3,7 +3,7 @@
 The bank. It has every function of [Inv](../inv.md) already set up for the bank's contents, and enters the account's bank PIN if the keypad is in the way.
 
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 ```
 
 ## Constants
@@ -29,7 +29,7 @@ Whether the bank window is open. If the keypad is showing, the injector enters t
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 if Bankmain.is_open() then
 	print("coins in the bank:", Bankmain.count_ex("Coins"))
@@ -46,7 +46,7 @@ The bank's close button, or `nil` when the bank is closed or it isn't where the 
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 print(Bankmain.close_button())
 ```
@@ -87,7 +87,7 @@ Opens the closest bank (or `source`) with "Bank" (or "Use" on objects) and waits
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 if Bankmain.open() then
 	print("coins in the bank:", Bankmain.count_ex("Coins"))
@@ -139,7 +139,7 @@ function Bankmain.set_quantity(amount: number): boolean
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 Bankmain.set_notes(false)
 Bankmain.set_quantity(10)
@@ -203,7 +203,7 @@ The grid holds one widget per slot, and only the open tab's are shown; their pos
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 local tab, slot = Bankmain.find_tab("Willow logs")
 if slot and Bankmain.show_slot(slot) then
@@ -224,7 +224,7 @@ It leaves the quantity, X and notes settings as it set them. Save them first (`q
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 Bankmain.open()
 Bankmain.withdraw("Willow logs", 10, false)
@@ -243,7 +243,7 @@ Closes the bank, like `DepositBox.close`: Escape with the chance `key_probabilit
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 Bankmain.close()
 ```
@@ -258,7 +258,7 @@ The open bank tab: 0 for the main tab, which shows every item, 1 to 9 for the ot
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 print("tab:", Bankmain.tab())
 ```
@@ -273,7 +273,7 @@ The button of a bank tab in the tab bar, or `nil` when the bank is closed.
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 print(Bankmain.tab_button(0))
 ```
@@ -288,7 +288,7 @@ Opens a bank tab and waits for it to be the open one (2 seconds by default). The
 
 Example:
 ```luau
-local Bankmain = require("../main/interfaces/mainscreen/bankmain")
+local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 assert(Bankmain.open_tab(0), "couldn't open the main tab")
 print(Bankmain.index_of("Anglerfish"))

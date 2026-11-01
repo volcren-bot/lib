@@ -1,17 +1,17 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local widget = Host.widget
 local sub_interfaces = Host.sub_interfaces
 local varp = Host.varp
 local sleep = Host.sleep
 type Widget = Host.Widget
-local Biometrics = require("../../antiban/biometrics")
-local GameState = require("../../game_state")
-local Log = require("../../../utils/log")
-local Mouse = require("../../../utils/input/mouse")
-local Random = require("../../../utils/math/random")
-local SidePanels = require("./side_panels")
+local Biometrics = require("@lib/main/antiban/biometrics")
+local GameState = require("@lib/main/game_state")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local Random = require("@lib/utils/math/random")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 local Logout = {
 	GROUP = 182,

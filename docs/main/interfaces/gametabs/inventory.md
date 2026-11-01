@@ -3,7 +3,7 @@
 Your inventory (the 28 slots you carry). It has every function of [Inv](../inv.md) already set up for the inventory (the slots on screen are the dynamic children of `149:0`), plus selecting, combining and dropping items.
 
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 ```
 
 ## Constants
@@ -27,7 +27,7 @@ Orders to go through the 28 slots in (slots from 0): by column and reversed, col
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(table.concat(Inventory.PATTERNS[1], ","))
 ```
@@ -38,7 +38,7 @@ print(table.concat(Inventory.PATTERNS[1], ","))
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print("logs:", Inventory.count_ex("Logs"))
 print("has a knife:", Inventory.contains("Knife"))
@@ -55,7 +55,7 @@ Whether the inventory tab is the open side panel.
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.is_open())
 ```
@@ -70,7 +70,7 @@ How many empty slots you have (same as `count_empty`).
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print("free slots:", Inventory.free_slots())
 ```
@@ -85,7 +85,7 @@ Whether your inventory has no empty slots left.
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print("full:", Inventory.is_full())
 ```
@@ -100,7 +100,7 @@ The slot of the item waiting for a target (after "Use"), `nil` when no inventory
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print("selected slot:", Inventory.selected())
 ```
@@ -115,7 +115,7 @@ Whether the item in `slot` is the selected one.
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.is_selected(0))
 ```
@@ -130,7 +130,7 @@ Cancels what waits for a target. A selected inventory item is clicked (using it 
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.deselect())
 ```
@@ -145,7 +145,7 @@ Picks "Use" on the item in `slot` and waits until it's selected. Another selecti
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.select_slot(0))
 ```
@@ -160,7 +160,7 @@ Selects a random one of the matching items, or keeps the selection when it alrea
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.select("Knife"))
 ```
@@ -175,7 +175,7 @@ Uses the item in `slot_a` on the one in `slot_b` and waits for the selection to 
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.combine_slots(0, 1))
 ```
@@ -190,7 +190,7 @@ Uses one of `items_a` on one of `items_b`, picking the two slots closest to each
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.combine("Knife", "Logs"))
 ```
@@ -205,7 +205,7 @@ One of `PATTERNS`, the middle ones more often, reversed 30% of the time (Biometr
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(table.concat(Inventory.random_pattern(), ","))
 ```
@@ -220,7 +220,7 @@ Drops the items in `slots` in that order, picking "Drop" from the menu (with a l
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.drop_slots({ 0, 1, 2 }))
 ```
@@ -235,7 +235,7 @@ Drops every matching item, going over their slots in `pattern` (`random_pattern(
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.drop({ "Logs", "Oak logs" }))
 ```
@@ -250,7 +250,7 @@ Drops the items in `slots` (in that order) by clicking them with Shift held. Bef
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.shift_drop_slots(Inventory.indices_of("Logs") or {}))
 ```
@@ -265,7 +265,7 @@ Shift drops every matching item, going over their slots in `pattern` (`random_pa
 
 Example:
 ```luau
-local Inventory = require("../main/interfaces/gametabs/inventory")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
 print(Inventory.shift_drop("Raw shrimps", Inventory.PATTERNS[1]))
 ```

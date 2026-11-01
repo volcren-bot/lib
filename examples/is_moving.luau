@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../host")
+local Host = require("@lib/host")
 
 -- Prints, at each game tick, whether the server moved you and to which tile. Server packet 2 ends a tick in this game revision.
 while true do

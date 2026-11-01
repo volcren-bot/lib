@@ -1,9 +1,9 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local sub_interfaces = Host.sub_interfaces
 local widget = Host.widget
 local widget_children = Host.widget_children
-local GameVal = require("../../../utils/game_val")
+local GameVal = require("@lib/utils/game_val")
 
 local Chatbox = {
 	GROUP = 162,

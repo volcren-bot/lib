@@ -1,11 +1,11 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local widget = Host.widget
 type ClientState = Host.ClientState
 type Widget = Host.Widget
-local GameState = require("../../game_state")
-local Mouse = require("../../../utils/input/mouse")
+local GameState = require("@lib/main/game_state")
+local Mouse = require("@lib/utils/input/mouse")
 
 local WelcomeScreen = {}
 

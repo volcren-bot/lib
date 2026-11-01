@@ -3,7 +3,7 @@
 Moving and clicking the mouse like a person: smooth curved movement, random click spots inside targets and slightly different click durations.
 
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 ```
 
 ## Targets
@@ -52,7 +52,7 @@ Where the mouse is. Returns `nil` when the mouse is not over the game.
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 local p = Mouse.position()
 print(if p then `{p.x}, {p.y}` else "mouse is outside")
@@ -68,7 +68,7 @@ Jumps the mouse straight to a point, with no movement in between.
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.teleport({ x = 200, y = 200 })
 ```
@@ -83,8 +83,8 @@ Presses a mouse button (`"left"`, `"right"` or `"middle"`; left by default) and 
 
 Example:
 ```luau
-local Host = require("../host")
-local Mouse = require("../utils/input/mouse")
+local Host = require("@lib/host")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.hold("middle")
 Host.sleep(200)
@@ -101,7 +101,7 @@ Releases a mouse button.
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.release()
 ```
@@ -116,7 +116,7 @@ Does nothing for one to twenty seconds, like a person who looked away.
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.idle()
 ```
@@ -131,7 +131,7 @@ Picks a point near, but not exactly at, a destination. It is where a careless ha
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 local near = Mouse.miss({ x = 300, y = 300 })
 print(near.x, near.y)
@@ -147,7 +147,7 @@ Moves the mouse to a target. `forced` makes it move even if it's already inside 
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move({ x1 = 100, y1 = 100, x2 = 200, y2 = 140 })
 ```
@@ -162,7 +162,7 @@ Starts moving to a target and returns at once; the script keeps running while th
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move_async({ x1 = 100, y1 = 100, x2 = 200, y2 = 140 })
 -- ... do other work, then click: this takes over from the move above
@@ -179,7 +179,7 @@ Starts a click, after the move to the target if there is one, and returns at onc
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.click_async({ x1 = 100, y1 = 100, x2 = 200, y2 = 140 })
 Mouse.wait()
@@ -195,7 +195,7 @@ Queues pressing a button and keeping it held. Cancelling with `Mouse.cancel`, ot
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.hold_async("middle")
 Mouse.move_async({ x = 400, y = 300 })
@@ -212,7 +212,7 @@ Queues releasing a button.
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.release_async("middle")
 ```
@@ -227,7 +227,7 @@ Queues a drag: press the button, move to the target, release it. If the drag is 
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move({ x = 100, y = 100 })
 Mouse.drag_async({ x = 200, y = 200 }, "middle")
@@ -244,7 +244,7 @@ Queues turning the mouse wheel by `amount` notches, down or up. With a target it
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.scroll_async(3, true)
 ```
@@ -259,7 +259,7 @@ Whether async mouse input is still running or queued.
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move_async({ x = 300, y = 200 })
 print(Mouse.busy())
@@ -275,7 +275,7 @@ Waits for async input to finish. Returns `false`, after printing the reason, if 
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move_async({ x = 300, y = 200 })
 Mouse.wait()
@@ -291,7 +291,7 @@ Stops async input and drops what was queued. Returns once nothing is being sent 
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move_async({ x = 300, y = 200 })
 Mouse.cancel()
@@ -307,8 +307,8 @@ About how long (milliseconds) a move from `from` (the mouse by default) to `to` 
 
 Example:
 ```luau
-local Geometry = require("../utils/math/geometry")
-local Mouse = require("../utils/input/mouse")
+local Geometry = require("@lib/utils/math/geometry")
+local Mouse = require("@lib/utils/input/mouse")
 
 print(Mouse.travel_ms(Geometry.Point.new(400, 300)))
 ```
@@ -323,7 +323,7 @@ Clicks. With a target it moves there first; without one it clicks where the mous
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.click({ x1 = 100, y1 = 100, x2 = 200, y2 = 140 })
 Mouse.click(nil, "right")
@@ -339,7 +339,7 @@ Holds a button, moves to the target and releases the button.
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.move({ x = 100, y = 100 })
 Mouse.drag({ x = 200, y = 200 })
@@ -355,7 +355,7 @@ Turns the mouse wheel by `amount` notches, down or up. With a target it moves th
 
 Example:
 ```luau
-local Mouse = require("../utils/input/mouse")
+local Mouse = require("@lib/utils/input/mouse")
 
 Mouse.scroll(3, true) -- three notches down
 ```

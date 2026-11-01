@@ -1,5 +1,5 @@
 --!strict
-local RecommendSurvey = require("../main/interfaces/chatbox/recommend_survey")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 
 local open = RecommendSurvey.is_open()
 if not open then

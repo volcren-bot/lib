@@ -1,7 +1,7 @@
 --!strict
 -- Reports the experience gained to Volcren every 15 seconds and prints what was sent.
-local Host = require("../host")
-local StatsReport = require("../utils/stats_report")
+local Host = require("@lib/host")
+local StatsReport = require("@lib/utils/stats_report")
 
 local tracker = StatsReport.new(15000)
 local sent = 0

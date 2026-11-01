@@ -3,7 +3,7 @@
 Readable names for the numbers the client uses to say what it is doing (on the login screen, loading, logged in...).
 
 ```luau
-local GameState = require("../main/game_state")
+local GameState = require("@lib/main/game_state")
 ```
 
 ## Constants
@@ -32,8 +32,8 @@ Turns a state number into a short readable name such as `"logged in"`. Returns `
 
 Example:
 ```luau
-local Host = require("../host")
-local GameState = require("../main/game_state")
+local Host = require("@lib/host")
+local GameState = require("@lib/main/game_state")
 
 local state = Host.game_state()
 if state and state.game_state then
@@ -52,8 +52,8 @@ Whether the client's full-screen black overlay is up. It shows while the client 
 
 Example:
 ```luau
-local Host = require("../host")
-local GameState = require("../main/game_state")
+local Host = require("@lib/host")
+local GameState = require("@lib/main/game_state")
 
 -- after clicking "Leave": wait for the screen to go black and come back
 if GameState.fading() then

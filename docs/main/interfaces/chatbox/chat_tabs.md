@@ -3,7 +3,7 @@
 The buttons under the chat (All, Game, Public, Private, Channel, Clan, Trade): which one is open, switching between them, and the filter each one has (the "On", "Friends" or "Off" written under its name).
 
 ```luau
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 ```
 
 Which tab is open comes from a game setting and the filters from the text under each tab's name, so nothing depends on the screen's colours. Filters are changed from the tab's right-click menu.
@@ -35,7 +35,7 @@ The open tab, or "none" while the chatbox is hidden.
 
 Example:
 ```luau
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
 print(ChatTabs.active())
 ```
@@ -50,7 +50,7 @@ True when `tab` is the open tab.
 
 Example:
 ```luau
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
 print(ChatTabs.is_active("all"))
 ```
@@ -65,7 +65,7 @@ Clicks `tab` if it isn't the open one (this also shows a hidden chatbox) and wai
 
 Example:
 ```luau
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
 print(ChatTabs.open("game"))
 ```
@@ -80,7 +80,7 @@ Like `ChatTabs.open`, but queues the click as async input and returns at once, w
 
 Example:
 ```luau
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
 print(ChatTabs.open_async("game"))
 ```
@@ -95,7 +95,7 @@ The tab's filter. The "all" tab has none, so it gives nil.
 
 Example:
 ```luau
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
 for _, tab in ipairs(ChatTabs.NAMES) do
 	print(tab, ChatTabs.state(tab))
@@ -112,7 +112,7 @@ Picks the option of the tab's right-click menu that sets its filter to `state`, 
 
 Example:
 ```luau
-local ChatTabs = require("../main/interfaces/chatbox/chat_tabs")
+local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
 print(ChatTabs.set_state("public", "filtered"))
 ```

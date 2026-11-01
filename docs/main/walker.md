@@ -3,7 +3,7 @@
 Walking around: finding where you are, planning a route and clicking tiles on screen.
 
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 ```
 
 ## Walker.position
@@ -16,7 +16,7 @@ Your current tile. Returns `nil` and a message when you are not logged in.
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local me = Walker.position()
 print(if me then `at {me.x}, {me.y}` else "unavailable")
@@ -32,7 +32,7 @@ The tile that is `dx` tiles east and `dy` tiles north of you (use negative numbe
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local target = Walker.relative(0, 5)
 print(target and target.x, target and target.y)
@@ -48,7 +48,7 @@ Plans a walking route to a tile, starting from you (or from `from`). Both ends a
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local goal = assert(Walker.relative(8, 8))
 local path = Walker.path(goal)
@@ -65,7 +65,7 @@ The way the game will walk if you click `to`, starting from you (or from `from`)
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local goal = assert(Walker.relative(6, -3))
 local route = Walker.route(goal)
@@ -86,7 +86,7 @@ Clicks a tile on the screen so your character walks there. It first turns the ca
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local ok = Walker.click_tile(assert(Walker.relative(2, 0)))
 print(ok)
@@ -102,7 +102,7 @@ Waits until you are standing on the tile. Gives up after `timeout_ms` (default 1
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local goal = assert(Walker.relative(2, 0))
 Walker.click_tile(goal)
@@ -119,7 +119,7 @@ Clicks a tile and waits until you get there. A shortcut for `click_tile` followe
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local ok = Walker.walk_tile(assert(Walker.relative(3, 0)))
 print(if ok then "arrived" else `didn't arrive`)
@@ -135,7 +135,7 @@ Tiles between two tiles: the larger of the x and y distances, which is how many 
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 print(Walker.distance({ x = 3200, y = 3200 }, { x = 3203, y = 3210 })) -- 10
 ```
@@ -150,7 +150,7 @@ Whether a tile can be clicked on the minimap: it's within `Walker.MINIMAP_REACH`
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 print(Walker.on_minimap(assert(Walker.relative(10, 0))))
 ```
@@ -165,7 +165,7 @@ Clicks a tile on the minimap and waits (up to 1.2 s) for the client to set a des
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local ok = Walker.click_minimap(assert(Walker.relative(0, 12)))
 print(ok)
@@ -201,8 +201,8 @@ Walks to a tile, on any plane, through doors and up and down ladders and stairca
 
 Example:
 ```luau
-local Walker = require("../main/walker")
-local Player = require("../main/player")
+local Walker = require("@lib/main/walker")
+local Player = require("@lib/main/player")
 
 local ok = Walker.walk({ x = 3164, y = 3486 }, {
 	near = 3,
@@ -225,7 +225,7 @@ Your tile with its plane.
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local me = Walker.here()
 print(me and `{me.x}, {me.y} on plane {me.plane}`)
@@ -241,7 +241,7 @@ The plan `Walker.walk` starts from: `Host.nav_plan` from you to `to` on `plane` 
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local plan = Walker.plan({ x = 3208, y = 3220 }, 2)
 for _, action in ipairs(plan and plan.actions or {}) do
@@ -259,7 +259,7 @@ The tile the player is walking to, while they are: the last tile we clicked to w
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local target = Walker.last_click()
 if target then
@@ -280,7 +280,7 @@ How far (fine units, x and y) the player will have moved `ms` from now: it follo
 
 Example:
 ```luau
-local Walker = require("../main/walker")
+local Walker = require("@lib/main/walker")
 
 local shift = Walker.ahead(400)
 if shift then

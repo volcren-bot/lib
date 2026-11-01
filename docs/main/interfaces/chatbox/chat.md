@@ -3,7 +3,7 @@
 The chat at the bottom left of the screen: the messages (with the time each one arrived), what you have typed, the questions the chat asks ("Enter amount:"), and hiding and showing the chatbox.
 
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 ```
 
 Nothing here looks at the screen's colours. Messages come from the chat history the game keeps, so they can be read with the chatbox closed, covered by a dialogue, or transparent, and messages the tabs hide are there too. Everything else is read from the chat's buttons and texts. For the tabs see `ChatTabs`; for dialogues with NPCs see `ChatOptions`.
@@ -70,7 +70,7 @@ Turns a game text into plain text: colour and image tags removed, line breaks ma
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.clean("<col=ff0000>Off</col>")) --> Off
 ```
@@ -85,7 +85,7 @@ The chat history, oldest first, or only the messages of the types in `kinds`. Th
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 for _, m in ipairs(Chat.messages({ Chat.MessageType.GAME }) or {}) do
 	print(m.time_utc, m.text)
@@ -102,8 +102,8 @@ The messages that arrived after the one whose `uid` is `since`, oldest first. Ke
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
-local Host = require("../host")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
+local Host = require("@lib/host")
 
 local last = Chat.last_message()
 local seen = if last then last.uid else -1
@@ -126,7 +126,7 @@ The newest message (of the types in `kinds`), or nil when there is none.
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 local m = Chat.last_message()
 print(m and m.text)
@@ -142,7 +142,7 @@ The newest message whose text contains `text`.
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 local m = Chat.find_message("correctly entered your PIN")
 if m then
@@ -160,7 +160,7 @@ True when a message of the history contains `text`.
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.contains_message("Welcome to the game"))
 ```
@@ -175,8 +175,8 @@ How many of the newest messages in a row are exactly `text` (dialogue lines are 
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
-local Host = require("../host")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
+local Host = require("@lib/host")
 
 local before = Chat.count_new_message("You can't light a fire here.") or 0
 -- ... use the tinderbox on the logs ...
@@ -196,7 +196,7 @@ Waits up to `timeout_ms` (600 ms by default) for a new message containing `text`
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 local m = Chat.wait_message("You catch", 10000)
 print(if m then m.text else "nothing caught")
@@ -212,7 +212,7 @@ The whole history as text, one message per line ("name: text", or just the text 
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.messages_string())
 ```
@@ -227,7 +227,7 @@ The lines the chat shows right now, top to bottom, as plain text with the name a
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 for _, line in ipairs(Chat.lines() or {}) do
 	print(line)
@@ -244,7 +244,7 @@ Your name as the chat's input line shows it, or your player's name when the inpu
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.display_name())
 ```
@@ -259,7 +259,7 @@ What has been typed in the chat's input line and not sent yet.
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.input_text())
 ```
@@ -274,7 +274,7 @@ True when something has been typed in the chat's input line and not sent.
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.input_has_text())
 ```
@@ -289,7 +289,7 @@ The account type: "none", "ironman", "ultimate", "hardcore", "group", "hardcore_
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.iron_type())
 ```
@@ -304,7 +304,7 @@ True when the "Transparent chatbox" setting is on (it only shows in the resizabl
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.is_transparent())
 ```
@@ -319,7 +319,7 @@ The question the chat is asking, like "Enter amount:" after a bank's Withdraw-X,
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.query())
 ```
@@ -334,7 +334,7 @@ The answer typed so far to the chat's question.
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.query_answer())
 ```
@@ -349,7 +349,7 @@ True when the chat is asking a question that contains `query`.
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.find_query("Enter amount"))
 ```
@@ -364,7 +364,7 @@ Waits up to `timeout_ms` (600 ms by default) for the chat to ask a question that
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.wait_query("Enter amount", 2000))
 ```
@@ -379,7 +379,7 @@ Waits up to `timeout_ms` for the question `query`, erases what was typed if it i
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 -- after picking Withdraw-X on an item in the bank
 print(Chat.answer_query("Enter amount", "14", 2000))
@@ -395,7 +395,7 @@ False while the chatbox is hidden. In the resizable modes, clicking the open tab
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.is_open())
 ```
@@ -410,7 +410,7 @@ Shows the chatbox by clicking the "All" tab, if it's hidden.
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.open())
 ```
@@ -425,7 +425,7 @@ Hides the chatbox by clicking the open tab. Fails in fixed mode, where it can't 
 
 Example:
 ```luau
-local Chat = require("../main/interfaces/chatbox/chat")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 
 print(Chat.close())
 ```

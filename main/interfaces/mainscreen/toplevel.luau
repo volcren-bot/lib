@@ -1,18 +1,18 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local sub_interfaces = Host.sub_interfaces
 local widget = Host.widget
 local sleep = Host.sleep
 local varbit = Host.varbit
 type Widget = Host.Widget
-local Biometrics = require("../../antiban/biometrics")
-local GameVal = require("../../../utils/game_val")
-local Geometry = require("../../../utils/math/geometry")
-local Keyboard = require("../../../utils/input/keyboard")
-local Log = require("../../../utils/log")
-local Mouse = require("../../../utils/input/mouse")
-local Random = require("../../../utils/math/random")
+local Biometrics = require("@lib/main/antiban/biometrics")
+local GameVal = require("@lib/utils/game_val")
+local Geometry = require("@lib/utils/math/geometry")
+local Keyboard = require("@lib/utils/input/keyboard")
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
+local Random = require("@lib/utils/math/random")
 local Box = Geometry.Box
 type Box = Geometry.Box
 type Point = Geometry.Point
@@ -123,8 +123,7 @@ function Toplevel.reset_escape()
 	escape_disabled = false
 end
 
--- Presses Escape up to ESCAPE_TRIES times, `timeout_ms` for each to see `closed()` turn true, with a short random pause between tries.
--- true when it closed. Failing every try turns Escape off for the rest of the run; false right away while it is off.
+-- Presses Escape up to ESCAPE_TRIES times, `timeout_ms` for each to see `closed()` turn true; failing every try turns Escape off for the run.
 local function escape_close(closed: () -> boolean, timeout_ms: number, name: () -> string): boolean
 	if escape_disabled then
 		return false

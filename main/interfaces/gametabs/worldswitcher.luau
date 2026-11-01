@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local widget = Host.widget
 local widget_children = Host.widget_children
@@ -11,15 +11,15 @@ local time = Host.time
 local mouse_down = Host.mouse_down
 local mouse_up = Host.mouse_up
 type Widget = Host.Widget
-local Biometrics = require("../../antiban/biometrics")
-local GameState = require("../../game_state")
-local Geometry = require("../../../utils/math/geometry")
-local Log = require("../../../utils/log")
-local Logout = require("./logout")
-local Mouse = require("../../../utils/input/mouse")
-local Random = require("../../../utils/math/random")
-local RecommendSurvey = require("../chatbox/recommend_survey")
-local SidePanels = require("./side_panels")
+local Biometrics = require("@lib/main/antiban/biometrics")
+local GameState = require("@lib/main/game_state")
+local Geometry = require("@lib/utils/math/geometry")
+local Log = require("@lib/utils/log")
+local Logout = require("@lib/main/interfaces/gametabs/logout")
+local Mouse = require("@lib/utils/input/mouse")
+local Random = require("@lib/utils/math/random")
+local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
+local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 local Box = Geometry.Box
 type Box = Geometry.Box
 

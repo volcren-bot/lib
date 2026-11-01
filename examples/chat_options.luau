@@ -4,11 +4,11 @@ local NAME = "Captain Pudi"
 local FIRST = "tell me more"
 local LAST = "Goodbye"
 
-local Chat = require("../main/interfaces/chatbox/chat")
-local ChatOptions = require("../main/interfaces/chatbox/chat_options")
-local Host = require("../host")
-local Npcs = require("../main/entities/npcs")
-local Walker = require("../main/walker")
+local Chat = require("@lib/main/interfaces/chatbox/chat")
+local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
+local Host = require("@lib/host")
+local Npcs = require("@lib/main/entities/npcs")
+local Walker = require("@lib/main/walker")
 
 local last = Chat.last_message()
 local since = if last then last.uid else -1

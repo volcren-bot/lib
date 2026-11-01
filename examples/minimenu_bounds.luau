@@ -1,8 +1,8 @@
 --!strict
 -- Loops forever, drawing the bounds of the open minimenu and its submenus plus the hover and keep-out areas.
-local Draw = require("../utils/draw")
-local Host = require("../host")
-local Minimenu = require("../main/interfaces/minimenu")
+local Draw = require("@lib/utils/draw")
+local Host = require("@lib/host")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 local sleep = Host.sleep
 
 type Palette = { menu: Draw.Color, hover: Draw.Color, keep_out: Draw.Color }

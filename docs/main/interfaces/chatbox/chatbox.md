@@ -3,7 +3,7 @@
 The chat area at the bottom of the screen, and the dialogues, option menus and message boxes that show up in it. Use it to find out which dialogue is open and to read what it says.
 
 ```luau
-local Chatbox = require("../main/interfaces/chatbox/chatbox")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
 ```
 
 ## Constants
@@ -34,7 +34,7 @@ The numbers of every dialogue currently open in the chat area, the level up disp
 
 Example:
 ```luau
-local Chatbox = require("../main/interfaces/chatbox/chatbox")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
 
 for _, group in ipairs(Chatbox.interfaces() or {}) do
 	print("open:", group)
@@ -51,7 +51,7 @@ The number of the first open dialogue, or `nil` if there is none.
 
 Example:
 ```luau
-local Chatbox = require("../main/interfaces/chatbox/chatbox")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
 
 print(Chatbox.interface())
 ```
@@ -66,7 +66,7 @@ The readable name of the first open dialogue.
 
 Example:
 ```luau
-local Chatbox = require("../main/interfaces/chatbox/chatbox")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
 
 print(Chatbox.interface_name())
 ```
@@ -81,7 +81,7 @@ Whether a specific dialogue is open, given by its number or its name.
 
 Example:
 ```luau
-local Chatbox = require("../main/interfaces/chatbox/chatbox")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
 
 print("level-up showing:", Chatbox.is_open(Chatbox.LEVELUP_DISPLAY))
 ```
@@ -96,7 +96,7 @@ Everything the open dialogues say (speech, options, messages) as one text with o
 
 Example:
 ```luau
-local Chatbox = require("../main/interfaces/chatbox/chatbox")
+local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
 
 local text = Chatbox.text()
 if text and text ~= "" then

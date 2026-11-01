@@ -3,7 +3,7 @@
 Read "varbits": game settings stored as a few bits of a bigger setting (a varp). The game files say which setting and which bits; that is looked up for you.
 
 ```luau
-local Varbits = require("../main/varbits")
+local Varbits = require("@lib/main/varbits")
 ```
 
 ## Constants
@@ -27,7 +27,7 @@ The current value of a varbit.
 
 Example:
 ```luau
-local Varbits = require("../main/varbits")
+local Varbits = require("@lib/main/varbits")
 
 print("spellbook:", Varbits.get(Varbits.SPELLBOOK))
 ```

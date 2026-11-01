@@ -3,7 +3,7 @@
 Working with individual pieces of the game's interface (buttons, text, icons, panels). Each piece is identified by a group number and a child number, written like `149:0`.
 
 ```luau
-local Widgets = require("../main/interfaces/widgets")
+local Widgets = require("@lib/main/interfaces/widgets")
 ```
 
 ## Constants
@@ -29,7 +29,7 @@ Looks up an interface piece. Returns `nil` when it isn't open.
 
 Example:
 ```luau
-local Widgets = require("../main/interfaces/widgets")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local w = Widgets.get(149, 0)
 print(if w then `{w.width}x{w.height} at {w.x}, {w.y}` else "not open")
@@ -45,7 +45,7 @@ Whether an interface piece currently exists on screen.
 
 Example:
 ```luau
-local Widgets = require("../main/interfaces/widgets")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 print("open:", Widgets.is_open(149, 0))
 ```
@@ -60,7 +60,7 @@ The middle point `x, y` of an interface piece.
 
 Example:
 ```luau
-local Widgets = require("../main/interfaces/widgets")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local x, y = Widgets.center({ x = 100, y = 100, width = 40, height = 20 })
 print(x, y) -- 120 110
@@ -76,7 +76,7 @@ Whether a point is inside an interface piece.
 
 Example:
 ```luau
-local Widgets = require("../main/interfaces/widgets")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 print(Widgets.contains({ x = 100, y = 100, width = 40, height = 20 }, 110, 105)) -- true
 ```
@@ -91,7 +91,7 @@ Clicks an interface piece, somewhere inside it. Returns `nil` and a message if i
 
 Example:
 ```luau
-local Widgets = require("../main/interfaces/widgets")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 print(Widgets.click(149, 0))
 ```
@@ -106,7 +106,7 @@ Like `Widgets.click`, but queues the move and click as async input and returns a
 
 Example:
 ```luau
-local Widgets = require("../main/interfaces/widgets")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 print(Widgets.click_async(149, 0))
 ```
@@ -121,7 +121,7 @@ Reads a checkbox and tells you if it is `"unticked"`, `"crossed"` or `"ticked"`.
 
 Example:
 ```luau
-local Widgets = require("../main/interfaces/widgets")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local w = Widgets.get(149, 0)
 if w then

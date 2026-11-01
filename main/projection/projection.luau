@@ -1,10 +1,10 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 local game_state = Host.game_state
 local connection = Host.connection
 local project = Host.project
 type FinePoint = Host.FinePoint
-local Geometry = require("../../utils/math/geometry")
+local Geometry = require("@lib/utils/math/geometry")
 local Point = Geometry.Point
 local Quad = Geometry.Quad
 local Box = Geometry.Box

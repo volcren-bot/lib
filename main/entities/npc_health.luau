@@ -1,5 +1,5 @@
 --!strict
-local Host = require("../../host")
+local Host = require("@lib/host")
 
 -- Tracks how hurt an NPC is: `target` reads your target's exact hitpoints, `update` adds up hitsplats for the others.
 local NpcHealth = {}
