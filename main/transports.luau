@@ -48,8 +48,8 @@ Transports.LEVER_TIMEOUT_MS = 12000
 Transports.LEVER_ARRIVED_NEAR = 2
 -- The lever itself stands beside the tile the data gives: how far from that tile to look for it.
 Transports.LEVER_OBJECT_NEAR = 3
--- Levers landing in the wilderness are pulled all the same (that is how the wilderness levers are used): turn this off to leave them out of the routes.
-Transports.LEVERS_INTO_WILDERNESS = true
+-- Levers landing in the wilderness are left out of the routes, like every other teleport: turn this on to pull them (two of them are a way from Edgeville to Ardougne).
+Transports.LEVERS_INTO_WILDERNESS = false
 -- Every kind of transport is tried this many times (with a pause between) before it counts as failed, and a failed one is left alone for `RETRY_AFTER_MS`.
 Transports.ATTEMPTS = 3
 Transports.RETRY_PAUSE_MS = 1500
