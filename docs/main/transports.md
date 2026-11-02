@@ -324,3 +324,29 @@ local Transports = require("@lib/main/transports")
 
 -- Transports.failed_lately(choice)
 ```
+
+## Transports.row_usable
+
+Definition:
+```luau
+function Transports.row_usable(t: Transport): (boolean, string?)
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Transports.disembark
+
+Definition:
+```luau
+function Transports.disembark(to: Tile): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```

@@ -266,3 +266,315 @@ assert(Fairyring.open())
 assert(Fairyring.Log.select("zoo"), "the log has no zoo")
 assert(Fairyring.Dial.confirm(), "couldn't confirm")
 ```
+
+## Fairyring.code_of
+
+Definition:
+```luau
+function Fairyring.code_of(positions: { number }): string?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Fairyring.positions_of
+
+Definition:
+```luau
+function Fairyring.positions_of(code: string): { number }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Fairyring.place
+
+Definition:
+```luau
+function Fairyring.place(code: string): string?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Dial.is_open
+
+Definition:
+```luau
+function Dial.is_open(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Dial.wait_open
+
+Definition:
+```luau
+function Dial.wait_open(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Dial.positions
+
+Definition:
+```luau
+function Dial.positions(): { number }
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Dial.code
+
+Definition:
+```luau
+function Dial.code(): string?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Dial.turn
+
+Definition:
+```luau
+function Dial.turn(dial: number, clockwise: boolean): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Dial.set
+
+Definition:
+```luau
+function Dial.set(code: string): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Dial.confirm
+
+Definition:
+```luau
+function Dial.confirm(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Dial.close_button
+
+Definition:
+```luau
+function Dial.close_button(): Widget?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Dial.close
+
+Definition:
+```luau
+function Dial.close(key_probability: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## TravelLog.is_open
+
+Definition:
+```luau
+function TravelLog.is_open(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## TravelLog.wait_open
+
+Definition:
+```luau
+function TravelLog.wait_open(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## TravelLog.destinations
+
+Definition:
+```luau
+function TravelLog.destinations(): { Destination }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## TravelLog.find
+
+Definition:
+```luau
+function TravelLog.find(text: string): Destination?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## TravelLog.scroll_to
+
+Definition:
+```luau
+function TravelLog.scroll_to(text: string): Destination?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## TravelLog.select
+
+Definition:
+```luau
+function TravelLog.select(text: string): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Fairyring.is_open
+
+Definition:
+```luau
+function Fairyring.is_open(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Fairyring.close
+
+Definition:
+```luau
+function Fairyring.close(key_probability: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Fairyring.last_code
+
+Definition:
+```luau
+function Fairyring.last_code(): string?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Fairyring.last_option
+
+Definition:
+```luau
+function Fairyring.last_option(): string?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Fairyring.favourites
+
+Definition:
+```luau
+function Fairyring.favourites(): { string }
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Fairyring.is_favourite
+
+Definition:
+```luau
+function Fairyring.is_favourite(code: string): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```

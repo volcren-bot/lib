@@ -337,3 +337,224 @@ Definition:
 function Map.close(key_probability: number?): boolean
 ```
 Closes the map and waits for it to go: Escape with chance `key_probability` (nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`. True when it's closed.
+
+## Tab.is_open
+
+Definition:
+```luau
+function Tab.is_open(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Tab.wait_open
+
+Definition:
+```luau
+function Tab.wait_open(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Tab.destinations
+
+Definition:
+```luau
+function Tab.destinations(): { Destination }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Tab.find
+
+Definition:
+```luau
+function Tab.find(name: string): Destination?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Tab.names
+
+Definition:
+```luau
+function Tab.names(): { string }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Tab.scroll_to
+
+Definition:
+```luau
+function Tab.scroll_to(name: string): Destination?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Tab.select
+
+Definition:
+```luau
+function Tab.select(name: string): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Tab.key_code
+
+Definition:
+```luau
+function Tab.key_code(d: Destination): number?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Tab.press
+
+Definition:
+```luau
+function Tab.press(name: string): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Map.is_open
+
+Definition:
+```luau
+function Map.is_open(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Map.wait_open
+
+Definition:
+```luau
+function Map.wait_open(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Map.markers
+
+Definition:
+```luau
+function Map.markers(): { Marker }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Map.hover_name
+
+Definition:
+```luau
+function Map.hover_name(marker: Marker): string?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Map.names
+
+Definition:
+```luau
+function Map.names(): { [number]: string }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Map.find
+
+Definition:
+```luau
+function Map.find(name: string): Marker?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Map.select
+
+Definition:
+```luau
+function Map.select(name: string): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Map.close
+
+Definition:
+```luau
+function Map.close(key_probability: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
