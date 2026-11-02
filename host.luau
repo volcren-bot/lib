@@ -68,6 +68,51 @@ export type AntibanConfig = {
 	sleeps: { SleepConfig },
 }
 
+export type TransportSkill = { name: string, level: number }
+
+-- one varbit or varp test: `op` is "=", ">", "<", "&" (all bits of `value` set) or "@" (a wall-clock countdown in minutes)
+export type TransportClause = { id: number, op: string, value: number }
+
+export type TransportTile = { x: number, y: number, plane: number }
+
+export type Transport = {
+	-- the data file it came from, like "teleportation_spells"
+	kind: string,
+	-- where it is used from; nil means from anywhere
+	origin: TransportTile?,
+	-- where it leads; nil means it is an origin of a permutation (fairy rings and the like)
+	destination: TransportTile?,
+	-- the "Display info" column; a spell's name, with the destination or option for variants
+	name: string,
+	-- game ticks
+	duration: number,
+	-- the highest wilderness level it can be used at
+	wilderness: number?,
+	skills: { TransportSkill },
+	quests: { string },
+	varbits: { TransportClause },
+	varps: { TransportClause },
+	-- the "Items" column as written: any-of groups (`|`) of all-of items (`&`), like `COINS=2500` (`Transports.items_met` evaluates it)
+	items: string,
+	consumable: boolean,
+	-- the "menuOption menuTarget objectID" column as written, like `Charter Trader Crewmember 1330`
+	menu: string,
+	-- the comment line above the row (without the `#`), which can hold a requirement the columns can't, like `Port Phasmatys (varbit:217=7?ECTO_TOKEN=2)`; nil when there is none
+	note: string?,
+}
+
+-- a named group of items from the data's item-variations: any of the ids counts
+export type TransportItemName = { name: string, ids: { number } }
+
+export type TransportsData = {
+	version: number,
+	-- "online", "cache" or "bundled"; "none" when the loader sent nothing
+	source: string,
+	transports: { Transport },
+	-- the named item groups the `items` column uses
+	items: { TransportItemName },
+}
+
 export type LoginLayout = {
 	screen: number,
 	panel_x: number,
@@ -164,8 +209,8 @@ export type FormField = {
 	items: { { id: string, label: string?, default: boolean? } }?,
 	-- the id of a check; the field is greyed out while that check is off
 	enabled_by: string?,
-	-- only shown while the field `id` has this value, or one of these when it is a list (a choice's option, a check's boolean, ...); its value is still sent while hidden
-	visible_when: { id: string, equals: any }?,
+	-- only shown while the field `id` has this value, or one of these when it is a list (a choice's option, a check's boolean, ...); a list of such rules needs all of them to hold; its value is still sent while hidden
+	visible_when: ({ id: string, equals: any } | { { id: string, equals: any } })?,
 }
 
 export type FormSpec = {
@@ -279,6 +324,8 @@ export type Widget = {
 	scroll_y: number,
 	scroll_width: number,
 	scroll_height: number,
+	-- the first menu option ("Close"; the port's name on a map marker), nil when it has none
+	action: string?,
 }
 
 export type ItemSlot = {
@@ -392,6 +439,13 @@ export type Loc = {
 }
 
 -- A loc the game cache places on the map, whether or not its map square is loaded; `actions` are its menu options in order
+-- An object as the player sees it now: a multi-state object (a farming patch, a door that opens) shows the form its varbit or varp picks. Empty for an id the cache doesn't know.
+export type LocView = {
+	name: string,
+	-- its right-click options now, in menu order
+	actions: { string },
+}
+
 export type CacheLoc = {
 	id: number,
 	name: string,
@@ -582,7 +636,12 @@ export type NavPlan = {
 export type NavOptions = {
 	near: number?,
 	door_options: { string }?,
-	climb_options: { [string]: number }?,
+	-- false stays on the plane (no ladders, stairs, ropes or cave mouths)
+	climbs: boolean?,
+	-- climbs that ask for something and that the player has what they ask for (see `Transports.allowed_climbs`); the ones that ask for nothing are always used
+	allow_climbs: { string }?,
+	-- the least (in tiles) an agility shortcut has to save over walking round (default 10)
+	shortcut_saving: number?,
 	avoid: { NavLoc }?,
 	seed: number?,
 	rnd: number?,
@@ -683,6 +742,12 @@ return {
 	varps = g.varps :: () -> { number }?,
 	varbit = g.varbit :: (id: number) -> number?,
 	enum_def = g.enum_def :: (id: number) -> EnumDef?,
+	-- the landmass number of each `{ x, y, plane }` (0: none, or not the surface plane): tiles with the same number can be walked between, with doors open (no stairs or shortcuts). The first call after a game update builds them from the map, which takes a few seconds
+	landmasses = g.landmasses :: (points: { { x: number, y: number, plane: number } }) -> ({ number }?, string?),
+	-- one file of the client's cache as a string of its bytes (nil when it doesn't exist): scripts are index 12 (archive = script id, file 0), config files index 2
+	-- several files of one cache index at once, `{ { archive, file }, ... }`: a string of bytes for each that exists and false for each that doesn't
+	cache_files = g.cache_files :: (index: number, files: { { number } }) -> ({ string | boolean }?, string?),
+	cache_file = g.cache_file :: (index: number, archive: number, file: number) -> (string?, string?),
 	item_params = g.item_params :: (ids: { number }) -> { { [number]: CacheValue }? }?,
 	selected_widget = g.selected_widget :: () -> SelectedWidget?,
 	npcs = g.npcs :: () -> { Npc }?,
@@ -690,6 +755,8 @@ return {
 	npc_sizes = g.npc_sizes :: (indices: { number }) -> { [number]: number }?,
 	npc_hitsplats = g.npc_hitsplats :: (indices: { number }) -> { [number]: { Hitsplat } }?,
 	locs = g.locs :: (plane: number?) -> { Loc }?,
+	-- how each object id looks to the player now (see `LocView`), in the order given; nil when the cache can't be read
+	loc_shown = g.loc_shown :: (ids: { number }) -> { LocView }?,
 	cache_locs = g.cache_locs :: (area: Corners, filter: CacheLocFilter?) -> { CacheLoc }?,
 	ground_items = g.ground_items :: () -> { GroundItem }?,
 	projectiles = g.projectiles :: () -> { Projectile }?,
@@ -763,6 +830,7 @@ return {
 	clock = g.clock :: () -> number,
 	antiban_skips = g.antiban_skips :: () -> { { kind: string, index: number } },
 	antiban_config = g.antiban_config :: () -> AntibanConfig,
+	transports = g.transports :: () -> TransportsData,
 	murmur2a = g.murmur2a :: (text: string, seed: number?) -> number,
 	biometrics_profile = g.biometrics_profile :: (name: string) -> { number },
 	report_counters = g.report_counters :: (counters: { Counter }) -> (),

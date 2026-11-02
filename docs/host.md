@@ -258,7 +258,7 @@ Definition:
 ```luau
 Host.form: (spec: FormSpec) -> { [string]: any }?
 ```
-Shows a settings window and waits until the user presses the button. Returns the chosen values by field id, or `nil, "cancelled"`. Field kinds are `label`, `check`, `number`, `text`, `choice` and `list` (a scrolling list of ticked rows, `items = { { id = "a", label = "A", default = true } }`, giving `{ a = true }`). Any field can set `enabled_by` to the id of a check, and is greyed out while that check is off. A field can also set `visible_when = { id = "collect", equals = "Eclipse red" }` (`equals` may be a list of values) to be shown only while the field `id` has that value; a hidden field keeps its value and is still returned.
+Shows a settings window and waits until the user presses the button. Returns the chosen values by field id, or `nil, "cancelled"`. Field kinds are `label`, `check`, `number`, `text`, `choice` and `list` (a scrolling list of ticked rows, `items = { { id = "a", label = "A", default = true } }`, giving `{ a = true }`). Any field can set `enabled_by` to the id of a check, and is greyed out while that check is off. A field can also set `visible_when = { id = "collect", equals = "Eclipse red" }` (`equals` may be a list of values) to be shown only while the field `id` has that value; `visible_when` may also be a list of such rules, all of which must hold; a hidden field keeps its value and is still returned.
 
 Example:
 ```luau
@@ -511,6 +511,54 @@ for _, entry in ipairs(books and books.entries or {}) do
 end
 ```
 
+## Host.landmasses
+
+Definition:
+```luau
+Host.landmasses: (points: { { x: number, y: number, plane: number } }) -> ({ number }?, string?)
+```
+The landmass number of each point, found by flood fill over the map's collision from the game cache: points with the same number can be walked between (closed doors count as open, stairs and other shortcuts are not followed), and different numbers are separate islands or enclosed areas. 0 means no landmass: the point has none within 3 tiles, or it isn't on plane 0 (only the surface plane is numbered). Karamja and the mainland, for example, have different numbers. The first call after a game update builds the numbers, which takes a few seconds.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+local numbers = Host.landmasses({ { x = 3213, y = 3424, plane = 0 }, { x = 2797, y = 3175, plane = 0 } })
+print(numbers and numbers[1] == numbers[2])
+```
+
+## Host.cache_file
+
+Definition:
+```luau
+Host.cache_file: (index: number, archive: number, file: number) -> (string?, string?)
+```
+One file of the client's cache as a string of its bytes, or nil when it doesn't exist. Scripts are index 12 (the archive is the script id, the file 0) and config files index 2.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+local bytes = Host.cache_file(12, 4024, 0)
+print(bytes and #bytes)
+```
+
+## Host.cache_files
+
+Definition:
+```luau
+Host.cache_files: (index: number, files: { { number } }) -> ({ string | boolean }?, string?)
+```
+Several files of one cache index at once, as `{ archive, file }` pairs: a string of bytes for each that exists and `false` for each that doesn't. Far faster than one `cache_file` call per file.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+local files = Host.cache_files(2, { { 38, 17 }, { 38, 18 } })
+print(files and #files)
+```
+
 ## Host.item_params
 
 Definition:
@@ -628,6 +676,22 @@ for _, loc in ipairs(Host.locs() or {}) do
 		print("bank booth at", loc.x, loc.y)
 	end
 end
+```
+
+## Host.loc_shown
+
+Definition:
+```luau
+Host.loc_shown: (ids: { number }) -> { LocView }?
+```
+How each object id looks to the player now, in the order given: its `name` and its right-click `actions`. A multi-state object (a farming patch, a door that opens) shows the form its varbit or varp picks at the moment, so a spirit tree placed in a farming patch is the patch's name and options until the tree has grown. An id the cache doesn't know gives an empty name and no actions. Nil when the cache can't be read. The ids to ask about are the ones *placed* on the map (`Host.cache_locs` lists them); the id of the grown form always looks grown.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+local views = Host.loc_shown({ 26261 })
+print(views and views[1].name, views and table.concat(views[1].actions, ", "))
 ```
 
 ## Host.cache_locs
@@ -870,15 +934,19 @@ Definition:
 ```luau
 Host.nav_plan: (from: Tile | NavTile, to: Tile | NavTile, options: NavOptions?) -> NavPlan?
 ```
-Plans a walk over every plane of the loaded scene at once, through closed doors and up and down ladders and staircases; a tile without a `plane` is on yours. It reads the client's collision of all four planes, then:
+Plans a walk over every plane of the loaded scene at once, through closed doors and up and down ladders, staircases, ropes and the like; a tile without a `plane` is on yours. It reads the client's collision of all four planes, then:
 
 - **Doors.** A door is what the minimap draws red: a wall (or a diagonal wall) the client lets you click, that blocks, has one of `door_options` and is closed (its walls are in the collision). Its walls are taken out of the collision while planning, at `door_cost` (tenths of a tile) for going through, so a plan uses a door when that is shorter than the way round.
-- **Climbs.** Any clickable object with one of `climb_options` (menu option to planes climbed, `1` up and `-1` down) joins the tiles it is used from (beside it, where no wall is between) to the tiles beside the nearest object on the other plane that climbs back (within 6 tiles), at `climb_cost`. Where exactly you land is a guess, so plan again once there.
+- **Climbs.** Every way of changing plane in the transport data (`transports.tsv` of Shortest Path: stairs, ladders, ropes, cave mouths and the like, about 3,400 rows) is a climb, at `climb_cost`. A row gives the tile it is used from and the exact tile and plane it lands on, which can be any plane (a rope can go from plane 0 to plane 2) and the underground, which is the same map 6,400 tiles north, entered by the same plane. The row is tied to the clickable object beside its tile that offers the row's menu option (the one with the row's id first, else the nearest within 2 tiles); a row with no such object loaded or in the cache is left out. Nothing is guessed, and an object the data doesn't list isn't used. A row that asks for a quest, level, item or varbit is used only if its name is in `allow_climbs`.
+- **Links.** The rows of `transports.tsv` that stay on one plane and cross 2 to 15 tiles (a stile, a log, a door that is an object, like the Grand Tree's Tree Door) are climbs that keep the plane, found and used the same way, at `climb_cost`. A hop of one tile is a wall door, which the planner opens by taking its walls away; no object is recognised as a door by its name.
+- **Agility shortcuts.** The rows of `agility_shortcuts.tsv` (a hop over an obstacle, short, within one world) are climbs that keep the plane, found the same way. A shortcut costs its `Duration` (a tile takes about 0.6 of a tick) plus `shortcut_saving` tiles, so it is only taken when it saves that much over walking round. The walker knows it worked when it stands on the tile it lands on.
 
 The plan's `tiles` are every tile walked, start first, each with its plane; `actions` are the doors and climbs on the way, in order, each with the index `at` of the tile it is used from (the next tile is past it). When `to` is outside the loaded scene the plan uses the game cache's collision (closed doors open) for the rest, up to about 400 tiles across; farther than that it plans to a tile along the world path (`goal`), and `reached` is false. A target that can't be reached gives a plan to the closest tile on its plane, with `reached` false. In an instance only the loaded scene is used. All fields are optional:
 - `near`: the plan ends this many tiles (any direction) from `to` on its plane (default 0).
 - `door_options`: the options that open a door, any case (default `{ "Open" }`; `{}` takes closed doors for walls).
-- `climb_options`: default `{ ["Climb-up"] = 1, ["Climb-down"] = -1 }`; `{}` stays on the plane.
+- `climbs`: `false` stays on the plane (default `true`).
+- `shortcut_saving`: the least, in tiles, an agility shortcut has to save over walking round (default 10).
+- `allow_climbs`: the climbs and shortcuts that ask for something and that the player has what they ask for, as `"x,y,plane>x,y,plane"` (see `Transports.allowed_climbs`); none by default.
 - `avoid`: locs not to use (`id`, `x`, `y`, `plane`), such as a door that didn't open.
 - `seed`, `rnd`: with a seed every tile's cost is scaled by 1 +- `rnd` / 2, the same seed planning the same way (default `rnd` 0.6).
 - `door_cost`, `climb_cost`: default 30 and 50.
@@ -1498,6 +1566,21 @@ Example:
 local Host = require("@lib/host")
 
 print(#Host.antiban_config().breaks)
+```
+
+## Host.transports
+
+Definition:
+```luau
+Host.transports: () -> TransportsData
+```
+The transports (teleport spells and the like) the loader downloaded and parsed, from the Shortest Path plugin's data (BSD-2-Clause, github.com/Skretzo/shortest-path). `source` says where this run got them (`online`, `cache` or `bundled`; `none` when the loader sent nothing), `version` goes up when a new set arrives, and each `Transport` has `kind` (its file), `origin?`, `destination?`, `name`, `duration` (ticks), `wilderness?` (the highest level it can be used at), `skills`, `quests`, `varbits`, `varps` (tests like `{ id = 4070, op = "=", value = 0 }`), `items` and `consumable`. Scripts don't read this themselves; `Transports` does.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+print(#Host.transports().transports)
 ```
 
 ## Host.antiban_skips

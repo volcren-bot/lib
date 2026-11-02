@@ -669,8 +669,12 @@ export type WalkOptions = {
 	doors: boolean?,
 	-- climb ladders and staircases (default true); false stays on your plane
 	climbs: boolean?,
+	-- take agility shortcuts (default true, `Transports.SHORTCUTS`) that the real Agility level allows and that save `Transports.SHORTCUT_MIN_SAVING_TILES`; false walks round them
+	shortcuts: boolean?,
 	-- more for `Host.nav_plan`: door and climb options, locs to avoid, costs
 	nav: Host.NavOptions?,
+	-- teleport spells toward `to` when that saves enough time (default true); false always walks. A table sets `min_saving_ticks` and `exclude` (spell names never to use)
+	transports: (boolean | { exclude: { [string]: boolean }?, min_saving_ticks: number? })?,
 }
 
 -- the farthest a door or ladder on the way is clicked from, and how often the walk looks for it on screen
@@ -680,6 +684,8 @@ Walker.ACTION_CHECK_MS = 150
 Walker.UNDERGROUND = 6400
 -- clicks on a door or ladder that didn't do anything before the walk plans without it
 Walker.ACTION_ATTEMPTS = 3
+-- a shortcut (a climb that keeps the plane) has worked when we are this close to the tile it lands on
+Walker.SHORTCUT_LANDED_NEAR = 1
 -- a click on one has failed when the player stands still this long without it working, or after the timeout
 Walker.ACTION_IDLE_MS = 1800
 Walker.ACTION_TIMEOUT_MS = 15000
@@ -792,6 +798,8 @@ type Using = {
 	from: NavTile,
 	still_since: number?,
 	checked_at: number,
+	-- for a climb that keeps the plane and the world (an agility shortcut): the tile it lands on, which is how we know it worked
+	landing: NavTile?,
 }
 
 local function walk_plan(to: Tile, opts: WalkOptions): boolean
@@ -815,7 +823,16 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		nav.door_options = {}
 	end
 	if opts.climbs == false then
-		nav.climb_options = {}
+		nav.climbs = false
+	else
+		local Transports = (require :: any)("./transports")
+		if nav.allow_climbs == nil then
+			-- the climbs and shortcuts that ask for a quest, a level, an item: the planner may use those the player has what they ask for
+			nav.allow_climbs = Transports.allowed_climbs({ shortcuts = opts.shortcuts })
+		end
+		if nav.shortcut_saving == nil then
+			nav.shortcut_saving = Transports.SHORTCUT_MIN_SAVING_TILES
+		end
 	end
 	local avoid: { NavLoc } = table.clone(nav.avoid or {})
 	nav.avoid = avoid
@@ -905,8 +922,15 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		local u = using :: Using
 		local now = time()
 		if u.action.kind == "climb" then
-			-- a plane up or down, or into or out of the underground (the same plane, 100 map squares north)
-			if here.plane ~= u.from.plane or (here.y >= Walker.UNDERGROUND) ~= (u.from.y >= Walker.UNDERGROUND) then
+			-- a plane up or down, or into or out of the underground (the same plane, 100 map squares north); for a shortcut that stays where it is, being on the landing tile
+			local landed = u.landing ~= nil
+				and here.plane == (u.landing :: NavTile).plane
+				and Walker.distance(here, u.landing :: NavTile) <= Walker.SHORTCUT_LANDED_NEAR
+			if
+				landed
+				or here.plane ~= u.from.plane
+				or (here.y >= Walker.UNDERGROUND) ~= (u.from.y >= Walker.UNDERGROUND)
+			then
 				debug(
 					`climbed to {here.x}, {here.y} on plane {here.plane} {math.floor(now - u.clicked_at)} ms after the click`
 				)
@@ -969,7 +993,19 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		local tiles = (plan :: NavPlan).tiles
 		local before, after = tiles[a.at], tiles[math.min(a.at + 1, #tiles)]
 		local along = wall_along(loc, { x = after.x - before.x, y = after.y - before.y })
-		using = { action = a, along = along, chat = chat, clicked_at = time(), from = here, checked_at = time() }
+		-- a climb that stays on the plane and in the world is a shortcut: it worked when we stand where it lands
+		local stays = a.kind == "climb"
+			and after.plane == before.plane
+			and (after.y >= Walker.UNDERGROUND) == (before.y >= Walker.UNDERGROUND)
+		using = {
+			action = a,
+			along = along,
+			chat = chat,
+			clicked_at = time(),
+			from = here,
+			checked_at = time(),
+			landing = if stays then after else nil,
+		}
 		return true
 	end
 
@@ -1312,9 +1348,45 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 	end
 end
 
--- Walks to `to` (on `opts.plane`), planning with `Host.nav_plan` and opening doors and climbing as it goes.
+-- Walks to `to` (on `opts.plane`), planning with `Host.nav_plan` and opening doors and climbing as it goes. First it takes a teleport spell, a charter ship or a gate toward `to` when
+-- that is the way (`opts.transports`): the route is planned over landmasses, so a goal across the water is reached through a ship, with a spell to the nearest port if that is quicker.
+-- Each transport is one hop, planned again from where it ends, up to `Walker.TRANSPORT_HOPS` of them. A transport that fails all its attempts is left out for a while, and the walk
+-- starts over from where it stands: the whole route is planned again, as a new walk, so another way is taken. After `Walker.TRANSPORT_FAILURES` of those it walks the rest.
 function Walker.walk(to: Tile, options: WalkOptions?): boolean
-	return walk_plan(to, options or {})
+	local opts = options or {}
+	if opts.transports == false or opts.straight then
+		return walk_plan(to, opts)
+	end
+	-- required here, untyped: the spellbook needs the walker
+	local Transports = (require :: any)("./transports")
+	-- agility shortcuts join landmasses for the route unless this walk turned them off
+	local choices: { [string]: any } = if type(opts.transports) == "table" then table.clone(opts.transports) else {}
+	choices.shortcuts = opts.shortcuts
+	local hops, failures = 0, 0
+	while hops < Walker.TRANSPORT_HOPS do
+		local here = Walker.here()
+		if here == nil then
+			break
+		end
+		local goal = { x = to.x, y = to.y, plane = opts.plane or here.plane }
+		local used, failed = Transports.travel(here, goal, choices :: any)
+		if used then
+			hops += 1
+		elseif failed then
+			failures += 1
+			if failures >= Walker.TRANSPORT_FAILURES then
+				break
+			end
+		else
+			break
+		end
+	end
+	return walk_plan(to, opts)
 end
+
+-- How many transports (spells or ships) a walk takes at most, one after the other, before it walks the rest.
+Walker.TRANSPORT_HOPS = 6
+-- How many transports may fail all their attempts in one walk before it stops looking for another way and walks the rest.
+Walker.TRANSPORT_FAILURES = 4
 
 return Walker
