@@ -1,5 +1,5 @@
 --!strict
--- Transports the walker can use, from the data the loader downloaded (`Host.transports`): teleport spells, charter ships, gates and the magic mushtrees.
+-- Transports the walker can use, from the data the loader downloaded (`Host.transports`): teleport spells, charter ships, gates, levers and the magic mushtrees.
 -- `Transports.choose` weighs walking against each of them; `Transports.travel` uses the best one. The walker calls `travel` before it walks.
 local Host = require("@lib/host")
 local sleep = Host.sleep
@@ -42,6 +42,14 @@ Transports.ARRIVED_NEAR = 4
 Transports.LINK_SLACK_TICKS = 2
 Transports.LINK_TIMEOUT_MS = 8000
 Transports.LINK_ARRIVED_NEAR = 1
+-- A lever: the ticks added to the pull, the wait for it to teleport us, and how near its destination counts as landed.
+Transports.LEVER_SLACK_TICKS = 3
+Transports.LEVER_TIMEOUT_MS = 12000
+Transports.LEVER_ARRIVED_NEAR = 2
+-- The lever itself stands beside the tile the data gives: how far from that tile to look for it.
+Transports.LEVER_OBJECT_NEAR = 3
+-- Levers landing in the wilderness are pulled all the same (that is how the wilderness levers are used): turn this off to leave them out of the routes.
+Transports.LEVERS_INTO_WILDERNESS = true
 -- Every kind of transport is tried this many times (with a pause between) before it counts as failed, and a failed one is left alone for `RETRY_AFTER_MS`.
 Transports.ATTEMPTS = 3
 Transports.RETRY_PAUSE_MS = 1500
@@ -91,7 +99,7 @@ Transports.INVENTORY = 93
 Transports.DOCK_NEAR = 3
 
 export type Options = {
-	-- spell names (as in the data, like "Varrock Teleport") never to use
+	-- names never to use: a spell's (as in the data, like "Varrock Teleport"), a trip's, or a kind's like "gates" or "levers"
 	exclude: { [string]: boolean }?,
 	-- overrides `MIN_SAVING_TICKS`
 	min_saving_ticks: number?,
@@ -100,7 +108,7 @@ export type Options = {
 }
 
 export type Choice = {
-	-- "spell", "charter", "link" or "mushtree"
+	-- "spell", "charter", "link", "lever" or "mushtree"
 	kind: string,
 	transport: Transport,
 	-- a spell's name in the game and the menu option to cast it with (nil: the default one); empty for a charter
@@ -134,6 +142,7 @@ local rides: { Ride }? = nil
 local spells: { Spell }? = nil
 local trips: { Trip }? = nil
 local links: { Transport }? = nil
+local levers: { Transport }? = nil
 local failed: { [string]: number } = {}
 
 -- "Varrock Teleport: Grand Exchange" is the spell "Varrock Teleport" cast with the option "Grand Exchange", and "Teleport to House (Inside)" the option "Inside".
@@ -212,6 +221,24 @@ local function load_links(): { Transport }
 		links = found
 	end
 	Log.log("Transports", `{#found} gates and barriers`)
+	return found
+end
+
+-- The levers the loader kept (`kind` "teleportation_levers"): pulling the one beside a tile teleports to a fixed tile, often far away.
+local function load_levers(): { Transport }
+	if levers then
+		return levers
+	end
+	local found: { Transport } = {}
+	for _, t in ipairs(Host.transports().transports) do
+		if t.kind == "teleportation_levers" and t.origin ~= nil and t.destination ~= nil then
+			table.insert(found, t)
+		end
+	end
+	if #found > 0 then
+		levers = found
+	end
+	Log.log("Transports", `{#found} levers`)
 	return found
 end
 
@@ -656,6 +683,24 @@ local function link_ok(t: Transport, c: Check): boolean
 		free = now ~= nil and now >= (tonumber(value) :: number)
 	end
 	return free or Transports.items_met({ items = items } :: any)
+end
+
+-- A lever's key in the list of failures: its two tiles.
+local function lever_id(t: Transport): string
+	local o, d = t.origin :: Host.TransportTile, t.destination :: Host.TransportTile
+	return `lever {o.x},{o.y} {d.x},{d.y}`
+end
+
+-- Whether a lever can be pulled now: its row's requirements, and a destination outside the Wilderness (like every other teleport, a Wilderness one is never chosen by default).
+-- The rows carry no Wilderness cap, because the levers in the Wilderness have to be pullable from it.
+local function lever_ok(t: Transport, c: Check): boolean
+	local to = t.destination :: Host.TransportTile
+	return not_failed(lever_id(t))
+		and (Transports.LEVERS_INTO_WILDERNESS or Transports.wilderness_level(to.x, to.y) == 0)
+		and holds(t)
+		and Transports.skills_met(t, c.levels)
+		and Transports.quests_done(t)
+		and Transports.items_met(t)
 end
 
 type Node = { x: number, y: number, plane: number }
@@ -1195,6 +1240,16 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 			}
 		end
 	end
+	local pulls: { { lever: Transport, from: number, to: number } } = {}
+	for _, lever in ipairs(load_levers()) do
+		if not (opts.exclude and opts.exclude["levers"]) and lever_ok(lever, check) then
+			pulls[#pulls + 1] = {
+				lever = lever,
+				from = node(lever.origin :: Host.TransportTile),
+				to = node(lever.destination :: Host.TransportTile),
+			}
+		end
+	end
 	memo = nil
 	landmasses(nodes)
 	-- a way across the player can use (a shortcut, a link) joins the landmasses at its two ends: walking between them is possible (the collision map shows the obstacle as a wall)
@@ -1256,6 +1311,15 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 					gate.to,
 					gate.link.duration + Transports.LINK_SLACK_TICKS,
 					{ kind = "link", transport = gate.link, from = u }
+				)
+			end
+		end
+		for _, pull in ipairs(pulls) do
+			if pull.from == u and not done[pull.to] then
+				relax(
+					pull.to,
+					pull.lever.duration + Transports.LEVER_SLACK_TICKS,
+					{ kind = "lever", transport = pull.lever, from = u }
 				)
 			end
 		end
@@ -2051,6 +2115,60 @@ function Transports.pass(choice: Choice): boolean
 	return fail("didn't get through")
 end
 
+-- Pulls the chosen lever: walks to the tile beside it, clicks the object (the data's menu column says how: "Pull Lever 1814" is the option "Pull", the object "Lever", its id 1814)
+-- and waits to land on the row's destination tile. False when it didn't work, and that lever is then left alone for a while.
+function Transports.pull(choice: Choice): boolean
+	local t = choice.transport
+	local o, d = t.origin :: Host.TransportTile, t.destination :: Host.TransportTile
+	local id = lever_id(t)
+	local fail = function(why: string): boolean
+		Log.log("Transports", `{id}: {why}`)
+		return false
+	end
+	-- "Pull Lever 1814": the option, the object's name, its id
+	local option, target, object = string.match(t.menu, "^(%S+)%s+(.-)%s+(%d+)%s*$")
+	if option == nil or target == nil or object == nil then
+		return fail("the data doesn't say what to click")
+	end
+	local Walker = (require :: any)("@lib/main/walker")
+	local Objects = (require :: any)("@lib/main/entities/objects")
+	local Player = (require :: any)("@lib/main/player")
+	local here = Player.position()
+	if here == nil then
+		return false
+	end
+	Log.log("Transports", `pulling the {target} at {o.x}, {o.y}`)
+	if here.plane ~= o.plane or math.max(math.abs(here.x - o.x), math.abs(here.y - o.y)) > 1 then
+		if not Walker.walk(o, { near = 1, transports = false, plane = o.plane }) then
+			return fail("couldn't walk to it")
+		end
+	end
+	local lever = Objects.nearest(tonumber(object) :: number, o) or Objects.nearest(target, o)
+	if lever == nil then
+		return fail(`no {target} in sight`)
+	end
+	if Objects.distance(lever, o) > Transports.LEVER_OBJECT_NEAR then
+		return fail(`no {target} close enough to {o.x}, {o.y}`)
+	end
+	if not Objects.interact(lever, { option }) then
+		return fail("couldn't click it")
+	end
+	local deadline = time() + Transports.LEVER_TIMEOUT_MS
+	while time() < deadline do
+		local now = Player.position()
+		if
+			now ~= nil
+			and now.plane == d.plane
+			and math.max(math.abs(now.x - d.x), math.abs(now.y - d.y)) <= Transports.LEVER_ARRIVED_NEAR
+		then
+			Transports.settle(now)
+			return true
+		end
+		sleep(150)
+	end
+	return fail("didn't get across")
+end
+
 -- What a choice is called in the list of failures.
 local function failure_id(choice: Choice): string
 	local t = choice.transport
@@ -2058,6 +2176,8 @@ local function failure_id(choice: Choice): string
 		return charter_id(t)
 	elseif choice.kind == "link" then
 		return link_id(t)
+	elseif choice.kind == "lever" then
+		return lever_id(t)
 	elseif choice.kind == "mushtree" then
 		return ride_id(t)
 	elseif choice.kind == "boat" then
@@ -2083,6 +2203,9 @@ Transports.runners = {
 	end,
 	link = function(choice: Choice): boolean
 		return Transports.pass(choice)
+	end,
+	lever = function(choice: Choice): boolean
+		return Transports.pull(choice)
 	end,
 	mushtree = function(choice: Choice): boolean
 		return Transports.ride(choice)

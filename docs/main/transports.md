@@ -66,7 +66,7 @@ Definition:
 ```luau
 function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 ```
-The first transport to use on the best way from `from` to `goal`, or nil to walk. The way is a shortest path over the start, the goal and the ends of every usable transport: walking joins two points only when they are on the same landmass (`Host.landmasses`), so a goal across the water is reached through a ship; a spell leaves from anywhere; a ship leaves from its dock. The first transport is a spell to cast now, or a ship (it walks to the dock first). Nil when walking is possible and no transport saves `MIN_SAVING_TICKS`, when none is usable, or when the goal can't be reached at all. Usable means the row's varbit tests hold, its skills, quests and (for ships) coins are met, it ends outside the wilderness, and for a spell the game says it can be cast. The cost of a ship's fare is not weighed against time.
+The first transport to use on the best way from `from` to `goal`, or nil to walk. The way is a shortest path over the start, the goal and the ends of every usable transport: walking joins two points only when they are on the same landmass (`Host.landmasses`), so a goal across the water is reached through a ship; a spell leaves from anywhere; a ship leaves from its dock. The first transport is a spell to cast now, a ship (it walks to the dock first), a gate, a lever to pull or a mushtree ride. Nil when walking is possible and no transport saves `MIN_SAVING_TICKS`, when none is usable, or when the goal can't be reached at all. Usable means the row's varbit tests hold, its skills, quests and (for ships) coins are met, it ends outside the wilderness (levers excepted, see `LEVERS_INTO_WILDERNESS`), and for a spell the game says it can be cast. A lever that lands inside the wilderness is left out when `LEVERS_INTO_WILDERNESS` is false. The cost of a ship's fare is not weighed against time.
 
 Example:
 ```luau
@@ -277,16 +277,7 @@ Definition:
 ```luau
 function Transports.use(choice: Choice): boolean
 ```
-Uses the chosen transport, whatever its kind (a spell, a charter ship, a gate or a mushtree ride): up to `ATTEMPTS` (3) tries with `RETRY_PAUSE_MS` between. If every one fails it is marked failed for `RETRY_AFTER_MS` (5 minutes) and the next plan leaves it out; this then returns false. True when one worked.
-
-Example:
-```luau
-local Transports = require("@lib/main/transports")
-
--- Transports.use(choice)
-```
-Uses the chosen transport, whatever its kind (a spell, a charter ship, a gate or a mushtree ride): up to `ATTEMPTS` (3) tries with `RETRY_PAUSE_MS` between. If every one fails it is marked failed for `RETRY_AFTER_MS` and the next plan leaves it out; this then returns false. True when one worked.
-
+Uses the chosen transport, whatever its kind (a spell, a charter ship, a gate, a lever or a mushtree ride): up to `ATTEMPTS` (3) tries with `RETRY_PAUSE_MS` between. If every one fails it is marked failed for `RETRY_AFTER_MS` (5 minutes) and the next plan leaves it out; this then returns false. True when one worked.
 
 Example:
 ```luau
@@ -308,6 +299,21 @@ Example:
 local Transports = require("@lib/main/transports")
 
 -- Transports.pass(choice)
+```
+
+## Transports.pull
+
+Definition:
+```luau
+function Transports.pull(choice: Choice): boolean
+```
+Pulls the chosen lever (`teleportation_levers.tsv`): walks to the tile the row gives (`LEVER_OBJECT_NEAR` tiles around it), clicks the option the row's menu column names on the object it names, and waits up to `LEVER_TIMEOUT_MS` to land within `LEVER_ARRIVED_NEAR` of the row's destination tile. The wilderness lever names its destination rather than offering `Pull`, so a row is one option: `Ardougne Lever 1815` is the option `Ardougne` on object 1815 and `Pull Lever 1814` is the option `Pull` on object 1814. Levers into the wilderness are used like any other transport (two of them are a way from Edgeville to Ardougne); `LEVERS_INTO_WILDERNESS = false` leaves them out. False when it didn't work; that lever is then left alone for `RETRY_AFTER_MS`.
+
+Example:
+```luau
+local Transports = require("@lib/main/transports")
+
+-- Transports.pull(choice)
 ```
 
 ## Transports.failed_lately
