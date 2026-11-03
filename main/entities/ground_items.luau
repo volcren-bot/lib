@@ -164,4 +164,12 @@ function GroundItems.interact(item: GroundItem, option: string, walk_timeout_ms:
 	)
 end
 
+-- Walks to the item and picks the first of `options` its menu has, walking early on the way when it's close.
+function GroundItems.approach(item: GroundItem, options: string | { string }, opts: Clickbox.Approach?): boolean
+	local function owns(entry: MenuEntry): boolean
+		return GroundItems.owns(item, entry)
+	end
+	return Clickbox.approach(clickbox_of(item), hovered_by(item), what(item), options, owns, tile_of(item), opts)
+end
+
 return GroundItems

@@ -271,13 +271,38 @@ local Transports = require("@lib/main/transports")
 print(Transports.dialogue_pick({ { text = "Brimhaven" }, { text = "No thanks" } }, { "brimhaven" }))
 ```
 
+## Transports.use_item
+
+Definition:
+```luau
+function Transports.use_item(choice: Choice): (boolean, boolean?)
+```
+Uses a teleport item (`kind = "item"`: jewellery, capes, crystals, tablets; the data's `teleportation_items`) held in the inventory or worn. `choice.spell` is the item's name and `choice.option` the destination ("Burthorpe"; a destination behind several menus is written "Fishing Teleports: Fishing Guild"; nil for an item with one). How the destination is picked, in order:
+
+1. The item's own menu names it (a crystal's "Lletya"): that option is clicked.
+2. A submenu of the item's right-click menu lists it (the minimenu's "Rub" > "Burthorpe"): picked there. This is the quicker way, so it is taken with probability `ITEM_SUBMENU_BASE` (0.7) plus the rest weighted by the account's `Biometrics.CHOOSEOPTION`.
+3. Otherwise, or when the biometrics say so, the submenu's option is clicked and the dialogue it opens is answered (by key, else by click if the key doesn't take). If the option opens no dialogue within `ITEM_DIALOGUE_MS` (the max cape's list), the submenu is used after all.
+4. An item with no destination to name ("Teleport", "Break", "Weiss") has its option clicked.
+
+Waits `ITEM_TIMEOUT_MS` to land. The second result is true when trying again is pointless (item not held, destination not offered). The planner (`choose`) prices an item by the data's `Duration`, `ITEM_SLACK_TICKS`, and for a consumable one `ITEM_CHARGE_TICKS` more, so a charge isn't spent on a short hop; items are off with `Transports.ITEMS = false` or `exclude = { items = true }` (or an item's name). The player's house teleports and the Wilderness are left out, and the capes' `Max ...` skill rows are not tested (holding the cape is the proof).
+
+Example:
+```luau
+local Transports = require("@lib/main/transports")
+
+local choice = Transports.choose(here, goal)
+if choice and choice.kind == "item" then
+	print(Transports.use(choice))
+end
+```
+
 ## Transports.use
 
 Definition:
 ```luau
 function Transports.use(choice: Choice): boolean
 ```
-Uses the chosen transport, whatever its kind (a spell, a charter ship, a gate, a lever or a mushtree ride): up to `ATTEMPTS` (3) tries with `RETRY_PAUSE_MS` between. If every one fails it is marked failed for `RETRY_AFTER_MS` (5 minutes) and the next plan leaves it out; this then returns false. True when one worked.
+Uses the chosen transport, whatever its kind (a spell, an item, a charter ship, a gate, a lever or a mushtree ride): up to `ATTEMPTS` (3) tries with `RETRY_PAUSE_MS` between. If every one fails it is marked failed for `RETRY_AFTER_MS` (5 minutes) and the next plan leaves it out; this then returns false. True when one worked.
 
 Example:
 ```luau

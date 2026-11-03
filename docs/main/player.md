@@ -304,6 +304,54 @@ local to = Player.destination()
 print(if to then `walking to {to.x}, {to.y}` else "not walking")
 ```
 
+## Player.animation
+
+Definition:
+```luau
+function Player.animation(): number?
+```
+The id of the animation the player is playing, or `-1` when there is none: an obstacle, a search, an attack. Walking and running are not animations (the client reports them as the pose). `nil` when it can't be read.
+
+Example:
+```luau
+local Player = require("@lib/main/player")
+
+print(Player.animation())
+```
+
+## Player.is_animating
+
+Definition:
+```luau
+function Player.is_animating(): boolean
+```
+Whether the player is playing an animation (see `Player.animation`).
+
+Example:
+```luau
+local Host = require("@lib/host")
+local Player = require("@lib/main/player")
+
+while Player.is_animating() do
+	Host.sleep(50)
+end
+```
+
+## Player.wait_idle
+
+Definition:
+```luau
+function Player.wait_idle(timeout_ms: number?, on_poll: (() -> ())?): boolean
+```
+Waits until the player has neither moved nor played an animation for `Player.IDLE_MS` (300 ms), so a crossing is over. Returns `false` if that hasn't happened after `timeout_ms` (20 seconds by default). `on_poll`, if given, is called on every check, to log what the player is doing meanwhile.
+
+Example:
+```luau
+local Player = require("@lib/main/player")
+
+print("idle:", Player.wait_idle(8000))
+```
+
 ## Player.wait_still
 
 Definition:

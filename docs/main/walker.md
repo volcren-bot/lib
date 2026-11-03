@@ -92,6 +92,23 @@ local ok = Walker.click_tile(assert(Walker.relative(2, 0)))
 print(ok)
 ```
 
+## Walker.hover_tile_async
+
+Definition:
+```luau
+function Walker.hover_tile_async(tile: Tile, at: Tile?): boolean
+```
+Starts moving the mouse over a tile and returns at once, so the next click is already there. It doesn't turn the camera or click. Returns `false` when the tile is off screen or behind a panel. Any other input stops the move where it got to. While you walk, the screen moves with you: pass `at`, the tile you will stand on when you click, to aim where the tile will show then.
+
+Example:
+```luau
+local Walker = require("@lib/main/walker")
+
+Walker.click_tile(assert(Walker.relative(4, 0)))
+local there = assert(Walker.relative(4, 0))
+Walker.hover_tile_async(assert(Walker.relative(8, 0)), there)
+```
+
 ## Walker.wait_arrival
 
 Definition:

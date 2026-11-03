@@ -89,6 +89,25 @@ local model = tree and Objects.model(tree)
 print(model and #model.faces)
 ```
 
+## Objects.hover_async
+
+Definition:
+```luau
+function Objects.hover_async(loc: Loc, at: Tile?): boolean
+```
+Starts moving the mouse over the object and returns at once, so the next click on it is already there. It doesn't turn the camera. Returns `false` when there is no spot on screen to aim at. While you walk, the screen moves with you: pass `at`, the tile you will stand on when you click, to aim where the object will show then.
+
+Example:
+```luau
+local Objects = require("@lib/main/entities/objects")
+local Walker = require("@lib/main/walker")
+
+local door = Objects.nearest("Door", assert(Walker.position()))
+if door then
+	print(Objects.hover_async(door))
+end
+```
+
 ## Objects.clickbox
 
 Definition:

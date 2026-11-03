@@ -284,6 +284,17 @@ function Walker.click_tile(tile: Tile): boolean
 	return click_projected(tile)
 end
 
+-- Starts moving the mouse over the tile and returns at once; false when it is off screen. Doesn't turn the camera or click.
+-- `at` is the tile the player will stand on when it is time to click: the tile is aimed at as the screen will show it then.
+function Walker.hover_tile_async(tile: Tile, at: Tile?): boolean
+	local quad = if at then Projection.tile(tile, nil, at) else aim_quad(tile)
+	if quad == nil or not quad_on_screen(quad, walk_view(), Toplevel.blockers()) then
+		return false
+	end
+	Mouse.move_async(quad)
+	return true
+end
+
 function Walker.wait_arrival(tile: Tile, timeout_ms: number?): boolean
 	local timeout = timeout_ms or 10000
 	local waited = 0

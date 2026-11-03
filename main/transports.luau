@@ -97,6 +97,39 @@ Transports.PLANE_CHANGE_TICKS = 10
 -- The inventory's item container, and how far from the dock (in tiles) the walk to the trader may stop.
 Transports.INVENTORY = 93
 Transports.DOCK_NEAR = 3
+-- The equipment's item container (worn teleport items count as held).
+Transports.WORN = 94
+-- Teleport items (jewellery, capes, tablets) are used unless this is false (or a plan excludes "items", or the item's name).
+Transports.ITEMS = true
+-- Ticks added to using an item (opening its menu and picking the destination), and, for one that is used up or spends a charge, to keep it for a real saving.
+Transports.ITEM_SLACK_TICKS = 3
+Transports.ITEM_CHARGE_TICKS = 40
+-- How long to wait for the account to land, and for the destination dialogue to show, after the item is clicked.
+Transports.ITEM_TIMEOUT_MS = 12000
+-- How long after clicking an option to wait for its dialogue before taking the submenu instead.
+Transports.ITEM_DIALOGUE_MS = 2500
+-- The least often the destination is picked in the minimenu's submenu when the option has one (the quicker way); an account's biometrics raise it up to always.
+Transports.ITEM_SUBMENU_BASE = 0.7
+-- The menu options that open an item's list of destinations, in the order tried (an item that names the destination in its own menu, like a crystal, is clicked on that).
+Transports.ITEM_OPENERS = { "Rub", "Teleport", "Teleports", "Commune", "Break", "Operate" }
+-- Options of an item that are never its teleport.
+Transports.ITEM_NOT_TELEPORT = {
+	"Wear",
+	"Wield",
+	"Use",
+	"Drop",
+	"Examine",
+	"Check",
+	"Check charges",
+	"Check-charge",
+	"Destroy",
+	"Uncharge",
+	"Toggle",
+	"Remove",
+	"Cancel",
+	"Features",
+	"Spellbook",
+}
 
 export type Options = {
 	-- names never to use: a spell's (as in the data, like "Varrock Teleport"), a trip's, or a kind's like "gates" or "levers"
@@ -108,10 +141,10 @@ export type Options = {
 }
 
 export type Choice = {
-	-- "spell", "charter", "link", "lever" or "mushtree"
+	-- "spell", "item", "charter", "link", "lever", "mushtree", "boat" or the kind of a network (quetzals, spirit trees, ...)
 	kind: string,
 	transport: Transport,
-	-- a spell's name in the game and the menu option to cast it with (nil: the default one); empty for a charter
+	-- a spell's name in the game and the menu option to cast it with (nil: the default one); an item's name and the destination to pick; empty for a charter
 	spell: string,
 	option: string?,
 	-- ticks the teleport and the walk after it are expected to take, and ticks saved against walking
@@ -138,6 +171,16 @@ type Ride = {
 	label: string,
 }
 
+-- A teleport an item gives: the item's name in the data ("Games necklace"), the destination's name in its menu or dialogue ("Burthorpe"; nil for an item with one destination)
+-- and the item ids that give it.
+type ItemTeleport = {
+	transport: Transport,
+	item: string,
+	label: string?,
+	ids: { number },
+}
+
+local item_teleports: { ItemTeleport }? = nil
 local rides: { Ride }? = nil
 local spells: { Spell }? = nil
 local trips: { Trip }? = nil
@@ -239,6 +282,37 @@ local function load_levers(): { Transport }
 		levers = found
 	end
 	Log.log("Transports", `{#found} levers`)
+	return found
+end
+
+-- The teleports the items in the data give (`kind` "teleportation_items"); the player's house (an instance) is left out.
+local function load_items(): { ItemTeleport }
+	if item_teleports then
+		return item_teleports
+	end
+	local found: { ItemTeleport } = {}
+	for _, t in ipairs(Host.transports().transports) do
+		if t.kind == "teleportation_items" and t.origin == nil and t.destination ~= nil then
+			local item, label = Transports.split(t.name)
+			if label ~= nil and string.sub(label, 1, 11) == "Tele to POH" then
+				continue
+			end
+			if string.sub(item, 1, 15) == "Teleport to House" then
+				continue
+			end
+			local ids: { number } = {}
+			for id in string.gmatch(t.items, "(%d+)=%d+") do
+				table.insert(ids, tonumber(id) :: number)
+			end
+			if #ids > 0 then
+				table.insert(found, { transport = t, item = item, label = label, ids = ids })
+			end
+		end
+	end
+	if #found > 0 then
+		item_teleports = found
+	end
+	Log.log("Transports", `{#found} item teleports`)
 	return found
 end
 
@@ -598,7 +672,26 @@ local function walk_cost(a: Tile, b: Tile): number
 end
 
 -- Whether a transport is usable now, apart from where it goes: its requirements. A spell also has to be castable (the game's own check covers its runes).
-type Check = { levels: { [string]: number }?, here_wild: number, checked: { [string]: boolean } }
+type Check = {
+	levels: { [string]: number }?,
+	here_wild: number,
+	checked: { [string]: boolean },
+	-- the amounts of the items in the inventory and worn, by id
+	held: { [number]: number }?,
+}
+
+-- The amounts of the items in the inventory and on the body, by item id.
+local function held_counts(): { [number]: number }
+	local counts: { [number]: number } = {}
+	for _, container in { Transports.INVENTORY, Transports.WORN } do
+		for _, item in ipairs(Host.item_container(container) or {}) do
+			if item.id > 0 then
+				counts[item.id] = (counts[item.id] or 0) + math.max(item.quantity, 1)
+			end
+		end
+	end
+	return counts
+end
 
 local function spell_ok(s: Spell, c: Check, Magic: any): boolean
 	local t = s.transport
@@ -632,6 +725,22 @@ local function trip_ok(trip: Trip, c: Check): boolean
 		and Transports.skills_met(t, c.levels)
 		and Transports.quests_done(t)
 		and Transports.items_met(t)
+end
+
+-- Whether an item teleport can be used now: the item is held, its charges and the rest of its requirements are fine, and it doesn't end (or start) in the wilderness.
+local function item_ok(it: ItemTeleport, c: Check): boolean
+	local t = it.transport
+	local to = t.destination :: Host.TransportTile
+	if not not_failed(t.name) or Transports.wilderness_level(to.x, to.y) ~= 0 or c.here_wild > (t.wilderness or 20) then
+		return false
+	end
+	if c.held == nil then
+		c.held = held_counts()
+	end
+	return Transports.items_met(t, c.held)
+		and Transports.skills_met(t, c.levels)
+		and holds(t)
+		and Transports.quests_done(t)
 end
 
 -- Whether a mushtree ride can be taken now: the usual requirements and the quests the kind needs besides (see `EXTRA_QUESTS`). Whether the destination tree is grown is seen in the list, at the ride.
@@ -1074,6 +1183,7 @@ type Step = {
 	kind: string,
 	transport: Transport?,
 	spell: Spell?,
+	item: ItemTeleport?,
 	from: number,
 	-- a trip of a network: its start and its end
 	hub_start: HubStart?,
@@ -1127,6 +1237,14 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 				from = node(t.origin :: Host.TransportTile),
 				to = node(t.destination :: Host.TransportTile),
 			})
+		end
+	end
+	local worn_teleports: { { item: ItemTeleport, to: number } } = {}
+	if Transports.ITEMS and not (opts.exclude and opts.exclude["items"]) then
+		for _, it in ipairs(load_items()) do
+			if not (opts.exclude and opts.exclude[it.item]) and item_ok(it, check) then
+				table.insert(worn_teleports, { item = it, to = node(it.transport.destination :: Host.TransportTile) })
+			end
 		end
 	end
 	local trees: { { ride: Ride, from: number, to: number } } = {}
@@ -1305,6 +1423,18 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 				)
 			end
 		end
+		for _, w in ipairs(worn_teleports) do
+			if not done[w.to] then
+				local t = w.item.transport
+				relax(
+					w.to,
+					t.duration
+						+ Transports.ITEM_SLACK_TICKS
+						+ (if t.consumable then Transports.ITEM_CHARGE_TICKS else 0),
+					{ kind = "item", item = w.item, from = u }
+				)
+			end
+		end
 		for _, gate in ipairs(gates) do
 			if gate.from == u and not done[gate.to] then
 				relax(
@@ -1406,6 +1536,17 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 			transport = s.transport,
 			spell = s.spell,
 			option = s.option,
+			ticks = dist[2],
+			saved = saved,
+		}
+	end
+	if first.kind == "item" then
+		local it = first.item :: ItemTeleport
+		return {
+			kind = "item",
+			transport = it.transport,
+			spell = it.item,
+			option = it.label,
 			ticks = dist[2],
 			saved = saved,
 		}
@@ -2170,6 +2311,308 @@ function Transports.pull(choice: Choice): boolean
 end
 
 -- What a choice is called in the list of failures.
+-- Lowercase text without colour tags, a leading "1. ", apostrophes and trailing dots, to compare a destination with a menu row or a dialogue line.
+local function plain(text: string): string
+	local t = string.lower((string.gsub(text, "<[^>]*>", "")))
+	t = string.gsub(t, "['`]", "")
+	t = string.gsub(t, "\u{2019}", "")
+	t = string.gsub(t, "^%s*%d+[%.:]%s*", "")
+	t = string.gsub(t, "[%.%s]+$", "")
+	return t
+end
+
+-- The line that names `label`: the same text first, else one that contains it.
+local function best_line(lines: { string }, label: string): string?
+	local want = plain(label)
+	for _, line in ipairs(lines) do
+		if plain(line) == want then
+			return line
+		end
+	end
+	for _, line in ipairs(lines) do
+		if want ~= "" and string.find(plain(line), want, 1, true) ~= nil then
+			return line
+		end
+	end
+	return nil
+end
+
+-- A destination reached through several menus is written "Fishing Teleports: Fishing Guild": its parts, outermost first.
+local function label_parts(label: string): { string }
+	local parts: { string } = {}
+	for part in string.gmatch(label .. ": ", "(.-): ") do
+		table.insert(parts, part)
+	end
+	return parts
+end
+
+local function in_list(list: { string }, option: string): boolean
+	for _, x in ipairs(list) do
+		if string.lower(x) == string.lower(option) then
+			return true
+		end
+	end
+	return false
+end
+
+-- The inventory (or worn) slot that holds one of `ids`, with the module that clicks it.
+local function find_held(ids: { number }): (any?, number?)
+	local wanted: { [number]: boolean } = {}
+	for _, id in ipairs(ids) do
+		wanted[id] = true
+	end
+	local modules = {
+		{ Transports.INVENTORY, "@lib/main/interfaces/gametabs/inventory" },
+		{ Transports.WORN, "@lib/main/interfaces/gametabs/wornitems" },
+	}
+	for _, m in ipairs(modules) do
+		for _, item in ipairs(Host.item_container(m[1] :: number) or {}) do
+			if wanted[item.id] then
+				return (require :: any)(m[2]), item.slot
+			end
+		end
+	end
+	return nil, nil
+end
+
+-- The options the menu of an item shows when it is hovered.
+local function item_options(module: any, slot: number): { string }
+	local Minimenu = (require :: any)("@lib/main/interfaces/minimenu")
+	module.hover_slot(slot)
+	local waited = 0
+	while waited <= 800 do
+		local entries = Minimenu.entries()
+		if entries ~= nil and #entries > 1 then
+			local options: { string } = {}
+			for _, e in ipairs(entries) do
+				table.insert(options, e.option)
+			end
+			return options
+		end
+		sleep(50)
+		waited += 50
+	end
+	return {}
+end
+
+-- The option of the item's menu that names the destination itself (a crystal's "Lletya"), else, for an item with one destination, its first option that isn't a plain one ("Teleport", "Weiss").
+local function direct_option(options: { string }, label: string?): string?
+	local direct: { string } = {}
+	for _, option in ipairs(options) do
+		if not in_list(Transports.ITEM_NOT_TELEPORT, option) and not in_list(Transports.ITEM_OPENERS, option) then
+			table.insert(direct, option)
+		end
+	end
+	if label ~= nil then
+		local parts = label_parts(label)
+		return best_line(direct, parts[#parts])
+	end
+	for _, option in ipairs(options) do
+		if in_list(Transports.ITEM_OPENERS, option) then
+			return option
+		end
+	end
+	return direct[1]
+end
+
+-- Whether to take the minimenu's submenu (the destinations listed beside the option) rather than click the option and answer its dialogue: the submenu is the quicker one, so it is
+-- taken most of the time, how often depends on the account's biometrics.
+local function prefers_submenu(): boolean
+	local Biometrics = (require :: any)("@lib/main/antiban/biometrics")
+	local Random = (require :: any)("@lib/utils/math/random")
+	local p = Transports.ITEM_SUBMENU_BASE
+		+ (1 - Transports.ITEM_SUBMENU_BASE) * Biometrics.get_probability(Biometrics.CHOOSEOPTION)
+	return Random.chance(p)
+end
+
+-- Closes a dialogue of options left open (Escape) and waits for it to go; false when it stays.
+local function close_dialogue(): boolean
+	local ChatOptions = (require :: any)("@lib/main/interfaces/chatbox/chat_options")
+	local Keyboard = (require :: any)("@lib/utils/input/keyboard")
+	for _ = 1, 3 do
+		local lines = ChatOptions.get()
+		if lines == nil or #lines == 0 then
+			return true
+		end
+		Keyboard.key_press(Keyboard.keys.ESCAPE)
+		sleep(600)
+	end
+	local lines = ChatOptions.get()
+	return lines == nil or #lines == 0
+end
+
+-- Looks through the submenus of the item's menu (opened by a right click) for the destination: the option that has it listed and the line to pick. The menu is left open when found, else closed.
+local function find_in_submenus(module: any, slot: number, label: string): (string?, string?)
+	local Minimenu = (require :: any)("@lib/main/interfaces/minimenu")
+	module.hover_slot(slot)
+	if not Minimenu.open() then
+		return nil, nil
+	end
+	local parts = label_parts(label)
+	local parents: { string } = {}
+	for _, e in ipairs(Minimenu.entries() or {}) do
+		if e.submenu then
+			table.insert(parents, e.option)
+		end
+	end
+	for _, parent in ipairs(parents) do
+		if Minimenu.open_submenu(parent) then
+			local lines: { string } = {}
+			for _, e in ipairs(Minimenu.submenu_entries(parent) or {}) do
+				table.insert(lines, e.option)
+			end
+			local line = best_line(lines, parts[#parts])
+			if line ~= nil then
+				return parent, line
+			end
+		end
+	end
+	Minimenu.close()
+	return nil, nil
+end
+
+-- Uses a teleport item: picks the destination in the submenu of its option or in the dialogue the option opens, and waits to land.
+-- The second result is true when trying again would be pointless (the item or the destination isn't offered).
+function Transports.use_item(choice: Choice): (boolean, boolean?)
+	local Player = (require :: any)("@lib/main/player")
+	local ChatOptions = (require :: any)("@lib/main/interfaces/chatbox/chat_options")
+	local Interact = (require :: any)("@lib/main/interact")
+	local t = choice.transport
+	local to = t.destination :: Host.TransportTile
+	local label = choice.option
+	local ids: { number } = {}
+	for id in string.gmatch(t.items, "(%d+)=%d+") do
+		table.insert(ids, tonumber(id) :: number)
+	end
+	local module, slot = find_held(ids)
+	local before = Player.position()
+	if module == nil or slot == nil or before == nil then
+		Log.log("Transports", `{t.name}: the item isn't held`)
+		return false, true
+	end
+	close_dialogue()
+	local clicked = false
+	-- the option clicked to open a dialogue, kept in case it opens none (the max cape's list is a submenu and nothing else)
+	local dialogue_parent: string? = nil
+	local clicked_at = 0
+	local Minimenu = (require :: any)("@lib/main/interfaces/minimenu")
+	local direct = direct_option(item_options(module, slot), label)
+	if direct ~= nil and label ~= nil then
+		Log.log("Transports", `{t.name}: "{direct}", saves about {math.floor(choice.saved)} ticks`)
+		clicked = module.interact_slot(slot, direct)
+	else
+		local parent, line = nil, nil
+		if label ~= nil then
+			parent, line = find_in_submenus(module, slot, label)
+		end
+		if parent ~= nil and line ~= nil then
+			if prefers_submenu() then
+				Log.log("Transports", `{t.name}: "{parent}" > "{line}", saves about {math.floor(choice.saved)} ticks`)
+				local before_click = Minimenu.clicked()
+				clicked = Minimenu.select_submenu(line, nil, parent)
+					and (before_click == nil or Minimenu.wait_click(before_click) ~= nil)
+			else
+				Log.log(
+					"Transports",
+					`{t.name}: "{parent}" and the dialogue, saves about {math.floor(choice.saved)} ticks`
+				)
+				local _, ok = Interact.open_menu({ parent }, nil, false)
+				clicked = ok == true
+				dialogue_parent = parent
+			end
+			if not clicked then
+				Minimenu.close()
+			end
+		elseif direct ~= nil then
+			Log.log("Transports", `{t.name}: "{direct}", saves about {math.floor(choice.saved)} ticks`)
+			clicked = module.interact_slot(slot, direct)
+		else
+			-- no submenu lists it: the option that opens a dialogue of destinations, if the item has one
+			local opener: string? = nil
+			for _, name in ipairs(Transports.ITEM_OPENERS) do
+				for _, option in ipairs(item_options(module, slot)) do
+					if opener == nil and string.lower(option) == string.lower(name) then
+						opener = option
+					end
+				end
+			end
+			if opener == nil then
+				Log.log("Transports", `{t.name}: no option of the item gives it`)
+				return false, true
+			end
+			Log.log("Transports", `{t.name}: "{opener}" and the dialogue`)
+			clicked = module.interact_slot(slot, opener)
+		end
+	end
+	if not clicked then
+		return false
+	end
+	clicked_at = time()
+	local seen_dialogue = false
+	local parts = if label ~= nil then label_parts(label) else {}
+	local step = 1
+	local seen = ""
+	local deadline = time() + Transports.ITEM_TIMEOUT_MS
+	while time() < deadline do
+		local now = Player.position()
+		if now ~= nil then
+			local moved = math.max(math.abs(now.x - before.x), math.abs(now.y - before.y))
+			if moved >= Transports.LAND_DISTANCE or now.plane ~= before.plane then
+				local off = math.max(math.abs(now.x - to.x), math.abs(now.y - to.y))
+				if off > 10 then
+					Log.log("Transports", `{t.name} landed at {now.x}, {now.y}, not near {to.x}, {to.y}`)
+				end
+				Transports.settle(now)
+				return true
+			end
+		end
+		local lines = ChatOptions.get()
+		local shown = ChatOptions.to_string(lines) or ""
+		if lines ~= nil and #lines > 0 then
+			seen_dialogue = true
+		elseif dialogue_parent ~= nil and not seen_dialogue and time() - clicked_at > Transports.ITEM_DIALOGUE_MS then
+			-- no dialogue came: the option only lists its destinations in the submenu
+			dialogue_parent = nil
+			local parent, line = find_in_submenus(module, slot, label :: string)
+			if parent ~= nil and line ~= nil then
+				Log.log("Transports", `{t.name}: no dialogue, "{parent}" > "{line}" instead`)
+				Minimenu.select_submenu(line, nil, parent)
+			end
+		end
+		if lines ~= nil and #lines > 0 and shown ~= seen then
+			seen = shown
+			local texts: { string } = {}
+			for _, line in ipairs(lines) do
+				table.insert(texts, line.text)
+			end
+			-- the next part of the destination that this dialogue names (a flat list names only the last)
+			local text: string? = nil
+			for i = step, #parts do
+				text = best_line(texts, parts[i])
+				if text ~= nil then
+					step = i + 1
+					break
+				end
+			end
+			-- the key for a line doesn't always take (the slayer ring's list): then the line is clicked
+			local picked = text ~= nil and ChatOptions.select(text)
+			if text ~= nil and not picked and ChatOptions.find(text) ~= nil then
+				picked = ChatOptions.select(text, nil, 0)
+			end
+			if picked then
+				seen = ""
+			else
+				Log.log("Transports", `{t.name}: the dialogue ({shown}) has no "{label or "?"}"`)
+				close_dialogue()
+				return false, true
+			end
+		end
+		sleep(100)
+	end
+	Log.log("Transports", `{t.name} didn't work`)
+	return false
+end
+
 local function failure_id(choice: Choice): string
 	local t = choice.transport
 	if choice.kind == "charter" then
@@ -2197,6 +2640,9 @@ end
 Transports.runners = {
 	spell = function(choice: Choice): boolean
 		return Transports.cast(choice)
+	end,
+	item = function(choice: Choice): (boolean, boolean?)
+		return Transports.use_item(choice)
 	end,
 	charter = function(choice: Choice): boolean
 		return Transports.sail(choice)

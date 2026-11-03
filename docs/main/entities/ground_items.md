@@ -243,3 +243,22 @@ if item then
 	print(ok)
 end
 ```
+
+## GroundItems.approach
+
+Definition:
+```luau
+function GroundItems.approach(item: GroundItem, options: string | { string }, opts: Clickbox.Approach?): boolean
+```
+Walks to the item and picks the first of `options` its menu has, walking early on the way when it's close (see `Clickbox.approach`). Use it for an item too far away to click yet; `interact` is for one you can already see.
+
+Example:
+```luau
+local GroundItems = require("@lib/main/entities/ground_items")
+local Walker = require("@lib/main/walker")
+
+local item = GroundItems.nearest("Bones", assert(Walker.position()))
+if item then
+	print(GroundItems.approach(item, "Take"))
+end
+```

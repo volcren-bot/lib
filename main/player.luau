@@ -179,6 +179,54 @@ function Player.is_moving(sample_ms: number?): boolean
 	return x2 ~= x or y2 ~= y
 end
 
+-- The id of the animation the player is playing, -1 for none: an obstacle, a search, an attack. Walking and running are the pose, not this.
+function Player.animation(): number?
+	local name = game_state().player_name
+	if name == nil then
+		return nil
+	end
+	for _, p in ipairs(Host.players() or {}) do
+		if p.name == name then
+			return p.animation
+		end
+	end
+	return nil
+end
+
+function Player.is_animating(): boolean
+	local id = Player.animation()
+	return id ~= nil and id ~= -1
+end
+
+-- an animation can pause for a moment between two others
+Player.IDLE_MS = 300
+
+-- Waits until the player has neither moved nor played an animation for `Player.IDLE_MS`. False after `timeout_ms`.
+-- `on_poll` is called on every check.
+function Player.wait_idle(timeout_ms: number?, on_poll: (() -> ())?): boolean
+	local timeout = timeout_ms or Player.WALK_TIMEOUT
+	local started = time()
+	local x, y = fine()
+	local idle_since = started
+	while true do
+		local now = time()
+		local nx, ny = fine()
+		if on_poll then
+			on_poll()
+		end
+		if nx == nil or nx ~= x or ny ~= y or Player.is_animating() then
+			x, y = nx, ny
+			idle_since = now
+		elseif now - idle_since >= Player.IDLE_MS then
+			return true
+		end
+		if now - started >= timeout then
+			return false
+		end
+		sleep(30)
+	end
+end
+
 function Player.destination(): Tile?
 	local s = game_state()
 	return s.destination

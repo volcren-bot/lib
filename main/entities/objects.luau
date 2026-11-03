@@ -135,6 +135,18 @@ function Objects.hover(loc: Loc): boolean
 	return Clickbox.hover(clickbox_of(loc), hovered_by(loc), loc.name or tostring(loc.id), tile_of(loc))
 end
 
+-- Starts moving the mouse over the object and returns at once; true if there was a spot to aim at. Doesn't turn the camera.
+-- `at` is the tile the player will stand on when it is time to click: the object is aimed at as the screen will show it then.
+function Objects.hover_async(loc: Loc, at: Tile?): boolean
+	local name = loc.name or tostring(loc.id)
+	if at == nil then
+		return Clickbox.hover_async(clickbox_of(loc), name)
+	end
+	return Clickbox.hover_async(function()
+		return Objects.projected(loc, at)
+	end, name)
+end
+
 function Objects.click(loc: Loc, button: Mouse.Button?): boolean
 	return Clickbox.click(clickbox_of(loc), hovered_by(loc), loc.name or tostring(loc.id), button, tile_of(loc))
 end
