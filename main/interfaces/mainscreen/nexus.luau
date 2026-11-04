@@ -81,15 +81,20 @@ function Nexus.destinations(): { Destination }?
 	end
 	local found: { Destination } = {}
 	for _, list in ipairs(Nexus.LISTS) do
-		for _, row in ipairs(widget_children(Nexus.GROUP, list) or {}) do
+		local rows = widget_children(Nexus.GROUP, list) or {}
+		local areas: { [number]: Widget } = {}
+		if #rows > 0 then
+			for _, area in ipairs(widget_children(Nexus.GROUP, list + 1) or {}) do
+				areas[area.index] = area
+			end
+		end
+		for _, row in ipairs(rows) do
 			if row.kind == 4 and not row.hidden and row.text ~= nil then
 				local key, name = string.match(Chat.clean(row.text), "^(%w+)%s*:%s*(.+)$")
 				if key ~= nil and name ~= nil then
-					for _, area in ipairs(widget_children(Nexus.GROUP, list + 1) or {}) do
-						if area.index == row.index then
-							table.insert(found, { key = key, name = name, area = area })
-							break
-						end
+					local area = areas[row.index]
+					if area then
+						table.insert(found, { key = key, name = name, area = area })
 					end
 				end
 			end

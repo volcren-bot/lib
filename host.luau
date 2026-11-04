@@ -194,9 +194,66 @@ export type FinePoint = {
 	tile: { x: number, y: number }?,
 }
 
+-- An item in an equipment or inventory layout: `stackable` says whether its `quantity` is a stack or one of several copies.
+export type LayoutItem = {
+	id: number,
+	quantity: number,
+	name: string,
+	stackable: boolean,
+}
+
+-- One of the worn items slots in an equipment layout (`slot` is the container's: 0 head, 1 cape, 2 amulet, 3 weapon, 4 body, 5 shield, 7 legs, 9 hands, 10 feet, 12 ring, 13 ammo): `item` wants that item worn there, `empty` wants nothing worn there and `any` doesn't care.
+export type EquipmentLayoutSlot = {
+	slot: number,
+	mode: "item" | "empty" | "any",
+	id: number?,
+	quantity: number?,
+	name: string?,
+	stackable: boolean?,
+}
+
+-- The spell of an equipment layout: `autocast` when the weapon read from the client could autocast (the script sets it on the combat tab), else one the script casts by hand. `book` is "standard", "ancient" or "arceuus".
+export type EquipmentSpell = {
+	key: string,
+	name: string,
+	book: string,
+	level: number,
+	autocast: boolean,
+}
+
+-- What an `equipment` form field gives: the layout the user picked in the loader, every used slot listed once, and its spell when one was picked.
+export type EquipmentLayout = {
+	name: string,
+	slots: { EquipmentLayoutSlot },
+	spell: EquipmentSpell?,
+}
+
+-- An item of an inventory layout and the slot (0 to 27) it sits in.
+export type InventoryLayoutSlot = {
+	slot: number,
+	id: number,
+	quantity: number,
+	name: string,
+	stackable: boolean,
+}
+
+-- What an `inventory` form field gives: the layout the user picked in the loader, only the filled slots, and the rune pouch's runes when the layout holds a pouch.
+export type InventoryLayout = {
+	name: string,
+	slots: { InventoryLayoutSlot },
+	pouch: { LayoutItem }?,
+}
+
+-- What a `prayer` form field gives: the layout the user picked in the loader, a set of prayers by key (`Prayer.PRAYERS`: "thick_skin", "protect_from_melee", ...), in the prayer book's order.
+export type PrayerLayout = {
+	name: string,
+	prayers: { string },
+}
+
 export type FormField = {
 	id: string?,
-	kind: ("label" | "check" | "number" | "text" | "choice" | "list")?,
+	-- `equipment`, `inventory` and `prayer` (host API 10) add an Equipment, Inventory or Prayer tab to the script's page in the loader, where the user makes layouts (read from the client, or for prayers also clicked together) and keeps them per script; the value is the chosen `EquipmentLayout`, `InventoryLayout` or `PrayerLayout`, or nil when none is chosen
+	kind: ("label" | "check" | "number" | "text" | "choice" | "list" | "equipment" | "inventory" | "prayer")?,
 	label: string?,
 	text: string?,
 	default: any?,

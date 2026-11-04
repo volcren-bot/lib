@@ -2453,7 +2453,8 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 			last_said = `{speech.name}: {speech.text}`
 		end
 		local choices = ChatOptions.get()
-		if (choices ~= nil and #choices > 0) or ChatOptions.contains_continue() then
+		local can_continue = ChatOptions.contains_continue()
+		if (choices ~= nil and #choices > 0) or can_continue then
 			quiet_since = time()
 			answered = true
 		end
@@ -2476,7 +2477,7 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 			if not ChatOptions.select(pick) and ChatOptions.find(pick) ~= nil then
 				ChatOptions.select(pick, nil, 0)
 			end
-		elseif ChatOptions.contains_continue() then
+		elseif can_continue then
 			ChatOptions.continue_chat()
 		end
 		sleep(Transports.RIDE_POLL_MS)

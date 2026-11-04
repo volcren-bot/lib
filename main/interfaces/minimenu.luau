@@ -106,12 +106,8 @@ local function level_layout(level: number?): (Level?, number?)
 	return sub :: any, scale
 end
 
--- Where to click on line `index` of the menu (or submenu `level`), kept near the mouse.
-function Minimenu.row(index: number, level: number?): Geometry.Box?
-	local menu, scale = level_layout(level)
-	if menu == nil or scale == nil then
-		return nil
-	end
+-- Where to click on line `index` of a laid-out menu level, kept near the mouse.
+local function row_of(menu: Level, scale: number, index: number): Geometry.Box?
 	local rows = menu.rows
 	local top = rows.y + menu.row_height * (index - 1) - menu.scroll
 	if top < rows.y or top + menu.row_height > rows.y + rows.height then
@@ -130,6 +126,15 @@ function Minimenu.row(index: number, level: number?): Geometry.Box?
 		(x + half) * scale,
 		(top + menu.row_height - 3) * scale
 	)
+end
+
+-- Where to click on line `index` of the menu (or submenu `level`), kept near the mouse.
+function Minimenu.row(index: number, level: number?): Geometry.Box?
+	local menu, scale = level_layout(level)
+	if menu == nil or scale == nil then
+		return nil
+	end
+	return row_of(menu, scale, index)
 end
 
 function Minimenu.select(option: string, target: Target?): boolean
@@ -474,17 +479,21 @@ function Minimenu.submenu_entries(option: string?, target: Target?): { MenuEntry
 end
 
 -- The line of the open submenu (the deepest one) matching `option` and `target`.
-function Minimenu.find_submenu(option: string, target: Target?): (number?, { MenuEntry }?)
-	local sub = Minimenu.submenu()
-	if sub == nil then
-		return nil, nil
-	end
+local function find_in(sub: Host.MenuSubmenu, option: string, target: Target?): (number?, { MenuEntry }?)
 	for i, entry in sub.entries do
 		if Minimenu.matches(entry, option, target) then
 			return i, sub.entries
 		end
 	end
 	return nil, nil
+end
+
+function Minimenu.find_submenu(option: string, target: Target?): (number?, { MenuEntry }?)
+	local sub = Minimenu.submenu()
+	if sub == nil then
+		return nil, nil
+	end
+	return find_in(sub, option, target)
 end
 
 -- Moves onto the matching submenu line, first sideways along the opening row so no other row's submenu opens.
@@ -498,7 +507,7 @@ function Minimenu.hover_submenu(option: string, target: Target?): boolean
 	if sub == nil then
 		return false
 	end
-	local index = Minimenu.find_submenu(option, target)
+	local index = find_in(sub, option, target)
 	if index == nil then
 		return false
 	end
@@ -517,7 +526,7 @@ function Minimenu.hover_submenu(option: string, target: Target?): boolean
 		local y = math.clamp(mouse.y / scale, sub.y + 6, sub.y + sub.height - 6)
 		move_steady(Geometry.Box.new((x - 4) * scale, (y - 2) * scale, (x + 4) * scale, (y + 2) * scale))
 	end
-	local row = Minimenu.row(index, level)
+	local row = row_of(sub :: any, scale, index)
 	if row == nil then
 		return false
 	end

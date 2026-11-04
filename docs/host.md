@@ -42,6 +42,9 @@ The data the functions below hand back. Each one is a plain table, so you read i
 | `Tile` / `Area` / `Corners` / `ScreenPoint` / `FinePoint` | Small helper shapes for coordinates. |
 | `Shape` | One shape for `Host.draw_batch`: a rect, a line or a clear. |
 | `FormSpec` / `FormField` | The description of a settings window. |
+| `EquipmentLayout` / `EquipmentLayoutSlot` / `EquipmentSpell` | What an `equipment` form field gives: a layout's name, every worn items slot with its `mode` (`item`, `empty` or `any`) and the item (`id`, `quantity`, `name`, `stackable`) when it wants one, and its `spell` (`key`, `name`, `book`, `level`, `autocast`) when one was picked. See [EquipmentLayout](main/equipment_layout.md). |
+| `PrayerLayout` | What a `prayer` form field gives: a layout's name and its prayers by key, in the prayer book's order. See [PrayerLayout](main/prayer_layout.md). |
+| `InventoryLayout` / `InventoryLayoutSlot` / `LayoutItem` | What an `inventory` form field gives: a layout's name, its filled slots (`slot`, `id`, `quantity`, `name`, `stackable`) and the rune pouch's runes (`pouch`, each a `LayoutItem`) when it holds a pouch. See [InventoryLayout](main/inventory_layout.md). |
 | `WindMouseOptions` | Tuning for human-like mouse movement. |
 | `HttpRequest` / `HttpResponse` | What `Host.http_request` takes and returns. |
 
@@ -258,7 +261,7 @@ Definition:
 ```luau
 Host.form: (spec: FormSpec) -> { [string]: any }?
 ```
-Shows a settings window and waits until the user presses the button. Returns the chosen values by field id, or `nil, "cancelled"`. Field kinds are `label`, `check`, `number`, `text`, `choice` and `list` (a scrolling list of ticked rows, `items = { { id = "a", label = "A", default = true } }`, giving `{ a = true }`). Any field can set `enabled_by` to the id of a check, and is greyed out while that check is off. A field can also set `visible_when = { id = "collect", equals = "Eclipse red" }` (`equals` may be a list of values) to be shown only while the field `id` has that value; `visible_when` may also be a list of such rules, all of which must hold; a hidden field keeps its value and is still returned.
+Shows a settings window and waits until the user presses the button. Returns the chosen values by field id, or `nil, "cancelled"`. Field kinds are `label`, `check`, `number`, `text`, `choice`, `list` (a scrolling list of ticked rows, `items = { { id = "a", label = "A", default = true } }`, giving `{ a = true }`), `equipment`, `inventory` and `prayer`. The last three (host API 10) add an Equipment, Inventory or Prayer tab to the script's page in the loader, where the user reads layouts from the client, edits them (amounts of stackables, what an empty equipment slot means, the inventory's order; prayers are clicked together in the prayer book, which keeps out the ones that can't be on at once) and keeps them per script; the field shows a dropdown of those layouts and its value is the chosen one, an `EquipmentLayout`, `InventoryLayout` or `PrayerLayout`, or `nil` when none is chosen. [EquipmentLayout](main/equipment_layout.md), [InventoryLayout](main/inventory_layout.md) and [PrayerLayout](main/prayer_layout.md) act on them. Any field can set `enabled_by` to the id of a check, and is greyed out while that check is off. A field can also set `visible_when = { id = "collect", equals = "Eclipse red" }` (`equals` may be a list of values) to be shown only while the field `id` has that value; `visible_when` may also be a list of such rules, all of which must hold; a hidden field keeps its value and is still returned.
 
 Example:
 ```luau

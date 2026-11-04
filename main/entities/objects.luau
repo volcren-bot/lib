@@ -21,11 +21,12 @@ Objects.WALL_DECORATION = 1
 Objects.GAME_OBJECT = 2
 Objects.GROUND_DECORATION = 3
 
+-- `what` is a lowercase name or an id
 local function matches(loc: Loc, what: string | number): boolean
 	if type(what) == "number" then
 		return loc.id == what
 	end
-	return loc.name ~= nil and string.lower((string.gsub(loc.name, "<[^>]*>", ""))) == string.lower(what)
+	return loc.name ~= nil and string.lower((string.gsub(loc.name, "<[^>]*>", ""))) == what
 end
 
 function Objects.distance(loc: Loc, from: Tile): number
@@ -39,9 +40,10 @@ function Objects.find(what: (string | number)?): { Loc }?
 	if all == nil then
 		return nil
 	end
+	local wanted = if type(what) == "string" then string.lower(what) else what
 	local found: { Loc } = {}
 	for _, loc in ipairs(all) do
-		if loc.clickable and (what == nil or matches(loc, what)) then
+		if loc.clickable and (wanted == nil or matches(loc, wanted)) then
 			table.insert(found, loc)
 		end
 	end

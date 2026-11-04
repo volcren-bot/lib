@@ -149,7 +149,13 @@ function House.reach(what: string | number | { string }): Loc?
 		return nil
 	end
 	local here = Player.position()
-	if here == nil or (here.plane ~= loc.plane and not House.go_to_floor(loc.plane)) then
+	if here == nil then
+		return nil
+	end
+	if here.plane == loc.plane then
+		return loc
+	end
+	if not House.go_to_floor(loc.plane) then
 		return nil
 	end
 	return House.find(what)

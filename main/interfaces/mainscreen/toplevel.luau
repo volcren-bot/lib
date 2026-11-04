@@ -41,9 +41,7 @@ Toplevel.LAYOUT = {
 
 local ORDER: { Slot } = { "modal", "floater", "crm" }
 
-function Toplevel.interfaces(): { Open }?
-	local state = game_state()
-	local root = state.root_interface
+local function interfaces_of(root: number?): { Open }?
 	if root == nil then
 		return {}
 	end
@@ -64,6 +62,10 @@ function Toplevel.interfaces(): { Open }?
 		end
 	end
 	return found
+end
+
+function Toplevel.interfaces(): { Open }?
+	return interfaces_of(game_state().root_interface)
 end
 
 function Toplevel.interface(): number?
@@ -250,8 +252,7 @@ function Toplevel.viewport(): Box?
 end
 
 -- The side panels and the chat that cover the game view, without the windows open on top of it.
-function Toplevel.panel_blockers(): { Box }?
-	local top = root()
+local function panel_blockers_of(top: number?): { Box }?
 	if top == nil then
 		return nil
 	end
@@ -269,12 +270,17 @@ function Toplevel.panel_blockers(): { Box }?
 	return boxes
 end
 
+function Toplevel.panel_blockers(): { Box }?
+	return panel_blockers_of(root())
+end
+
 function Toplevel.blockers(): { Box }?
-	local boxes = Toplevel.panel_blockers()
+	local top = root()
+	local boxes = panel_blockers_of(top)
 	if boxes == nil then
 		return nil
 	end
-	local open = Toplevel.interfaces()
+	local open = interfaces_of(top)
 	for _, o in ipairs(open or {}) do
 		local b = box_of(o.group, 0)
 		if b then

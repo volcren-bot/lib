@@ -25,9 +25,10 @@ function Players.find(name: string?): { PlayerInfo }?
 	if name == nil then
 		return all
 	end
+	local wanted = string.lower(name)
 	local found: { PlayerInfo } = {}
 	for _, player in ipairs(all) do
-		if string.lower(player.name) == string.lower(name) then
+		if string.lower(player.name) == wanted then
 			table.insert(found, player)
 		end
 	end

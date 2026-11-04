@@ -9,6 +9,7 @@ local time = Host.time
 type Widget = Host.Widget
 local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
+local Item = require("@lib/utils/item")
 local Log = require("@lib/utils/log")
 local Mouse = require("@lib/utils/input/mouse")
 local Random = require("@lib/utils/math/random")
@@ -234,18 +235,30 @@ end
 
 -- The inventory slot of `item` (an id or a name), or by default of the first item called one of `NAMES`. Nil when none is held.
 function Lamp.slot(item: (number | string)?): number?
-	for _, held in ipairs(Host.item_container(Lamp.INVENTORY) or {}) do
-		if item ~= nil and held.id == item then
-			return held.slot
+	local held = Host.item_container(Lamp.INVENTORY) or {}
+	if type(item) == "number" then
+		for _, h in ipairs(held) do
+			if h.id == item then
+				return h.slot
+			end
 		end
-		local name = Host.item_name(held.id)
+		return nil
+	end
+	local ids: { number } = {}
+	for i, h in ipairs(held) do
+		ids[i] = h.id
+	end
+	local names = if #ids > 0 then Item.names(ids) or {} else {}
+	local wanted = if item ~= nil then string.lower(item) else nil
+	for i, h in ipairs(held) do
+		local name = names[i]
 		if name ~= nil then
-			if item ~= nil then
-				if type(item) == "string" and string.lower(name) == string.lower(item) then
-					return held.slot
+			if wanted ~= nil then
+				if string.lower(name) == wanted then
+					return h.slot
 				end
 			elseif table.find(Lamp.NAMES, name) ~= nil then
-				return held.slot
+				return h.slot
 			end
 		end
 	end

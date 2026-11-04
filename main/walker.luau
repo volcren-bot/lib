@@ -1053,12 +1053,12 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 	end
 
 	while true do
-		local here = Walker.here()
-		if here == nil then
+		local position = game_state().position
+		if position == nil or position.plane == nil then
 			return false
 		end
-		local position = game_state().position
-		local spot = if position then `{position.local_x},{position.local_y},{here.plane}` else ""
+		local here: NavTile = { x = position.x, y = position.y, plane = position.plane :: number }
+		local spot = `{position.local_x},{position.local_y},{here.plane}`
 		if spot ~= last_spot then
 			last_spot, moved_ms = spot, time()
 		end

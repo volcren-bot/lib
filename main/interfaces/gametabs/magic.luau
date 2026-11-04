@@ -286,9 +286,14 @@ local function wait_until(check: () -> boolean, timeout_ms: number): boolean
 	end
 end
 
-local function visible(child: number): boolean
+-- the component when it is drawn
+local function shown(child: number): Widget?
 	local w = widget(Magic.GROUP, child)
-	return w ~= nil and not w.hidden
+	return if w ~= nil and not w.hidden then w else nil
+end
+
+local function visible(child: number): boolean
+	return shown(child) ~= nil
 end
 
 local function on(s: Spell): (MenuEntry) -> boolean
@@ -549,8 +554,9 @@ function Magic.find(spell: SpellRef): Widget?
 	if not closed then
 		return nil
 	end
-	if visible(s.child) then
-		return widget(Magic.GROUP, s.child)
+	local w = shown(s.child)
+	if w then
+		return w
 	end
 	if s.book == "standard" then
 		local back = Magic.spell("Back", "standard")
@@ -561,19 +567,20 @@ function Magic.find(spell: SpellRef): Widget?
 			if button == nil then
 				return nil
 			end
-			local w = Magic.find(button)
-			if w == nil then
+			local found = Magic.find(button)
+			if found == nil then
 				return nil
 			end
-			local ok = press(button, w, nil)
+			local ok = press(button, found, nil)
 			if not ok then
 				return nil
 			end
 			wait_until(function()
 				return visible(s.child) or visible(back.child) == wants_menu
 			end, SHOW_TIMEOUT_MS)
-			if visible(s.child) then
-				return widget(Magic.GROUP, s.child)
+			local now = shown(s.child)
+			if now then
+				return now
 			end
 		end
 	end

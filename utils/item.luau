@@ -12,12 +12,48 @@ export type Matcher = {
 
 local Item = {}
 
+-- an item's name never changes during a run, so each id is asked of the client once
+local known: { [number]: string } = {}
+
 function Item.name(id: number): string?
-	return item_name(id)
+	local name = known[id]
+	if name == nil then
+		name = item_name(id)
+		if name ~= nil then
+			known[id] = name
+		end
+	end
+	return name
 end
 
 function Item.names(ids: { number }): { string? }?
-	return item_names(ids)
+	local names: { string? } = {}
+	local missing: { number } = {}
+	local at: { number } = {}
+	for i, id in ipairs(ids) do
+		local name = known[id]
+		if name ~= nil then
+			names[i] = name
+		else
+			table.insert(missing, id)
+			table.insert(at, i)
+		end
+	end
+	if #missing == 0 then
+		return names
+	end
+	local found = item_names(missing)
+	if found == nil then
+		return nil
+	end
+	for j, i in ipairs(at) do
+		local name = found[j]
+		if name ~= nil then
+			known[missing[j]] = name
+		end
+		names[i] = name
+	end
+	return names
 end
 
 function Item.has_amount(item: string): boolean

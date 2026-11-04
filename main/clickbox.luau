@@ -522,8 +522,8 @@ function Clickbox.approach(
 				end
 				if
 					not o.settle
-					and aimable(clickbox, what)
 					and (last_try == nil or Host.time() - last_try >= Clickbox.EARLY_RETRY_MS)
+					and aimable(clickbox, what)
 				then
 					last_try = Host.time()
 					if Clickbox.interact(clickbox, hovered, what, option, target, tile, false) == true then

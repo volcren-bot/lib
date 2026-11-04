@@ -157,14 +157,25 @@ local function required_total(types: number, activity: string?): number?
 	return if number then tonumber(number) else nil
 end
 
--- whether your total level lets you into a world; unknown levels don't
-local function meets_total(types: number, activity: string?): boolean
+-- whether your total level lets you into a world; unknown levels don't. `total` gives the level without a read, or reads it once
+local function meets_total(types: number, activity: string?, total: (() -> number?)?): boolean
 	local required = required_total(types, activity)
 	if required == nil then
 		return true
 	end
-	local total = Stats.total_level(game_state().skills)
-	return total ~= nil and total >= required
+	local have = if total then total() else Stats.total_level(game_state().skills)
+	return have ~= nil and have >= required
+end
+
+-- reads the total level on the first call and keeps it
+local function total_once(): () -> number?
+	local read, total = false, nil :: number?
+	return function()
+		if not read then
+			read, total = true, Stats.total_level(game_state().skills)
+		end
+		return total
+	end
 end
 
 local function is_safe(types: number, activity: string?): boolean
@@ -184,17 +195,6 @@ local function is_safe(types: number, activity: string?): boolean
 end
 
 -- the type flags of every world, by number
-local function world_types(): { [number]: number }
-	local types: { [number]: number } = {}
-	local select = world_select()
-	if select ~= nil then
-		for _, w in select.worlds do
-			types[w.id] = w.types
-		end
-	end
-	return types
-end
-
 -- drops the dangerous worlds from a list of world numbers
 local function only_safe(worlds: { number }): { number }
 	local info: { [number]: { types: number, activity: string } } = {}
@@ -240,8 +240,15 @@ local function list_rows(): { Row }?
 		end
 	end
 
-	local types = world_types()
-	local current = WorldSwitcher.current()
+	local select = world_select()
+	local types: { [number]: number } = {}
+	if select ~= nil then
+		for _, w in select.worlds do
+			types[w.id] = w.types
+		end
+	end
+	local current = if select ~= nil then select.current else WorldSwitcher.current()
+	local total = total_once()
 	local result: { Row } = {}
 	for _, row in rows do
 		if not row.hidden then
@@ -262,7 +269,7 @@ local function list_rows(): { Row }?
 					then bit32.band(types[row.index], LoginWorldSwitcher.MEMBERS) ~= 0
 					else colour == WorldSwitcher.MEMBERS,
 				available = (here or colour ~= WorldSwitcher.UNAVAILABLE)
-					and meets_total(types[row.index] or 0, activity and activity.text),
+					and meets_total(types[row.index] or 0, activity and activity.text, total),
 				visible = row.y >= list.y and row.y + row.height <= list.y + list.height,
 				box = box_of(row),
 			})
@@ -721,8 +728,17 @@ local function pick(
 		worlds = allowed
 	end
 	local reachable: { number } = {}
+	local select = world_select()
+	local info: { [number]: { types: number, activity: string } } = {}
+	if select ~= nil then
+		for _, w in select.worlds do
+			info[w.id] = w
+		end
+	end
+	local total = total_once()
 	for _, world in worlds do
-		if can_join(world) then
+		local w = info[world]
+		if w == nil or meets_total(w.types, w.activity, total) then
 			table.insert(reachable, world)
 		end
 	end

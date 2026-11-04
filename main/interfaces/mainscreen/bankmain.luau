@@ -732,17 +732,21 @@ function Bankmain.is_slot_shown(slot: number): boolean
 end
 
 -- How far to scroll to bring the slot into the grid, in mouse wheel notches (positive down); nil when the slot isn't in the open tab.
-function Bankmain.scroll_distance(slot: number): number?
-	local g, w = grid(), slot_widget(slot)
-	if g == nil or w == nil then
-		return nil
-	end
+local function distance_of(g: Widget, w: Widget): number
 	local top, bottom = g.y, g.y + g.height
 	if w.y >= top and w.y + w.height <= bottom then
 		return 0
 	end
 	local delta = if w.y < top then w.y - top else w.y + w.height - bottom
 	return if delta > 0 then math.ceil(delta / SCROLL_NOTCH) else math.floor(delta / SCROLL_NOTCH)
+end
+
+function Bankmain.scroll_distance(slot: number): number?
+	local g, w = grid(), slot_widget(slot)
+	if g == nil or w == nil then
+		return nil
+	end
+	return distance_of(g, w)
 end
 
 -- Scrolls the grid until the slot is fully shown, a long way in a few steps aimed at a random place; the slot must be in the open tab.
@@ -754,10 +758,7 @@ function Bankmain.scroll_to(slot: number, timeout_ms: number?): boolean
 		if g == nil or w == nil then
 			return false
 		end
-		local need = Bankmain.scroll_distance(slot)
-		if need == nil then
-			return false
-		end
+		local need = distance_of(g, w)
 		if need == 0 then
 			return true
 		end
@@ -802,18 +803,19 @@ end
 -- The amount for Bankmain.withdraw that takes all of an item but one.
 Bankmain.ALL_BUT_ONE = -1
 
--- The slot of an item that has something to take: placeholders (quantity 0) are skipped. nil if the bank has none.
-local function stocked_slot(item: Item | { Item }): number?
-	local slots = items.indices_of(item)
-	if slots == nil then
-		return nil
+-- The slot of an item that has something to take, and how much: placeholders (quantity 0) are skipped. nil if the bank has none.
+local function stocked_slot(item: Item | { Item }): (number?, number?)
+	local matcher = Item.matcher(item)
+	local all = items.items()
+	if all == nil then
+		return nil, nil
 	end
-	for _, slot in ipairs(slots) do
-		if (items.slot_quantity(slot) or 0) > 0 then
-			return slot
+	for _, s in ipairs(all) do
+		if s.quantity > 0 and Item.matches(matcher, s.id, s.name) then
+			return s.slot, s.quantity
 		end
 	end
-	return nil
+	return nil, nil
 end
 
 -- The menu option that takes `amount` out: Withdraw-1, -5, -10, -All, -All-but-1, the amount X holds, or Withdraw-X (then the amount is typed).
@@ -839,13 +841,12 @@ function Bankmain.withdraw(
 	if not Bankmain.is_open() then
 		return false
 	end
-	local slot = stocked_slot(item)
-	if slot == nil then
+	local slot, stock = stocked_slot(item)
+	if slot == nil or stock == nil then
 		Log.log("Bankmain", "withdraw: the bank has none of it")
 		return false
 	end
 	local wanted = amount or 1
-	local stock = items.slot_quantity(slot) or 0
 	-- asking for the whole stack or more is taking all of it
 	if wanted > 0 and wanted >= stock then
 		wanted = 0
@@ -969,14 +970,14 @@ end
 
 -- Deposits everything in the inventory except the items in `keep` (all of each kind, one kind after another).
 function Bankmain.deposit_different(keep: Item | { Item }, use_quantity_buttons: boolean?): boolean
-	local slots = inventory.find_different(keep)
-	if slots == nil then
+	local matcher = Item.matcher(keep)
+	local all = inventory.items()
+	if all == nil then
 		return false
 	end
 	local done: { [number]: boolean } = {}
-	for _, slot in ipairs(slots) do
-		local s = inventory.item(slot)
-		if s ~= nil and not done[s.id] then
+	for _, s in ipairs(all) do
+		if not Item.matches(matcher, s.id, s.name) and not done[s.id] then
 			done[s.id] = true
 			if not Bankmain.deposit(s.id, 0, use_quantity_buttons) then
 				return false

@@ -1,5 +1,6 @@
 --!strict
--- Prints the last chat messages, the displayed rows, the input line, the account type and the tabs.
+-- Prints the last chat messages, the displayed rows, the input line, the account type and the tabs; then switches tabs, changes the
+-- trade filter and back, and hides and shows the chatbox.
 local Chat = require("@lib/main/interfaces/chatbox/chat")
 local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
@@ -24,4 +25,19 @@ print("query:", Chat.query())
 print("active tab:", ChatTabs.active())
 for _, tab in ipairs(ChatTabs.NAMES) do
 	print(`  {tab}:`, ChatTabs.state(tab))
+end
+
+local start = assert(ChatTabs.active())
+print("open game:", ChatTabs.open("game"), ChatTabs.active())
+print("open all:", ChatTabs.open("all"), ChatTabs.active())
+
+local trade = assert(ChatTabs.state("trade"))
+local other = if trade == "filtered" then "enabled" else "filtered"
+print(`trade {trade} -> {other}:`, ChatTabs.set_state("trade", other), ChatTabs.state("trade"))
+print(`trade back to {trade}:`, ChatTabs.set_state("trade", trade), ChatTabs.state("trade"))
+
+print("close:", Chat.close(), Chat.is_open(), ChatTabs.active())
+print("open:", Chat.open(), Chat.is_open(), ChatTabs.active())
+if start ~= "none" then
+	ChatTabs.open(start)
 end

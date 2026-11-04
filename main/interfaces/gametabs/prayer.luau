@@ -11,7 +11,6 @@ local Log = require("@lib/utils/log")
 local Mouse = require("@lib/utils/input/mouse")
 local Player = require("@lib/main/player")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
-local Stats = require("@lib/main/interfaces/gametabs/stats")
 local Varbits = require("@lib/main/varbits")
 
 local Prayer = {}
@@ -44,11 +43,23 @@ export type Info = {
 	unlock: number?,
 	-- the varbit of the upgrade that takes this slot, once its scroll is used
 	upgrade: number?,
+	-- for an upgrade (Deadeye, Mystic Vigour, Zeal): the key of the prayer whose slot and quick prayer bit it takes
+	replaces: string?,
+	-- Attack and Strength levels it needs besides (Zeal)
+	attack: number?,
+	strength: number?,
 }
 
 export type PrayerRef = string | Info
 
-type Extra = { defence: number?, unlock: number?, upgrade: number? }
+type Extra = {
+	defence: number?,
+	unlock: number?,
+	upgrade: number?,
+	replaces: string?,
+	attack: number?,
+	strength: number?,
+}
 
 local function info(key: string, name: string, child: number, varbit: number, level: number, extra: Extra?): Info
 	local e: Extra = extra or {}
@@ -61,6 +72,9 @@ local function info(key: string, name: string, child: number, varbit: number, le
 		defence = e.defence,
 		unlock = e.unlock,
 		upgrade = e.upgrade,
+		replaces = e.replaces,
+		attack = e.attack,
+		strength = e.strength,
 	}) :: Info
 end
 
@@ -92,9 +106,13 @@ Prayer.PRAYERS = table.freeze({
 	info("mystic_might", "Mystic Might", 32, 4127, 45, { upgrade = 16091 }),
 	info("rigour", "Rigour", 33, 5464, 74, { unlock = 5451, defence = 70 }),
 	info("chivalry", "Chivalry", 34, 4128, 60, { defence = 65 }),
-	info("piety", "Piety", 35, 4129, 70, { defence = 70 }),
+	info("piety", "Piety", 35, 4129, 70, { defence = 70, upgrade = 16577 }),
 	info("augury", "Augury", 36, 5465, 77, { unlock = 5452, defence = 70 }),
 	info("preserve", "Preserve", 37, 5466, 55, { unlock = 5453 }),
+	-- the upgrades, each in the slot of the prayer it replaces once its unlock is 1
+	info("deadeye", "Deadeye", 29, 16090, 62, { unlock = 16097, replaces = "eagle_eye" }),
+	info("mystic_vigour", "Mystic Vigour", 32, 16091, 63, { unlock = 16098, replaces = "mystic_might" }),
+	info("zeal", "Zeal", 35, 16577, 84, { unlock = 16578, replaces = "piety", attack = 75, strength = 75 }),
 }) :: { Info }
 
 -- The prayers in the order of the quick prayer setup's slots. The selected prayers are a bitmask of them: bit 0 is the first.
@@ -272,13 +290,17 @@ function Prayer.can_activate(prayer: PrayerRef): boolean
 	if p == nil then
 		return false
 	end
-	local points, level = Prayer.points()
-	if points == nil or level == nil or points <= 0 or level < p.level then
+	local skills: { [string]: Host.Skill } = {}
+	for _, skill in ipairs(game_state().skills or {}) do
+		skills[skill.name] = skill
+	end
+	local points = skills.Prayer
+	if points == nil or points.level <= 0 or points.real_level < p.level then
 		return false
 	end
-	if p.defence ~= nil then
-		local defence = Stats.real_level("Defence")
-		if defence == nil or defence < p.defence then
+	for skill, needed in pairs({ Defence = p.defence, Attack = p.attack, Strength = p.strength }) do
+		local have = skills[skill]
+		if have == nil or have.real_level < needed then
 			return false
 		end
 	end
@@ -374,12 +396,22 @@ function Prayer.deactivate_all(): boolean
 end
 
 local function quick_bit(p: Info): number?
+	local key = p.replaces or p.key
 	for i, k in ipairs(Prayer.QUICK_ORDER) do
-		if k == p.key then
+		if k == key then
 			return i - 1
 		end
 	end
 	return nil
+end
+
+-- whether `p` is in the quick prayers `mask` (the quick selection varbit)
+local function quick_selected_in(mask: number?, p: Info): boolean
+	local bit = quick_bit(p)
+	if mask == nil or bit == nil then
+		return false
+	end
+	return bit32.band(bit32.rshift(mask, bit), 1) == 1
 end
 
 -- Whether the prayer is one of the quick prayers.
@@ -388,17 +420,14 @@ function Prayer.is_quick_selected(prayer: PrayerRef): boolean
 	if p == nil then
 		return false
 	end
-	local mask, bit = Varbits.get(Prayer.QUICK_SELECTED_VARBIT), quick_bit(p)
-	if mask == nil or bit == nil then
-		return false
-	end
-	return bit32.band(bit32.rshift(mask, bit), 1) == 1
+	return quick_selected_in(Varbits.get(Prayer.QUICK_SELECTED_VARBIT), p)
 end
 
 function Prayer.quick_prayers(): { Info }
+	local mask = Varbits.get(Prayer.QUICK_SELECTED_VARBIT)
 	local list: { Info } = {}
 	for _, p in ipairs(Prayer.PRAYERS) do
-		if Prayer.is_quick_selected(p) then
+		if quick_selected_in(mask, p) then
 			table.insert(list, p)
 		end
 	end
@@ -531,8 +560,9 @@ function Prayer.set_quick_prayers(prayers: PrayerRef | { read PrayerRef }): bool
 		wanted[p.key] = true
 	end
 	local changes = false
+	local mask = Varbits.get(Prayer.QUICK_SELECTED_VARBIT)
 	for _, p in ipairs(Prayer.PRAYERS) do
-		if Prayer.is_quick_selected(p) ~= (wanted[p.key] == true) then
+		if quick_selected_in(mask, p) ~= (wanted[p.key] == true) then
 			changes = true
 		end
 	end
@@ -551,8 +581,9 @@ function Prayer.set_quick_prayers(prayers: PrayerRef | { read PrayerRef }): bool
 			end
 		end
 	end
+	local after = Varbits.get(Prayer.QUICK_SELECTED_VARBIT)
 	for _, p in ipairs(list) do
-		if not Prayer.is_quick_selected(p) then
+		if not quick_selected_in(after, p) then
 			result = false
 		end
 	end

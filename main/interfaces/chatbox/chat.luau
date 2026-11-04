@@ -153,40 +153,54 @@ local function wanted(kinds: { number }?, kind: number): boolean
 	return kinds == nil or table.find(kinds, kind) ~= nil
 end
 
-function Chat.messages(kinds: { number }?): { Message }?
+-- the game's messages of these kinds, as it keeps them
+local function raw(kinds: { number }?): { ChatMessage }?
 	local all = chat_messages()
 	if all == nil then
 		return nil
 	end
-	local found: { Message } = {}
+	local found: { ChatMessage } = {}
 	for _, m in ipairs(all) do
 		if wanted(kinds, m.kind) then
-			table.insert(found, message(m))
-		end
-	end
-	return found
-end
-
-function Chat.new_messages(since: number, kinds: { number }?): { Message }?
-	local all = Chat.messages(kinds)
-	if all == nil then
-		return nil
-	end
-	local found: { Message } = {}
-	for _, m in ipairs(all) do
-		if m.uid > since then
 			table.insert(found, m)
 		end
 	end
 	return found
 end
 
-function Chat.last_message(kinds: { number }?): Message?
-	local all = Chat.messages(kinds)
+function Chat.messages(kinds: { number }?): { Message }?
+	local all = raw(kinds)
 	if all == nil then
 		return nil
 	end
-	return all[#all]
+	local found: { Message } = {}
+	for i, m in ipairs(all) do
+		found[i] = message(m)
+	end
+	return found
+end
+
+function Chat.new_messages(since: number, kinds: { number }?): { Message }?
+	local all = raw(kinds)
+	if all == nil then
+		return nil
+	end
+	local found: { Message } = {}
+	for _, m in ipairs(all) do
+		if m.uid > since then
+			table.insert(found, message(m))
+		end
+	end
+	return found
+end
+
+function Chat.last_message(kinds: { number }?): Message?
+	local all = raw(kinds)
+	if all == nil then
+		return nil
+	end
+	local last = all[#all]
+	return if last then message(last) else nil
 end
 
 local function contains(text: string, part: string, match_case: boolean?): boolean
@@ -197,13 +211,14 @@ local function contains(text: string, part: string, match_case: boolean?): boole
 end
 
 function Chat.find_message(text: string, match_case: boolean?, kinds: { number }?): Message?
-	local all = Chat.messages(kinds)
+	local all = raw(kinds)
 	if all == nil then
 		return nil
 	end
 	for i = #all, 1, -1 do
-		if contains(all[i].text, text, match_case) then
-			return all[i]
+		local m = message(all[i])
+		if contains(m.text, text, match_case) then
+			return m
 		end
 	end
 	return nil
@@ -215,18 +230,19 @@ function Chat.contains_message(text: string, match_case: boolean?, kinds: { numb
 end
 
 function Chat.count_new_message(text: string, match_case: boolean?): number?
-	local all = Chat.messages()
+	local all = raw()
 	if all == nil then
 		return nil
 	end
+	local lowered = string.lower(text)
 	local function same(a: string): boolean
-		return if match_case then a == text else string.lower(a) == string.lower(text)
+		return if match_case then a == text else string.lower(a) == lowered
 	end
 	local count = 0
 	for i = #all, 1, -1 do
 		local m = all[i]
 		if m.kind ~= Chat.MessageType.DIALOG then
-			if not same(m.text) then
+			if not same(message(m).text) then
 				break
 			end
 			count += 1

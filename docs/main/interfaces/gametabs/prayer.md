@@ -41,10 +41,13 @@ export type Info = {
 	defence: number?,
 	unlock: number?,
 	upgrade: number?,
+	replaces: string?,
+	attack: number?,
+	strength: number?,
 }
 export type PrayerRef = string | Info
 ```
-A prayer. `key` is its snake_case name (`"protect_from_melee"`), `child` its slot in group 541, `varbit` the game setting that is 1 while it is active, `level` the Prayer level it needs and `defence` the Defence level it needs besides. `unlock` is the setting that is 1 once the prayer is unlocked, for Rigour, Augury and Preserve. `upgrade` is the setting of the upgraded prayer that takes this slot once its scroll is used: Deadeye for Eagle Eye and Mystic Vigour for Mystic Might.
+A prayer. `key` is its snake_case name (`"protect_from_melee"`), `child` its slot in group 541, `varbit` the game setting that is 1 while it is active, `level` the Prayer level it needs and `defence` the Defence level it needs besides. `unlock` is the setting that is 1 once the prayer is unlocked, for Rigour, Augury and Preserve. `upgrade` is the setting of the upgraded prayer that takes this slot once it is unlocked: Deadeye for Eagle Eye, Mystic Vigour for Mystic Might and Zeal for Piety. The upgrades are prayers of their own in `Prayer.PRAYERS` (`deadeye`, `mystic_vigour`, `zeal`), with `replaces` naming the prayer whose slot and quick prayer bit they take, `unlock` their unlock setting (16097, 16098, 16578) and, for Zeal, the `attack` and `strength` levels it needs besides.
 
 ## Prayer.PRAYERS
 
@@ -175,7 +178,7 @@ Definition:
 ```luau
 function Prayer.is_on(prayer: PrayerRef): boolean
 ```
-Whether the prayer is active. Eagle Eye and Mystic Might also count as active while their upgrade is.
+Whether the prayer is active. Eagle Eye, Mystic Might and Piety also count as active while their upgrade is, so a script asking for the base gets what the slot holds; an upgrade counts only when it is on itself.
 
 Example:
 ```luau

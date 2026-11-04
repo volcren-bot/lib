@@ -144,8 +144,9 @@ end
 
 function Stats.get(name: string): Skill?
 	local state = game_state()
+	local wanted = string.lower(name)
 	for _, skill in ipairs(state.skills or {}) do
-		if string.lower(skill.name) == string.lower(name) then
+		if string.lower(skill.name) == wanted then
 			return skill
 		end
 	end

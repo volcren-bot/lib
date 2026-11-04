@@ -16,11 +16,12 @@ local GroundItems = {}
 
 GroundItems.ITEM_PILE = 4
 
+-- `what` is a lowercase name or an id
 local function matches(item: GroundItem, what: string | number): boolean
 	if type(what) == "number" then
 		return item.id == what
 	end
-	return item.name ~= nil and string.lower(item.name) == string.lower(what)
+	return item.name ~= nil and string.lower(item.name) == what
 end
 
 function GroundItems.distance(item: GroundItem, from: Tile): number
@@ -35,9 +36,10 @@ function GroundItems.find(what: (string | number)?): { GroundItem }?
 	if what == nil then
 		return all
 	end
+	local wanted = if type(what) == "string" then string.lower(what) else what
 	local found: { GroundItem } = {}
 	for _, item in ipairs(all) do
-		if matches(item, what) then
+		if matches(item, wanted) then
 			table.insert(found, item)
 		end
 	end

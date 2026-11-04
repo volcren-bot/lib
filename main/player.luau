@@ -179,9 +179,7 @@ function Player.is_moving(sample_ms: number?): boolean
 	return x2 ~= x or y2 ~= y
 end
 
--- The id of the animation the player is playing, -1 for none: an obstacle, a search, an attack. Walking and running are the pose, not this.
-function Player.animation(): number?
-	local name = game_state().player_name
+local function animation_of(name: string?): number?
 	if name == nil then
 		return nil
 	end
@@ -191,6 +189,11 @@ function Player.animation(): number?
 		end
 	end
 	return nil
+end
+
+-- The id of the animation the player is playing, -1 for none: an obstacle, a search, an attack. Walking and running are the pose, not this.
+function Player.animation(): number?
+	return animation_of(game_state().player_name)
 end
 
 -- The id of the player's pose: what it does when no animation plays, like standing, walking or riding a magic carpet.
@@ -224,11 +227,14 @@ function Player.wait_idle(timeout_ms: number?, on_poll: (() -> ())?): boolean
 	local idle_since = started
 	while true do
 		local now = time()
-		local nx, ny = fine()
+		local s = game_state()
+		local p = s.position
+		local nx, ny = if p then p.local_x else nil, if p then p.local_y else nil
 		if on_poll then
 			on_poll()
 		end
-		if nx == nil or nx ~= x or ny ~= y or Player.is_animating() then
+		local animation = if nx == nil or nx ~= x or ny ~= y then nil else animation_of(s.player_name)
+		if nx == nil or nx ~= x or ny ~= y or (animation ~= nil and animation ~= -1) then
 			x, y = nx, ny
 			idle_since = now
 		elseif now - idle_since >= Player.IDLE_MS then

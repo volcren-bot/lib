@@ -410,16 +410,16 @@ function DepositBox.deposit_array(entries: { Entry }, use_quantity_buttons: bool
 end
 
 function DepositBox.deposit_different(keep: Item | { Item }, use_quantity_buttons: boolean?): boolean
-	local slots = items.find_different(keep)
-	if slots == nil then
+	local matcher = Item.matcher(keep)
+	local all = items.items()
+	if all == nil then
 		return false
 	end
 	local done: { [number]: boolean } = {}
-	for _, slot in ipairs(slots) do
-		local s = items.item(slot)
-		if s ~= nil and not done[s.id] then
+	for _, s in ipairs(all) do
+		if not Item.matches(matcher, s.id, s.name) and not done[s.id] then
 			done[s.id] = true
-			local ok = deposit_slot(slot, DepositBox.QUANTITY_ALL, use_quantity_buttons ~= false)
+			local ok = deposit_slot(s.slot, DepositBox.QUANTITY_ALL, use_quantity_buttons ~= false)
 			if not ok then
 				return ok
 			end

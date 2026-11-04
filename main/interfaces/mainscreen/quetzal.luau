@@ -125,10 +125,21 @@ export type Marker = {
 
 -- The group of the map that is open, nil when none is.
 local function open_group(): number?
-	if Toplevel.is_open(Quetzal.GROUP) then
-		return Quetzal.GROUP
+	local open = Toplevel.interfaces()
+	if open == nil then
+		return nil
 	end
-	return if Toplevel.is_open(Quetzal.WHISTLE_GROUP) then Quetzal.WHISTLE_GROUP else nil
+	for _, o in ipairs(open) do
+		if o.group == Quetzal.GROUP then
+			return Quetzal.GROUP
+		end
+	end
+	for _, o in ipairs(open) do
+		if o.group == Quetzal.WHISTLE_GROUP then
+			return Quetzal.WHISTLE_GROUP
+		end
+	end
+	return nil
 end
 
 function Quetzal.is_open(): boolean
@@ -359,12 +370,21 @@ function Quetzal.nearest(): Npc?
 	if me == nil then
 		return nil
 	end
-	local named = Npcs.nearest(Quetzal.NPC, me)
+	local all = Host.npcs() or {}
+	local named: Npc? = nil
+	local named_distance = math.huge
+	local wanted = string.lower(Quetzal.NPC)
+	for _, n in ipairs(all) do
+		local d = Npcs.distance(n, me)
+		if string.lower(Npcs.clean_name(n.name)) == wanted and d < named_distance then
+			named, named_distance = n, d
+		end
+	end
 	if named ~= nil then
 		return named
 	end
 	local candidates: { { npc: Npc, distance: number } } = {}
-	for _, n in ipairs(Host.npcs() or {}) do
+	for _, n in ipairs(all) do
 		local d = math.max(math.abs(n.x - me.x), math.abs(n.y - me.y))
 		if Npcs.clean_name(n.name) == "" and d <= Quetzal.ASK_RANGE then
 			table.insert(candidates, { npc = n, distance = d })

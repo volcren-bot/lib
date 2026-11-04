@@ -326,15 +326,23 @@ function Canoe.keeper(): Npc?
 	if here == nil then
 		return nil
 	end
+	local all = Npcs.find()
+	if all == nil then
+		return nil
+	end
 	local best: Npc? = nil
+	local best_distance = math.huge
 	for _, id in ipairs(Canoe.KEEPERS) do
-		local npc = Npcs.nearest(id, here)
-		if
-			npc ~= nil
-			and Npcs.distance(npc :: any, here) <= Canoe.STATION_RANGE
-			and (best == nil or Npcs.distance(npc :: any, here) < Npcs.distance(best :: any, here))
-		then
-			best = npc
+		local npc: Npc? = nil
+		local npc_distance = math.huge
+		for _, n in ipairs(all) do
+			local d = Npcs.distance(n, here)
+			if n.id == id and d < npc_distance then
+				npc, npc_distance = n, d
+			end
+		end
+		if npc ~= nil and npc_distance <= Canoe.STATION_RANGE and npc_distance < best_distance then
+			best, best_distance = npc, npc_distance
 		end
 	end
 	return best

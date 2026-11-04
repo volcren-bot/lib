@@ -66,16 +66,6 @@ local function hover(box: Box, id: number): MenuEntry?
 	end
 end
 
-local function text_of(w: Widget): string?
-	local found: string? = nil
-	for _, child in ipairs(Host.widget_children(Make.GROUP, w.child) or {}) do
-		if child.kind == 4 and child.text and child.text ~= "" then
-			found = Chat.clean(child.text)
-		end
-	end
-	return found
-end
-
 local function has_visible_model(child: number): boolean
 	for _, k in ipairs(Host.widget_children(Make.GROUP, child) or {}) do
 		if k.kind == 6 and not k.hidden then
@@ -141,14 +131,16 @@ function Make.amounts(): { Amount }?
 	for _, child in ipairs(Make.AMOUNT_CHILDREN) do
 		local w = Host.widget(Make.GROUP, child)
 		if w and not w.hidden then
-			local label = text_of(w)
-			if label then
-				local selected = false
-				for _, k in ipairs(Host.widget_children(Make.GROUP, child) or {}) do
-					if k.kind == 3 and not k.hidden then
-						selected = true
-					end
+			local label: string? = nil
+			local selected = false
+			for _, k in ipairs(Host.widget_children(Make.GROUP, child) or {}) do
+				if k.kind == 4 and k.text and k.text ~= "" then
+					label = Chat.clean(k.text)
+				elseif k.kind == 3 and not k.hidden then
+					selected = true
 				end
+			end
+			if label then
 				table.insert(amounts, {
 					label = label,
 					id = component_id(child),

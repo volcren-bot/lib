@@ -553,12 +553,15 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 		if s == nil then
 			return false
 		end
-		local from = shown(slot)
-		if from == nil then
+		if not open() then
 			return false
 		end
-		local to = box(destination)
-		if to == nil then
+		local all = boxes()
+		if all == nil then
+			return false
+		end
+		local from, to = all[slot], all[destination]
+		if from == nil or to == nil then
 			return false
 		end
 		Mouse.move(from)

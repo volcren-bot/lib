@@ -444,11 +444,11 @@ function Inventory.deselect(): boolean
 end
 
 function Inventory.select_slot(slot: number): boolean
-	local current = Inventory.selected()
-	if current == slot then
+	local current = selected_widget()
+	if current ~= nil and current.id == ITEMS_ID and current.index == slot then
 		return true
 	end
-	if selected_widget() ~= nil then
+	if current ~= nil then
 		local ok = Inventory.deselect()
 		if not ok then
 			return false
