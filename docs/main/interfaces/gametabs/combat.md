@@ -109,3 +109,94 @@ Definition:
 function Combat.set_autocast(spell: Magic.SpellRef, defensive: boolean?): boolean
 ```
 Sets the spell to autocast, defensively with `defensive`: opens the picker from the right button and picks the spell by its menu option. A picker that was already open may be the other mode's; the pick then lands in the wrong mode and is done again from the right button. True once the settings show it set, at once when it already is. False for a spell no weapon autocasts, one the wielded weapon's picker doesn't offer (the picker is cancelled), or a weapon without autocast.
+
+## Combat.is_open
+
+Definition:
+```luau
+function Combat.is_open(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Combat.open
+
+Definition:
+```luau
+function Combat.open(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Combat.autocast_index
+
+Definition:
+```luau
+function Combat.autocast_index(): number
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Combat.is_defensive
+
+Definition:
+```luau
+function Combat.is_defensive(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Combat.is_picker_open
+
+Definition:
+```luau
+function Combat.is_picker_open(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Combat.open_picker
+
+Definition:
+```luau
+function Combat.open_picker(defensive: boolean?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Combat.cancel_picker
+
+Definition:
+```luau
+function Combat.cancel_picker(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
