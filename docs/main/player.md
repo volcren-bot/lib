@@ -294,7 +294,7 @@ Definition:
 ```luau
 function Player.destination(): Tile?
 ```
-The tile you are walking to (where the flag on the minimap is). `nil` when you aren't walking anywhere.
+The tile you are walking to (where the flag on the minimap is). `nil` when you aren't walking anywhere. It clears on the server's last step, a few tiles before you get there: use [`Player.in_transit`](#playerin_transit) to know whether you have stopped.
 
 Example:
 ```luau
@@ -302,6 +302,21 @@ local Player = require("@lib/main/player")
 
 local to = Player.destination()
 print(if to then `walking to {to.x}, {to.y}` else "not walking")
+```
+
+## Player.in_transit
+
+Definition:
+```luau
+function Player.in_transit(): boolean
+```
+Whether you are still on the way somewhere: you have a destination, or the client still has steps of your path to animate. Anything aimed on screen has to allow for this, because the camera keeps following you until those steps are done.
+
+Example:
+```luau
+local Player = require("@lib/main/player")
+
+print(if Player.in_transit() then "on the way" else "arrived")
 ```
 
 ## Player.animation
@@ -317,6 +332,21 @@ Example:
 local Player = require("@lib/main/player")
 
 print(Player.animation())
+```
+
+## Player.pose
+
+Definition:
+```luau
+function Player.pose(): number?
+```
+The id of the player's pose: what it does when no animation plays, like standing, walking or riding a magic carpet. Nil when the player can't be found.
+
+Example:
+```luau
+local Player = require("@lib/main/player")
+
+print(Player.pose())
 ```
 
 ## Player.is_animating

@@ -2,6 +2,7 @@
 -- Fairy rings: the transport network of Zanaris. A ring is used through its three dials (the main screen interface, group 398 `fairyrings`: each dial turns one step at a time through four letters,
 -- and "Confirm" teleports to the code they spell) or through the travel log (the side tab that opens beside it, group 381: the codes used before, each with its place, one click on a row teleports).
 -- Both are opened together by the "Configure" option of a "Fairy ring". When the interface is closed, the ring offers "Last-destination (CODE)" for the last code used.
+-- The Spiritual Fairy Tree of a house is a ring too, whose options start with "Ring-" and which has no favourites.
 -- A code is three letters, one from each dial: the first from A, D, C, B, the second from I, L, K, J and the third from P, S, R, Q (in the order the dials turn clockwise).
 -- Destinations are given either as a code ("aiq", "A I Q", "a-i-q") or as a part of the place's name ("mudskipper", "ardougne zoo"), in any case.
 local Host = require("@lib/host")
@@ -42,6 +43,7 @@ Fairyring.Log = TravelLog
 
 -- The ring object and the options used on it.
 Fairyring.OBJECT = "Fairy ring"
+Fairyring.SPIRITUAL = "Spiritual Fairy Tree"
 Fairyring.CONFIGURE = "Configure"
 Fairyring.LAST = "Last-destination"
 -- The ring option that goes to Zanaris, and the quest it needs besides what every ring use needs.
@@ -588,10 +590,12 @@ function Fairyring.nearest(): Loc?
 	end
 	local best: Loc? = nil
 	local best_rank = math.huge
-	for _, loc in ipairs(Objects.find(Fairyring.OBJECT) or {}) do
-		local rank = Objects.distance(loc, me) + (if loc.plane == me.plane then 0 else 1000)
-		if rank < best_rank then
-			best, best_rank = loc, rank
+	for _, name in { Fairyring.OBJECT, Fairyring.SPIRITUAL } do
+		for _, loc in ipairs(Objects.find(name) or {}) do
+			local rank = Objects.distance(loc, me) + (if loc.plane == me.plane then 0 else 1000)
+			if rank < best_rank then
+				best, best_rank = loc, rank
+			end
 		end
 	end
 	return best
@@ -599,6 +603,17 @@ end
 
 function Fairyring.is_open(): boolean
 	return Dial.is_open()
+end
+
+-- What a ring's option is called on this ring: on a Spiritual Fairy Tree "Configure" is "Ring-configure" and "Zanaris" is "Ring-Zanaris".
+local function option_on(ring: Loc, option: string): string
+	if ring.name ~= Fairyring.SPIRITUAL then
+		return option
+	end
+	if option == Fairyring.ZANARIS then
+		return `Ring-{option}`
+	end
+	return `Ring-{string.lower(string.sub(option, 1, 1))}{string.sub(option, 2)}`
 end
 
 -- Opens the dials and the travel log with "Configure" on the nearest fairy ring (or `ring`), walking closer first unless `walk` is false. True when they are open (also if they already were).
@@ -615,15 +630,16 @@ function Fairyring.open(ring: Loc?, walk: boolean?): (boolean, string?)
 	if target == nil then
 		return false, "no fairy ring around"
 	end
+	local option = option_on(target, Fairyring.CONFIGURE)
 	local picked: boolean
 	if walk ~= false then
-		picked = Objects.approach(target, Fairyring.CONFIGURE)
+		picked = Objects.approach(target, option)
 	else
-		picked = Objects.interact(target, Fairyring.CONFIGURE)
+		picked = Objects.interact(target, option)
 	end
 	if not picked then
-		if not Minimenu.has(Fairyring.CONFIGURE) or not Minimenu.select(Fairyring.CONFIGURE) then
-			return false, `couldn't {Fairyring.CONFIGURE} the ring`
+		if not Minimenu.has(option) or not Minimenu.select(option) then
+			return false, `couldn't {option} the ring`
 		end
 	end
 	if not Dial.wait_open(Fairyring.OPEN_TIMEOUT_MS) then
@@ -688,11 +704,12 @@ function Fairyring.travel_last(ring: Loc?, walk: boolean?): boolean
 		return false
 	end
 	local from = Walker.position()
+	local on_target = option_on(target, option)
 	local picked: boolean
 	if walk ~= false then
-		picked = Objects.approach(target, option)
+		picked = Objects.approach(target, on_target)
 	else
-		picked = Objects.interact(target, option)
+		picked = Objects.interact(target, on_target)
 	end
 	if not picked then
 		return false
@@ -761,11 +778,12 @@ function Fairyring.travel_zanaris(ring: Loc?, walk: boolean?): boolean
 		return false
 	end
 	local from = Walker.position()
+	local option = option_on(target, Fairyring.ZANARIS)
 	local picked: boolean
 	if walk ~= false then
-		picked = Objects.approach(target, Fairyring.ZANARIS)
+		picked = Objects.approach(target, option)
 	else
-		picked = Objects.interact(target, Fairyring.ZANARIS)
+		picked = Objects.interact(target, option)
 	end
 	if not picked then
 		return false
@@ -798,7 +816,14 @@ function Fairyring.travel(text: string, method: Method?, ring: Loc?): Method?
 	if method == "last" then
 		return nil
 	end
-	if (method == nil or method == "favourite") and not Dial.is_open() and Fairyring.is_favourite(code) then
+	local around = ring or Fairyring.nearest()
+	local has_favourites = around == nil or around.name ~= Fairyring.SPIRITUAL
+	if
+		(method == nil or method == "favourite")
+		and has_favourites
+		and not Dial.is_open()
+		and Fairyring.is_favourite(code)
+	then
 		if Fairyring.travel_favourite(code, ring) then
 			return "favourite"
 		end

@@ -6,6 +6,8 @@ The spirit tree network: the list of places that opens when you "Travel" with a 
 local Spirittree = require("@lib/main/interfaces/mainscreen/spirittree")
 ```
 
+A house's Spiritual Fairy Tree opens the same list with its "Tree" option, and `nearest` and `open` take it like any other tree.
+
 Places you haven't unlocked are drawn grey, but their rows still offer "Continue", so the colour is the only way to tell: a destination's `available` is false for them, and `select` refuses them. The list also shows the place you are standing at; this module doesn't tell it apart.
 
 A destination has `key` (the key before the name), `name`, `available` and `row` (where to click). The keys are never a safe way to pick a place by hand: they depend on the list.

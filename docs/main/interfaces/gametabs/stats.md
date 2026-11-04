@@ -8,6 +8,21 @@ local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 Skills are looked up by name (not case sensitive), like `"Mining"` or `"Hitpoints"`. A skill has `name`, `level` (current, including boosts), `real_level` and `xp`.
 
+## Stats.Skill
+
+Definition:
+```luau
+export type SkillName = "Attack" | "Strength" | "Defence" | "Ranged" | "Prayer" | "Magic" | "Runecraft" | "Construction" | "Hitpoints" | "Agility" | "Herblore" | "Thieving" | "Crafting" | "Fletching" | "Slayer" | "Hunter" | "Mining" | "Smithing" | "Fishing" | "Cooking" | "Firemaking" | "Woodcutting" | "Farming" | "Sailing"
+```
+Every skill, as the game names it. `Stats.Skill` is a frozen table of them (`Stats.Skill.Herblore`), so a misspelled skill is a type error. The functions here that take a name accept these, and so does `Lamp`.
+
+Example:
+```luau
+local Stats = require("@lib/main/interfaces/gametabs/stats")
+
+print(Stats.level(Stats.Skill.Herblore))
+```
+
 ## Stats.total_experience
 
 Definition:

@@ -279,7 +279,7 @@ function Clickbox.approach(
 	opts: Approach?
 ): boolean
 ```
-Walks to the thing and picks `options` on it (see `Clickbox.interact`), so the player doesn't have to stand near it first. Before the walk the camera turns so the thing shows in the upper half of the screen (`Camera.face`). The walk ends `near` tiles away, where the pick happens as `interact` does. While walking, within `early_range` tiles, the thing may be picked straight away (`early_chance`, rolled once, then tried again every `EARLY_RETRY_MS` while it isn't on screen): the client walks the player there and does the option on arrival. Returns once they've arrived (`arrive_ms`), or right after the pick with `arrive_ms` false. `walk.on_step` or `walk.before_click` returning false stops the walk, and this returns false.
+Walks to the thing and picks `options` on it (see `Clickbox.interact`), so the player doesn't have to stand near it first. Before the walk the camera turns so the thing shows in the upper half of the screen (`Camera.face`). The walk ends `near` tiles away, where the pick happens as `interact` does. While walking, once the thing is on screen it may be picked straight away (tried again every `EARLY_RETRY_MS`): the client walks the player there and does the option on arrival. With `settle` the pick waits until the walk has stopped, so a thing sliding under the mouse is never picked. If the pick fails, `closer` makes it walk to that many tiles from the thing, stand still, and pick once more. Returns once they've arrived (`arrive_ms`), or right after the pick with `arrive_ms` false. `walk.on_step` or `walk.before_click` returning false stops the walk, and this returns false.
 
 Example:
 ```luau
@@ -288,6 +288,6 @@ local Walker = require("@lib/main/walker")
 
 local npc = assert(Npcs.nearest("Ferryman Nathwood", assert(Walker.position())))
 -- picks Examine as soon as it can, or walks next to the ferryman and picks it there
-local ok = Npcs.approach(npc, { "Examine" }, { early_chance = 0.5, arrive_ms = false })
+local ok = Npcs.approach(npc, { "Examine" }, { arrive_ms = false })
 print(ok)
 ```

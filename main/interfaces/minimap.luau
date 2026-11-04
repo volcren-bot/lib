@@ -13,8 +13,10 @@ local Circle = Geometry.Circle
 type Point = Geometry.Point
 local Projection = require("@lib/main/projection/projection")
 type Tile = Projection.Tile
+local Interact = require("@lib/main/interact")
 local Log = require("@lib/utils/log")
 local Mouse = require("@lib/utils/input/mouse")
+local Player = require("@lib/main/player")
 local Random = require("@lib/utils/math/random")
 
 local Minimap = {}
@@ -23,6 +25,12 @@ local TURN = 16384
 
 Minimap.ZOOM_MIN = 2
 Minimap.ZOOM_MAX = 8
+
+-- The run orb's button, its option and how long a toggle may take to show.
+Minimap.RUN_GROUP = 160
+Minimap.RUN_CHILD = 28
+Minimap.RUN_OPTION = "Toggle Run"
+Minimap.RUN_TIMEOUT_MS = 1500
 
 Minimap.COMPONENTS = {
 	[161] = 30,
@@ -194,6 +202,29 @@ function Minimap.set_zoom(zoom: number): boolean
 		current = now_minimap.zoom
 	end
 	Log.log("Minimap", "the minimap didn't reach the zoom")
+	return false
+end
+
+function Minimap.set_run(enabled: boolean): boolean
+	if Player.is_running() == enabled then
+		return true
+	end
+	local w = widget(Minimap.RUN_GROUP, Minimap.RUN_CHILD)
+	if w == nil or w.hidden then
+		return false
+	end
+	local id = Minimap.RUN_GROUP * 65536 + Minimap.RUN_CHILD
+	Interact.with(w, Minimap.RUN_OPTION, function(entry: Host.MenuEntry): boolean
+		return entry.id == id
+	end, false)
+	local deadline = Host.time() + Minimap.RUN_TIMEOUT_MS
+	while Host.time() < deadline do
+		if Player.is_running() == enabled then
+			return true
+		end
+		Host.sleep(50)
+	end
+	Log.log("Minimap", `run didn't turn {if enabled then "on" else "off"}`)
 	return false
 end
 

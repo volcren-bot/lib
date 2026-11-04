@@ -1,7 +1,7 @@
 --!strict
--- The quetzal transport map of Varlamore (group 874, `quetzal_menu` in the cache): a map with a model for every landing site. The markers carry no text, but the game keeps each site's name as the
+-- The quetzal transport map of Varlamore: a map with a model for every landing site. Renu's is group 874 (`quetzal_menu` in the cache) and the whistle's group 949 (`quetzalwhistle_menu`), laid out alike. The markers carry no text, but the game keeps each site's name as the
 -- marker's first menu option (`Widget.action`), so names are read without hovering; hovering one also makes the game offer the name (like the charter map, `@lib/main/interfaces/mainscreen/chartering`).
--- The quetzals are called with "Travel" on Renu. A site that isn't unlocked on an account may look or behave differently; that is not known here, because it was only seen on an account with every site unlocked.
+-- The map is opened with "Travel" on Renu or "Signal" on a quetzal whistle. A site that isn't unlocked on an account may look or behave differently; that is not known here, because it was only seen on an account with every site unlocked.
 local Host = require("@lib/host")
 local menu = Host.menu
 local widget = Host.widget
@@ -10,6 +10,7 @@ local sleep = Host.sleep
 local time = Host.time
 type Widget = Host.Widget
 type Npc = Host.Npc
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 local Log = require("@lib/utils/log")
 local Minimenu = require("@lib/main/interfaces/minimenu")
 local Mouse = require("@lib/utils/input/mouse")
@@ -21,6 +22,7 @@ local Walker = require("@lib/main/walker")
 local Quetzal = {}
 
 Quetzal.GROUP = 874
+Quetzal.WHISTLE_GROUP = 949
 -- The component whose children are the markers, the model that marks the site you are at, and the close button.
 Quetzal.MARKERS = 12
 Quetzal.HERE = 13
@@ -28,6 +30,13 @@ Quetzal.CLOSE = 18
 -- The NPC and the option that open the map.
 Quetzal.NPC = "Renu"
 Quetzal.OPTION = "Travel"
+-- The whistles that also open the map, the option that does it, and the inventory's container.
+Quetzal.WHISTLES = { 29271, 29273, 29275, 33120 }
+Quetzal.WHISTLE_OPTION = "Signal"
+Quetzal.INVENTORY = 93
+-- The option of Renu and the whistle that flies straight to the last site, and the varbit where the game keeps it (`quetzal_last_destination`): 1 for the map's first marker and so on.
+Quetzal.LAST_OPTION = "Last-destination"
+Quetzal.LAST_VARBIT = 9950
 
 Quetzal.OPEN_TIMEOUT_MS = 3000
 Quetzal.HOVER_TIMEOUT_MS = 800
@@ -87,6 +96,24 @@ Quetzal.Site = table.freeze({
 	Kastori: "Kastori",
 }
 
+-- The sites in the map's order.
+local SITE_ORDER: { Site } = {
+	"Civitas illa Fortis",
+	"The Teomat",
+	"Sunset Coast",
+	"Hunter Guild",
+	"Cam Torum Entrance",
+	"Colossal Wyrm Remains",
+	"Outer Fortis",
+	"Fortis Colosseum",
+	"Aldarin",
+	"Quetzacalli Gorge",
+	"Salvager Overlook",
+	"Tal Teklan",
+	"Auburnvale",
+	"Kastori",
+}
+
 export type Marker = {
 	-- the marker's place among the map's children
 	index: number,
@@ -96,8 +123,16 @@ export type Marker = {
 	here: boolean,
 }
 
+-- The group of the map that is open, nil when none is.
+local function open_group(): number?
+	if Toplevel.is_open(Quetzal.GROUP) then
+		return Quetzal.GROUP
+	end
+	return if Toplevel.is_open(Quetzal.WHISTLE_GROUP) then Quetzal.WHISTLE_GROUP else nil
+end
+
 function Quetzal.is_open(): boolean
-	return Toplevel.is_open(Quetzal.GROUP)
+	return open_group() ~= nil
 end
 
 -- Whether the map is open, polled for up to `timeout_ms` (3 seconds by default).
@@ -120,14 +155,15 @@ end
 local known: { [number]: string } = {}
 
 function Quetzal.markers(): { Marker }?
-	if not Quetzal.is_open() then
+	local group = open_group()
+	if group == nil then
 		return nil
 	end
-	local children = widget_children(Quetzal.GROUP, Quetzal.MARKERS)
+	local children = widget_children(group, Quetzal.MARKERS)
 	if children == nil then
 		return nil
 	end
-	local mark = widget(Quetzal.GROUP, Quetzal.HERE)
+	local mark = widget(group, Quetzal.HERE)
 	local found: { Marker } = {}
 	for _, child in ipairs(children) do
 		if not child.hidden then
@@ -290,20 +326,22 @@ end
 
 -- The close button, nil when the map isn't open.
 function Quetzal.close_button(): Widget?
-	local w = widget(Quetzal.GROUP, Quetzal.CLOSE)
-	if w == nil or w.hidden or not Quetzal.is_open() then
+	local group = open_group()
+	if group == nil then
 		return nil
 	end
-	return w
+	local w = widget(group, Quetzal.CLOSE)
+	return if w == nil or w.hidden then nil else w
 end
 
 -- Closes the map: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
 function Quetzal.close(key_probability: number?): boolean
-	if not Quetzal.is_open() then
+	local group = open_group()
+	if group == nil then
 		return true
 	end
 	return Toplevel.close(
-		Quetzal.GROUP,
+		group,
 		Quetzal.close_button,
 		if key_probability ~= nil and key_probability > 0 then key_probability else nil
 	)
@@ -385,6 +423,79 @@ function Quetzal.open(npc: Npc?, walk: boolean?): boolean
 	end
 	Random.sleep(Quetzal.OPEN_SETTLE_MS[1], Quetzal.OPEN_SETTLE_MS[2])
 	return true
+end
+
+-- The site "Last-destination" flies to, as the game has it now, whoever flew there; nil when it has none or one this module doesn't know.
+function Quetzal.last_destination(): Site?
+	return SITE_ORDER[Host.varbit(Quetzal.LAST_VARBIT) or 0]
+end
+
+-- Whether "Last-destination" goes to the site called `name`, ignoring case, one name containing the other being enough ("Cam Torum").
+function Quetzal.is_last(name: string): boolean
+	local last = Quetzal.last_destination()
+	if last == nil then
+		return false
+	end
+	local have, wanted = string.lower(last), string.lower(name)
+	return string.find(have, wanted, 1, true) ~= nil or string.find(wanted, have, 1, true) ~= nil
+end
+
+-- Flies to the last site with the nearest Renu (or `npc`), walking closer first unless `walk` is false. True when the option was clicked; the flight is not waited for.
+function Quetzal.fly_last(npc: Npc?, walk: boolean?): boolean
+	if not Toplevel.escape_clear() then
+		return false
+	end
+	local target = npc or Quetzal.nearest()
+	if target == nil then
+		Log.log("Quetzal", `no {Quetzal.NPC} around`)
+		return false
+	end
+	if walk ~= false then
+		return Npcs.approach(target, Quetzal.LAST_OPTION)
+	end
+	return Npcs.interact(target, Quetzal.LAST_OPTION)
+end
+
+-- The inventory slot of a quetzal whistle, nil when none is held.
+function Quetzal.whistle_slot(): number?
+	for _, item in ipairs(Host.item_container(Quetzal.INVENTORY) or {}) do
+		if table.find(Quetzal.WHISTLES, item.id) ~= nil then
+			return item.slot
+		end
+	end
+	return nil
+end
+
+-- Opens the map with the whistle in the inventory, from anywhere; true when it is open (also if it already was). When it didn't work the second result says why.
+-- An empty whistle only says so in the chat, so it shows as a map that doesn't open.
+function Quetzal.signal(): (boolean, string?)
+	if Quetzal.is_open() then
+		return true, nil
+	end
+	local slot = Quetzal.whistle_slot()
+	if slot == nil then
+		return false, "no whistle held"
+	end
+	if not Toplevel.escape_clear() then
+		return false, "another interface is open"
+	end
+	if not Inventory.interact_slot(slot, Quetzal.WHISTLE_OPTION) then
+		return false, `couldn't {Quetzal.WHISTLE_OPTION} the whistle`
+	end
+	if not Quetzal.wait_open() then
+		return false, "the map didn't open (no charges?)"
+	end
+	Random.sleep(Quetzal.OPEN_SETTLE_MS[1], Quetzal.OPEN_SETTLE_MS[2])
+	return true, nil
+end
+
+-- Flies to the last site with the whistle in the inventory, from anywhere. True when the option was clicked; the flight is not waited for, and an empty whistle only says so in the chat.
+function Quetzal.signal_last(): boolean
+	local slot = Quetzal.whistle_slot()
+	if slot == nil or not Toplevel.escape_clear() then
+		return false
+	end
+	return Inventory.interact_slot(slot, Quetzal.LAST_OPTION)
 end
 
 return Quetzal

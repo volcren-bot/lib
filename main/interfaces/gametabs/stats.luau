@@ -41,6 +41,85 @@ Stats.CHILDREN = {
 	total = 25,
 } :: { [string]: number }
 
+-- Every skill, as the game names it. Use these rather than typing a name: `Stats.level(Stats.Skill.Herblore)`.
+export type SkillName =
+	"Attack"
+	| "Strength"
+	| "Defence"
+	| "Ranged"
+	| "Prayer"
+	| "Magic"
+	| "Runecraft"
+	| "Construction"
+	| "Hitpoints"
+	| "Agility"
+	| "Herblore"
+	| "Thieving"
+	| "Crafting"
+	| "Fletching"
+	| "Slayer"
+	| "Hunter"
+	| "Mining"
+	| "Smithing"
+	| "Fishing"
+	| "Cooking"
+	| "Firemaking"
+	| "Woodcutting"
+	| "Farming"
+	| "Sailing"
+
+Stats.Skill = table.freeze({
+	Attack = "Attack",
+	Strength = "Strength",
+	Defence = "Defence",
+	Ranged = "Ranged",
+	Prayer = "Prayer",
+	Magic = "Magic",
+	Runecraft = "Runecraft",
+	Construction = "Construction",
+	Hitpoints = "Hitpoints",
+	Agility = "Agility",
+	Herblore = "Herblore",
+	Thieving = "Thieving",
+	Crafting = "Crafting",
+	Fletching = "Fletching",
+	Slayer = "Slayer",
+	Hunter = "Hunter",
+	Mining = "Mining",
+	Smithing = "Smithing",
+	Fishing = "Fishing",
+	Cooking = "Cooking",
+	Firemaking = "Firemaking",
+	Woodcutting = "Woodcutting",
+	Farming = "Farming",
+	Sailing = "Sailing",
+}) :: {
+	Attack: "Attack",
+	Strength: "Strength",
+	Defence: "Defence",
+	Ranged: "Ranged",
+	Prayer: "Prayer",
+	Magic: "Magic",
+	Runecraft: "Runecraft",
+	Construction: "Construction",
+	Hitpoints: "Hitpoints",
+	Agility: "Agility",
+	Herblore: "Herblore",
+	Thieving: "Thieving",
+	Crafting: "Crafting",
+	Fletching: "Fletching",
+	Slayer: "Slayer",
+	Hunter: "Hunter",
+	Mining: "Mining",
+	Smithing: "Smithing",
+	Fishing: "Fishing",
+	Cooking: "Cooking",
+	Firemaking: "Firemaking",
+	Woodcutting: "Woodcutting",
+	Farming: "Farming",
+	Sailing: "Sailing",
+}
+
 function Stats.total_experience(skills: { Skill }?): number?
 	if skills == nil then
 		return nil

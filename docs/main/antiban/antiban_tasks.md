@@ -507,3 +507,19 @@ if Biometrics.random_boolean(0.4) then
 	AntibanTasks.random_tiny(10000, 15000)
 end
 ```
+
+## Tasks.handle_randoms
+
+Definition:
+```luau
+function Tasks.handle_randoms()
+```
+Deals with a random event that is trying to interact with you, by `Randoms.handle`. It costs one read of the NPCs when there is none (about 0.04 ms), and a script has to register it to get it. An event doesn't wait forever, so give it a short interval. It stops what the script is doing to talk to the NPC, so it isn't one of the `WALKING_TASKS`.
+
+Example:
+```luau
+local Antiban = require("@lib/main/antiban/antiban")
+local Tasks = require("@lib/main/antiban/antiban_tasks")
+
+Antiban.add_task(Tasks.handle_randoms, 30 * Antiban.SECOND, 0.33)
+```

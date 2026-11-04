@@ -146,6 +146,10 @@ function Minimenu.select(option: string, target: Target?): boolean
 	end
 	Mouse.click(at, "right")
 	Random.sleep(80, 200)
+	local opened = Host.time()
+	while not Minimenu.is_open() and Host.time() - opened < 1500 do
+		Host.sleep(40)
+	end
 	index, entries = Minimenu.find(option, target)
 	if entries == nil then
 		return false

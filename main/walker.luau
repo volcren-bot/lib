@@ -103,7 +103,12 @@ function Walker.ahead(ms: number): Host.FinePoint?
 	if p == nil then
 		return nil
 	end
-	local flag = state.destination
+	local flag: Tile? = state.destination
+	if flag == nil then
+		-- the destination clears on the server's last step: the player still has its path to finish
+		local server = Host.server_tile()
+		flag = if server and server.steps > 0 then { x = server.x, y = server.y } else nil
+	end
 	if flag == nil or ms <= 0 then
 		return { x = 0, y = 0 }
 	end
@@ -231,7 +236,7 @@ end
 -- Where to aim for `tile`: while walking the scene slides under the mouse, so where it will be once the mouse is there.
 local function aim_quad(tile: Tile): Geometry.Quad?
 	local quad = Projection.tile(tile)
-	if quad == nil or Player.destination() == nil then
+	if quad == nil or not Player.in_transit() then
 		return quad
 	end
 	local lead = Mouse.travel_ms(Geometry.Quad.mean(quad)) + Walker.CLICK_LEAD_MS
@@ -661,6 +666,9 @@ function Walker.plan(to: Tile, plane: number?, options: Host.NavOptions?): NavPl
 end
 
 -- how long a walk may take unless `timeout_ms` says, at least: a long one gets a walk's worth of time per tile planned
+-- How long a plan waits for a scene that is loading.
+Walker.SCENE_LOAD_MS = 10000
+Walker.SCENE_LOAD_POLL_MS = 100
 Walker.TIMEOUT_MS = 90000
 
 export type WalkOptions = {
@@ -892,6 +900,12 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			plan = { tiles = tiles, actions = {}, reached = true, goal = goal }
 		else
 			local made, err = nav_plan(here, goal, nav)
+			-- crossing into a new part of the map stops the game logged-in state for a moment
+			local deadline = time() + Walker.SCENE_LOAD_MS
+			while made == nil and err == "not logged in" and time() < deadline do
+				sleep(Walker.SCENE_LOAD_POLL_MS)
+				made, err = nav_plan(here, goal, nav)
+			end
 			plan = made
 			if made == nil then
 				Log.log("Walker", `no plan to {to.x}, {to.y} on plane {goal.plane}: {err}`)
@@ -899,8 +913,10 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			end
 		end
 		local made = time()
+		-- a plan only earns more time if the player has moved since the last: standing still, replanning would never time out
+		local earned = planned_at == 0 or (moved_ms ~= nil and moved_ms > planned_at)
 		planned_at, planned_base, progress = made, scene_base(), 1
-		if opts.timeout_ms == nil then
+		if opts.timeout_ms == nil and earned then
 			timeout = math.max(timeout, made - started + #(plan :: NavPlan).tiles * Walker.WALK_MS_PER_TILE)
 		end
 		action = (plan :: NavPlan).actions[1]
@@ -976,6 +992,8 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			or here.x ~= u.from.x
 			or here.y ~= u.from.y
 			or (server ~= nil and server.moving)
+			-- a grapple stands still for seconds while it plays
+			or (Player.animation() or -1) ~= -1
 		u.from = { x = here.x, y = here.y, plane = u.from.plane }
 		if moving then
 			u.still_since = nil
@@ -996,6 +1014,11 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		end
 		local began = time()
 		local chat = last_chat()
+		local way = (plan :: NavPlan).tiles
+		local wear_for_climb = (require :: any)("./transports").wear_for_climb
+		if a.kind == "climb" and not wear_for_climb(way[a.at], way[math.min(a.at + 1, #way)], a.loc.option) then
+			return false
+		end
 		if not Objects.interact(loc, a.loc.option, false, not seen) then
 			debug(`{a.loc.option} on {loc_key(a.loc)} not clicked ({math.floor(time() - began)} ms)`)
 			return false
@@ -1368,6 +1391,14 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 	if opts.transports == false or opts.straight then
 		return walk_plan(to, opts)
 	end
+	-- the goal's plane is decided now: a transport can land on another
+	if opts.plane == nil then
+		local start = Walker.here()
+		if start ~= nil then
+			opts = table.clone(opts)
+			opts.plane = start.plane
+		end
+	end
 	-- required here, untyped: the spellbook needs the walker
 	local Transports = (require :: any)("./transports")
 	-- agility shortcuts join landmasses for the route unless this walk turned them off
@@ -1390,6 +1421,16 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 			end
 		else
 			break
+		end
+	end
+	-- no transport left to take: the rest is on foot, so there has to be a way
+	local here = Walker.here()
+	if here ~= nil then
+		local goal = { x = to.x, y = to.y, plane = opts.plane or here.plane }
+		if not Transports.walkable(here, goal, choices :: any) then
+			error(
+				`no way from {here.x}, {here.y} (plane {here.plane}) to {goal.x}, {goal.y} (plane {goal.plane}): it can't be walked, and no transport that can be used leads there`
+			)
 		end
 	end
 	return walk_plan(to, opts)

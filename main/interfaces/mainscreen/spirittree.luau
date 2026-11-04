@@ -1,7 +1,7 @@
 --!strict
 -- The spirit tree network (group 187, the game's generic `menu` list, titled "Spirit Tree Locations"): a list of places, each a row reading `<col=735a28>K</col>: Name`, then a "Cancel" row.
 -- Places you haven't unlocked are drawn grey (`<col=5f5f5f>Name</col>`) but still offer "Continue", so the colour is the only way to tell them apart.
--- A row is chosen by clicking it or by pressing its key (1 to 9, then A, B, ...). The trees are the "Spirit tree" objects, used with "Travel".
+-- A row is chosen by clicking it or by pressing its key (1 to 9, then A, B, ...). The trees are the "Spirit tree" objects, used with "Travel", and the Spiritual Fairy Tree of a house, used with "Tree".
 local Host = require("@lib/host")
 local widget = Host.widget
 local widget_children = Host.widget_children
@@ -34,6 +34,8 @@ Spirittree.CANCEL = "Cancel"
 -- The tree objects and the option that opens the list.
 Spirittree.OBJECT = "Spirit tree"
 Spirittree.OPTION = "Travel"
+Spirittree.SPIRITUAL = "Spiritual Fairy Tree"
+Spirittree.SPIRITUAL_OPTION = "Tree"
 
 -- The chance a biometric is rolled around for choosing a place with its key rather than a click.
 Spirittree.KEY_CHANCE = 0.5
@@ -288,10 +290,12 @@ function Spirittree.nearest(): Loc?
 	end
 	local best: Loc? = nil
 	local best_rank = math.huge
-	for _, loc in ipairs(Objects.find(Spirittree.OBJECT) or {}) do
-		local rank = Objects.distance(loc, me) + (if loc.plane == me.plane then 0 else 1000)
-		if rank < best_rank then
-			best, best_rank = loc, rank
+	for _, name in { Spirittree.OBJECT, Spirittree.SPIRITUAL } do
+		for _, loc in ipairs(Objects.find(name) or {}) do
+			local rank = Objects.distance(loc, me) + (if loc.plane == me.plane then 0 else 1000)
+			if rank < best_rank then
+				best, best_rank = loc, rank
+			end
 		end
 	end
 	return best
@@ -310,19 +314,20 @@ function Spirittree.open(tree: Loc?, walk: boolean?): boolean
 		Log.log("Spirittree", "no spirit tree around")
 		return false
 	end
+	local option = if target.name == Spirittree.SPIRITUAL then Spirittree.SPIRITUAL_OPTION else Spirittree.OPTION
 	local picked: boolean
 	if walk ~= false then
-		picked = Objects.approach(target, Spirittree.OPTION)
+		picked = Objects.approach(target, option)
 	else
-		picked = Objects.interact(target, Spirittree.OPTION)
+		picked = Objects.interact(target, option)
 	end
 	if not picked then
 		-- the menu was open on something else, or the click missed: take the option if what's hovered is a spirit tree
 		local uptext = Minimenu.uptext()
-		if uptext == nil or not string.find(string.lower(uptext), "spirit tree", 1, true) then
+		if uptext == nil or not string.find(string.lower(uptext), "spirit", 1, true) then
 			return false
 		end
-		if not Minimenu.select(Spirittree.OPTION) then
+		if not Minimenu.select(option) then
 			return false
 		end
 	end

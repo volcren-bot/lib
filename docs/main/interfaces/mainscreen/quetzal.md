@@ -1,6 +1,6 @@
 # Main.Interfaces.Mainscreen.Quetzal
 
-The quetzal transport map of Varlamore: a map with a model on every landing site, opened by "Travel" on a Renu (group 874, `quetzal_menu` in the cache). The markers carry no text, but the game keeps each site's name as the marker's first menu option, which the widget exposes as `action`, so names are read straight from memory with no mouse movement. Should a marker have no `action`, its name is read by hovering (the menu offers the site's name) and kept until the script ends. It works like the charter ship map, `Main.Interfaces.Mainscreen.Chartering`.
+The quetzal transport map of Varlamore: a map with a model on every landing site, opened by "Travel" on a Renu (group 874, `quetzal_menu` in the cache) or "Signal" on a quetzal whistle (group 949, `quetzalwhistle_menu`). The two are laid out alike, so everything here works on whichever is open. The markers carry no text, but the game keeps each site's name as the marker's first menu option, which the widget exposes as `action`, so names are read straight from memory with no mouse movement. Should a marker have no `action`, its name is read by hovering (the menu offers the site's name) and kept until the script ends. It works like the charter ship map, `Main.Interfaces.Mainscreen.Chartering`.
 
 ```luau
 local Quetzal = require("@lib/main/interfaces/mainscreen/quetzal")
@@ -10,16 +10,26 @@ The map has no keyboard shortcuts: digits, letters, space and enter were all tri
 
 A marker has `index` (its place among the map's children), `area` (the model: where to hover and click) and `here` (the site you are at, which the game marks with a second model).
 
+An empty whistle says "Your whistle has no charges." in the chat and does nothing else. No game variable was found to hold the charges, so an empty whistle can only be told by that.
+
+Renu and the whistle also offer "Last-destination", which flies straight to the last site. The game keeps that site itself (varbit 9950, `quetzal_last_destination`, 1 for the map's first marker and so on), so it stays right after a flight made by hand, by another script or before a restart. Moving by anything but a quetzal doesn't change it. Eight of the fourteen values were seen live: Civitas illa Fortis, Sunset Coast, Hunter Guild, Cam Torum Entrance, Aldarin, Salvager Overlook, Auburnvale and Kastori. The rest follow the map's order.
+
 ## Constants
 
 Definition:
 ```luau
 Quetzal.GROUP = 874
+Quetzal.WHISTLE_GROUP = 949
 Quetzal.MARKERS = 12
 Quetzal.HERE = 13
 Quetzal.CLOSE = 18
 Quetzal.NPC = "Renu"
 Quetzal.OPTION = "Travel"
+Quetzal.WHISTLES = { 29271, 29273, 29275, 33120 }
+Quetzal.WHISTLE_OPTION = "Signal"
+Quetzal.INVENTORY = 93
+Quetzal.LAST_OPTION = "Last-destination"
+Quetzal.LAST_VARBIT = 9950
 Quetzal.OPEN_TIMEOUT_MS = 3000
 Quetzal.HOVER_TIMEOUT_MS = 800
 Quetzal.CONFIRM_TIMEOUT_MS = 4000
@@ -30,7 +40,7 @@ Quetzal.ASK_LIMIT = 6
 Quetzal.ASK_RANGE = 12
 Quetzal.HOVER_MS = 350
 ```
-The interface piece numbers, the NPC and the option that open the map, and the waits: for `wait_open`, for a hover to show the menu, for the map to go after a click, between looks, for the menu to follow the mouse, and the pause `open` makes once the map shows. The last three are for finding Renu: how many nameless NPCs are asked at most, how far to look, and how long to wait after hovering one.
+The interface piece numbers, the NPC and the option that open the map, the whistles and their option that do the same, the inventory's container, the option and the varbit for the last site, and the waits: for `wait_open`, for a hover to show the menu, for the map to go after a click, between looks, for the menu to follow the mouse, and the pause `open` makes once the map shows. The last three are for finding Renu: how many nameless NPCs are asked at most, how far to look, and how long to wait after hovering one.
 
 ## Quetzal.is_open
 
@@ -156,3 +166,69 @@ if Quetzal.open() then
 	Quetzal.close()
 end
 ```
+
+## Quetzal.last_destination
+
+Definition:
+```luau
+function Quetzal.last_destination(): Site?
+```
+The site "Last-destination" flies to, read from the game now. Nil when it has none, or one this module doesn't know.
+
+## Quetzal.is_last
+
+Definition:
+```luau
+function Quetzal.is_last(name: string): boolean
+```
+Whether "Last-destination" goes to the site called `name`, ignoring case. One name containing the other is enough ("Cam Torum").
+
+## Quetzal.fly_last
+
+Definition:
+```luau
+function Quetzal.fly_last(npc: Npc?, walk: boolean?): boolean
+```
+Flies to the last site with the nearest Renu (or `npc`), walking closer first unless `walk` is false. True when the option was clicked. The flight is not waited for.
+
+Example:
+```luau
+local Quetzal = require("@lib/main/interfaces/mainscreen/quetzal")
+
+if Quetzal.is_last("Aldarin") then
+	Quetzal.fly_last()
+end
+```
+
+## Quetzal.whistle_slot
+
+Definition:
+```luau
+function Quetzal.whistle_slot(): number?
+```
+The inventory slot of a quetzal whistle, nil when none is held.
+
+## Quetzal.signal
+
+Definition:
+```luau
+function Quetzal.signal(): (boolean, string?)
+```
+Opens the map with the whistle in the inventory, from anywhere: closes any other main screen interface with Escape, uses "Signal" and waits for the map. True when it is open, also if it already was. When it didn't work the second result says why. An empty whistle only says so in the chat, so it shows as a map that doesn't open.
+
+Example:
+```luau
+local Quetzal = require("@lib/main/interfaces/mainscreen/quetzal")
+
+local ok, why = Quetzal.signal()
+assert(ok, why)
+assert(Quetzal.select(Quetzal.Site.Aldarin), "couldn't choose Aldarin")
+```
+
+## Quetzal.signal_last
+
+Definition:
+```luau
+function Quetzal.signal_last(): boolean
+```
+Flies to the last site with the whistle in the inventory, from anywhere. True when the option was clicked. The flight is not waited for, and an empty whistle only says so in the chat, so check the position to know it worked.

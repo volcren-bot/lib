@@ -489,7 +489,7 @@ Chartering.TRADER_HOVER_MS = 350
 Chartering.SETTLE_MS = { 250, 500 }
 
 -- Every charter port, as the game names it: read from live lists, except `CivitasIllaFortis` (key D, the port the list was read in) and `RedRock` (key K), which come from the transport data
--- (`TRANSPORTS/transports/charter_ships.tsv`) and haven't been seen in a live list. Use these rather than typing a name: `Chartering.select(Chartering.Port.Catherby)`.
+-- (the transport data's `charter_ships.tsv`) and haven't been seen in a live list. Use these rather than typing a name: `Chartering.select(Chartering.Port.Catherby)`.
 -- The game numbers its ports with keys 0-9 then A-N; G, H and L have never been seen, so they are not here yet.
 -- A trader doesn't offer every port, and never the one it is in, so selecting a port that isn't offered just fails.
 export type Port =

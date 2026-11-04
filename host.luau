@@ -70,7 +70,7 @@ export type AntibanConfig = {
 
 export type TransportSkill = { name: string, level: number }
 
--- one varbit or varp test: `op` is "=", ">", "<", "&" (all bits of `value` set) or "@" (a wall-clock countdown in minutes)
+-- one varbit or varp test: `op` is "=", ">", "<", "&" (all bits of `value` set) or "@" (at least `value` minutes since the varp's value, in minutes since the Unix epoch)
 export type TransportClause = { id: number, op: string, value: number }
 
 export type TransportTile = { x: number, y: number, plane: number }
@@ -303,6 +303,14 @@ export type SubInterface = {
 	parent: number,
 	parent_group: number,
 	parent_child: number,
+}
+
+-- Whether a tile can be reached by walking and climbing. `known` is false when one end has no landmass (an instance, say), and then `reachable` is true for lack of knowing better. `from` and `to` are the first climb on the way, when one is needed.
+export type WorldRoute = {
+	known: boolean,
+	reachable: boolean,
+	from: NavTile?,
+	to: NavTile?,
 }
 
 export type Widget = {
@@ -713,6 +721,7 @@ return {
 	game_state = g.game_state :: () -> ClientState,
 	connection = g.connection :: () -> Connection,
 	widget = g.widget :: (group: number, child: number) -> Widget?,
+	widget_model = g.widget_model :: (group: number, child: number) -> { kind: number, id: number }?,
 	widget_children = g.widget_children :: (group: number, child: number) -> { Widget }?,
 	item_container = g.item_container :: (id: number) -> { ItemSlot }?,
 	on_item_change = g.on_item_change :: ((change: ItemChange) -> ()) -> number,
@@ -769,6 +778,8 @@ return {
 	find_path = g.find_path :: (from: Tile, to: Tile, plane: number?, max_tiles: number?) -> { Tile }?,
 	collision = g.collision :: (area: Corners?) -> Collision?,
 	scene_route = g.scene_route :: (from: Tile, to: Tile, options: SceneRouteOptions?) -> SceneRoute?,
+	transport_settings = g.transport_settings :: () -> { off: { string } },
+	world_route = g.world_route :: (from: NavTile, to: NavTile, allow_climbs: { string }?) -> WorldRoute?,
 	nav_plan = g.nav_plan :: (from: Tile | NavTile, to: Tile | NavTile, options: NavOptions?) -> (NavPlan?, string?),
 	loc_model = g.loc_model :: (loc: Loc) -> NpcModel?,
 	players = g.players :: () -> { PlayerInfo }?,
@@ -800,6 +811,7 @@ return {
 	input_cancel = g.input_cancel :: () -> (),
 	-- Enters the account's bank PIN on the open keypad; the PIN lives in the injector and is never shown to the script.
 	bank_pin_enter = g.bank_pin_enter :: () -> string,
+	lamp_skill = g.lamp_skill :: (account: string) -> (string?, string?),
 	-- Makes an HTTP request through the loader, to a host on the loader's whitelist. Needs no client.
 	http_request = g.http_request :: (options: HttpRequest) -> (HttpResponse?, string?),
 	draw_rect = g.draw_rect :: (
@@ -828,6 +840,7 @@ return {
 	sleep = g.sleep :: (ms: number) -> (),
 	time = g.time :: () -> number,
 	clock = g.clock :: () -> number,
+	unix_time = g.unix_time :: () -> number,
 	antiban_skips = g.antiban_skips :: () -> { { kind: string, index: number } },
 	antiban_config = g.antiban_config :: () -> AntibanConfig,
 	transports = g.transports :: () -> TransportsData,

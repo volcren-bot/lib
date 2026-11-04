@@ -6,6 +6,8 @@ The fairy ring network. A ring is used through its **dials** (the main screen in
 local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 ```
 
+A house's Spiritual Fairy Tree is a ring too, and every function here takes it. Its options start with "Ring-" (`Ring-configure`, `Ring-Zanaris`, `Ring-last-destination (CODE)`), and it has no favourites, so `travel` doesn't try them there.
+
 A code is three letters, one from each dial. Turning a dial clockwise goes through its letters in this order: the first dial `A D C B`, the second `I L K J`, the third `P S R Q` (so `AIP` is all three dials at their start and `BJQ` the last position of each). `Fairyring.Dial` is the dials, `Fairyring.Log` is the travel log; the functions on `Fairyring` itself work over both.
 
 A destination is given as a code in any way a player writes it (`"aiq"`, `"A I Q"`, `"a-i-q"`) or as a part of a place's name in any case (`"mudskipper"`, `"zoo"`, `"Ardougne zoo"`). A text fitting several places (`"islands"`) is an error.

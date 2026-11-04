@@ -203,19 +203,21 @@ Walks to a tile, on any plane, through doors and up and down ladders and stairca
 
 `options`:
 - `near`: done once the player is at most this many tiles away, on `plane` (default 2).
-- `timeout_ms`: gives up after this long (default `Walker.TIMEOUT_MS`, 90000, or more for a long plan: `Walker.WALK_MS_PER_TILE` for every tile planned).
+- `timeout_ms`: gives up after this long (default `Walker.TIMEOUT_MS`, 90000, or more for a long plan: `Walker.WALK_MS_PER_TILE` for every tile planned, each time the player has moved since the last plan).
 - `on_step`: called about every 50 ms with the player's tile; returning `false` stops the walk.
 - `straight`: walk the straight line on your plane, without planning, letting the server find the way.
 - `randomize`: take a different way each walk (default true): the plan's tile costs get noise from a seed picked per walk, so planning again keeps the same way. Sometimes (`Walker.SHORTER_CHANCE`, up to `Walker.SHORTER_MAX` tiles) it also clicks short of the farthest tile it could.
 - `before_click`: called with the tile (or door or ladder) about to be clicked and your tile; returning `false` stops the walk.
 - `accept`: a menu entry besides "Walk here" that may sit on a tile, which a click may take.
-- `plane`: the plane `to` is on (default yours).
+- `plane`: the plane `to` is on (default the one you are on when the walk starts, even if a transport lands on another).
 - `doors`: open the closed doors on the way (default true); `false` walks round them.
 - `climbs`: use ladders and staircases (default true); `false` stays on your plane.
-- `shortcuts`: use agility shortcuts (default true, `Transports.SHORTCUTS`): those the real Agility level allows, outside the Wilderness, that save at least `Transports.SHORTCUT_MIN_SAVING_TILES` (10) over walking round; `false` walks round them.
+- `shortcuts`: use agility shortcuts (default true, `Transports.SHORTCUTS`), putting on a crossbow and grapple or climbing boots from the inventory when one needs them, and leaving them on: those the real Agility level allows, outside the Wilderness, that save at least `Transports.SHORTCUT_MIN_SAVING_TILES` (10) over walking round; `false` walks round them.
 - `nav`: more for `Host.nav_plan`: `door_options`, `climbs`, `allow_climbs`, `shortcut_saving`, `avoid`, `door_cost`, `climb_cost`.
 
-`Walker.DEBUG = true` logs what the walk does and how long each step takes. Returns `false` when it times out, is stopped, can't plan, or the player stops getting closer (the target can't be reached).
+`Walker.DEBUG = true` logs what the walk does and how long each step takes. Returns `false` when it times out, is stopped, can't plan, or the player stops getting closer.
+
+**A goal with no way raises an error, which stops the script.** Before moving, the walk asks `Transports.walkable`: when the goal can't be walked to with the climbs and links this account can use, and no usable transport leads there, it raises `no way from ... to ...` and the account doesn't move. A walk with `transports = false` returns `false` instead, because the lib uses those for short legs that have a fallback. Catch it with `pcall` when another way is worth trying.
 
 Example:
 ```luau
@@ -294,7 +296,7 @@ Walker.RUN_MS_PER_TILE = 300
 
 function Walker.ahead(ms: number): FinePoint?
 ```
-How far (fine units, x and y) the player will have moved `ms` from now: it follows the game's route (`Walker.route`) from where the player is drawn to the client's destination flag, at running or walking speed. Zero when the player has no destination. The camera follows the player, so `Projection.shifted` with this offset shows where things will be on screen by then.
+How far (fine units, x and y) the player will have moved `ms` from now: it follows the game's route (`Walker.route`) from where the player is drawn to the client's destination flag, or to the end of the server's path once the flag has cleared (it clears a few tiles before the player gets there), at running or walking speed. Zero when the player has stopped. The camera follows the player, so `Projection.shifted` with this offset shows where things will be on screen by then.
 
 Example:
 ```luau

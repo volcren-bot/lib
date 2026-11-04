@@ -193,6 +193,20 @@ function Player.animation(): number?
 	return nil
 end
 
+-- The id of the player's pose: what it does when no animation plays, like standing, walking or riding a magic carpet.
+function Player.pose(): number?
+	local name = game_state().player_name
+	if name == nil then
+		return nil
+	end
+	for _, p in ipairs(Host.players() or {}) do
+		if p.name == name then
+			return p.pose
+		end
+	end
+	return nil
+end
+
 function Player.is_animating(): boolean
 	local id = Player.animation()
 	return id ~= nil and id ~= -1
@@ -230,6 +244,15 @@ end
 function Player.destination(): Tile?
 	local s = game_state()
 	return s.destination
+end
+
+-- Whether the player is still on the way somewhere. The destination alone doesn't say: it clears on the server's last step, a few tiles before the player gets there.
+function Player.in_transit(): boolean
+	if Player.destination() ~= nil then
+		return true
+	end
+	local server = Host.server_tile()
+	return server ~= nil and server.steps > 0
 end
 
 function Player.wait_still(timeout_ms: number?): boolean

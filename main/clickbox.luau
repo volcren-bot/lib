@@ -43,6 +43,10 @@ export type Approach = {
 	walk: Walker.WalkOptions?,
 	timeout_ms: number?,
 	arrive_ms: (number | false)?,
+	-- walk to a stop before picking, never picking on the way
+	settle: boolean?,
+	-- when the pick fails, walk to this many tiles from the thing and pick again
+	closer: number?,
 }
 
 local Clickbox = {}
@@ -284,7 +288,7 @@ local function aim(clickbox: Aim, what: string): Point?
 			target = if box then Clickbox.target(box, what) else nil
 		end
 	end
-	if Player.destination() == nil then
+	if not Player.in_transit() then
 		return target
 	end
 	local lead = if target then lead_ms(target) else Clickbox.WALK_LEAD_MS
@@ -517,7 +521,9 @@ function Clickbox.approach(
 					return false
 				end
 				if
-					aimable(clickbox, what) and (last_try == nil or Host.time() - last_try >= Clickbox.EARLY_RETRY_MS)
+					not o.settle
+					and aimable(clickbox, what)
+					and (last_try == nil or Host.time() - last_try >= Clickbox.EARLY_RETRY_MS)
 				then
 					last_try = Host.time()
 					if Clickbox.interact(clickbox, hovered, what, option, target, tile, false) == true then
@@ -539,6 +545,27 @@ function Clickbox.approach(
 		end
 		return Player.wait_walk(if o.arrive_ms then o.arrive_ms else nil)
 	end
+	if o.settle then
+		Player.wait_walk(o.timeout_ms or Clickbox.APPROACH_TIMEOUT_MS)
+	end
+	if Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms) then
+		return true
+	end
+	local closer = o.closer
+	local again = if closer then tile() else nil
+	if closer == nil or again == nil then
+		return false
+	end
+	Camera.face(again)
+	local reached = Walker.walk({ x = math.floor(again.x), y = math.floor(again.y) }, {
+		near = closer,
+		timeout_ms = o.timeout_ms or Clickbox.APPROACH_TIMEOUT_MS,
+		straight = walk.straight,
+	})
+	if not reached then
+		return false
+	end
+	Player.wait_still(3000)
 	return Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms)
 end
 

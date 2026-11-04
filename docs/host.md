@@ -511,13 +511,45 @@ for _, entry in ipairs(books and books.entries or {}) do
 end
 ```
 
+## Host.world_route
+
+Definition:
+```luau
+Host.world_route: (from: Tile, to: Tile, allow_climbs: { string }) -> ({ known: boolean, reachable: boolean, from: Tile?, to: Tile? }?, string?)
+```
+Whether `to` can be walked to from `from` on the whole map, across planes and through the underground, using the map's own climbs and links plus the gated ones named in `allow_climbs` (`Transports.allowed_climbs`). `known` is false when either point isn't on any landmass. `from` and `to` in the answer are the first climb on the way, absent when the two are on one landmass. The first call builds the map from the game cache, which takes under a second once the collision file exists.
+
+Example:
+```luau
+local Host = require("@lib/host")
+local Transports = require("@lib/main/transports")
+
+local way = Host.world_route({ x = 3222, y = 3218, plane = 0 }, { x = 2884, y = 9798, plane = 0 }, Transports.allowed_climbs())
+print(way and way.reachable, way and way.from and way.from.x)
+```
+
+## Host.transport_settings
+
+Definition:
+```luau
+Host.transport_settings: () -> { off: { string } }
+```
+The types of transport the user turned off on the loader's Settings page. It can change while a script runs. Use `Transports.is_enabled` or `Transports.require_enabled`, which read it.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+print(#Host.transport_settings().off)
+```
+
 ## Host.landmasses
 
 Definition:
 ```luau
 Host.landmasses: (points: { { x: number, y: number, plane: number } }) -> ({ number }?, string?)
 ```
-The landmass number of each point, found by flood fill over the map's collision from the game cache: points with the same number can be walked between (closed doors count as open, stairs and other shortcuts are not followed), and different numbers are separate islands or enclosed areas. 0 means no landmass: the point has none within 3 tiles, or it isn't on plane 0 (only the surface plane is numbered). Karamja and the mainland, for example, have different numbers. The first call after a game update builds the numbers, which takes a few seconds.
+The landmass number of each point on any plane, found by flood fill over the map's collision from the game cache (a tile above the ground with no floor is on none): points with the same number can be walked between (closed doors count as open, stairs and other shortcuts are not followed), and different numbers are separate islands or enclosed areas. 0 means no landmass: the point has none within 3 tiles, or it isn't on plane 0 (only the surface plane is numbered). Karamja and the mainland, for example, have different numbers. The first call after a game update builds the numbers, which takes a few seconds.
 
 Example:
 ```luau
@@ -938,7 +970,7 @@ Plans a walk over every plane of the loaded scene at once, through closed doors 
 
 - **Doors.** A door is what the minimap draws red: a wall (or a diagonal wall) the client lets you click, that blocks, has one of `door_options` and is closed (its walls are in the collision). Its walls are taken out of the collision while planning, at `door_cost` (tenths of a tile) for going through, so a plan uses a door when that is shorter than the way round.
 - **Climbs.** Every way of changing plane in the transport data (`transports.tsv` of Shortest Path: stairs, ladders, ropes, cave mouths and the like, about 3,400 rows) is a climb, at `climb_cost`. A row gives the tile it is used from and the exact tile and plane it lands on, which can be any plane (a rope can go from plane 0 to plane 2) and the underground, which is the same map 6,400 tiles north, entered by the same plane. The row is tied to the clickable object beside its tile that offers the row's menu option (the one with the row's id first, else the nearest within 2 tiles); a row with no such object loaded or in the cache is left out. Nothing is guessed, and an object the data doesn't list isn't used. A row that asks for a quest, level, item or varbit is used only if its name is in `allow_climbs`.
-- **Links.** The rows of `transports.tsv` that stay on one plane and cross 2 to 15 tiles (a stile, a log, a door that is an object, like the Grand Tree's Tree Door) are climbs that keep the plane, found and used the same way, at `climb_cost`. A hop of one tile is a wall door, which the planner opens by taking its walls away; no object is recognised as a door by its name.
+- **Links.** The rows of `transports.tsv` that stay on one plane and cross up to 15 tiles (a stile, a log, a door that is an object, like the Grand Tree's Tree Door) are climbs that keep the plane, found and used the same way, at `climb_cost`. A hop of one tile with "Open" is a wall door, which the planner opens by taking its walls away, and no object is recognised as a door by its name. If such a row asks for something and isn't in `allow_climbs`, the plan won't step through in that direction. Rows farther than that are the script's (`Transports.ride`). The rows that start or end in the Wilderness, like the ditch, are used only by a plan that starts or ends there itself.
 - **Agility shortcuts.** The rows of `agility_shortcuts.tsv` (a hop over an obstacle, short, within one world) are climbs that keep the plane, found the same way. A shortcut costs its `Duration` (a tile takes about 0.6 of a tick) plus `shortcut_saving` tiles, so it is only taken when it saves that much over walking round. The walker knows it worked when it stands on the tile it lands on.
 
 The plan's `tiles` are every tile walked, start first, each with its plane; `actions` are the doors and climbs on the way, in order, each with the index `at` of the tile it is used from (the next tile is past it). When `to` is outside the loaded scene the plan uses the game cache's collision (closed doors open) for the rest, up to about 400 tiles across; farther than that it plans to a tile along the world path (`goal`), and `reached` is false. A target that can't be reached gives a plan to the closest tile on its plane, with `reached` false. In an instance only the loaded scene is used. All fields are optional:
@@ -946,7 +978,7 @@ The plan's `tiles` are every tile walked, start first, each with its plane; `act
 - `door_options`: the options that open a door, any case (default `{ "Open" }`; `{}` takes closed doors for walls).
 - `climbs`: `false` stays on the plane (default `true`).
 - `shortcut_saving`: the least, in tiles, an agility shortcut has to save over walking round (default 10).
-- `allow_climbs`: the climbs and shortcuts that ask for something and that the player has what they ask for, as `"x,y,plane>x,y,plane"` (see `Transports.allowed_climbs`); none by default.
+- `allow_climbs`: the climbs and shortcuts that ask for something and that the player has what they ask for, as `"x,y,plane>x,y,plane|menu"` (see `Transports.allowed_climbs`); none by default.
 - `avoid`: locs not to use (`id`, `x`, `y`, `plane`), such as a door that didn't open.
 - `seed`, `rnd`: with a seed every tile's cost is scaled by 1 +- `rnd` / 2, the same seed planning the same way (default `rnd` 0.6).
 - `door_cost`, `climb_cost`: default 30 and 50.
@@ -1574,7 +1606,7 @@ Definition:
 ```luau
 Host.transports: () -> TransportsData
 ```
-The transports (teleport spells and the like) the loader downloaded and parsed, from the Shortest Path plugin's data (BSD-2-Clause, github.com/Skretzo/shortest-path). `source` says where this run got them (`online`, `cache` or `bundled`; `none` when the loader sent nothing), `version` goes up when a new set arrives, and each `Transport` has `kind` (its file), `origin?`, `destination?`, `name`, `duration` (ticks), `wilderness?` (the highest level it can be used at), `skills`, `quests`, `varbits`, `varps` (tests like `{ id = 4070, op = "=", value = 0 }`), `items` and `consumable`. Scripts don't read this themselves; `Transports` does.
+The transports (teleport spells and the like) the loader downloaded and parsed (`HOST_API` 9; it copies thousands of rows, so read it once), from the Shortest Path plugin's data (BSD-2-Clause, github.com/Skretzo/shortest-path). `source` says which version the loader gave this run: a short commit, that with `, part bundled` when a kept file was damaged, or `bundled` (`none` when the loader sent nothing), `version` goes up when a new set arrives, and each `Transport` has `kind` (its file), `origin?`, `destination?`, `name`, `duration` (ticks), `wilderness?` (the highest level it can be used at), `skills`, `quests`, `varbits`, `varps` (tests like `{ id = 4070, op = "=", value = 0 }`), `items` and `consumable`. Scripts don't read this themselves; `Transports` does.
 
 Example:
 ```luau
@@ -1606,6 +1638,53 @@ Definition:
 Host.biometrics_profile: (name: string) -> { number }
 ```
 The 24 byte biometric profile of an account name, each byte 0 to 255. The same name always gives the same profile. `Biometrics.setup` calls it.
+
+## Host.widget_model
+
+Definition:
+```luau
+Host.widget_model: (group: number, child: number) -> { kind: number, id: number }?
+```
+The model a component draws: `kind` is its type (1 is a model id) and `id` the model, -1 when it draws none. Nil when there is no such component. It reads the client's memory directly, so it's slower than `Host.widget`.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+local model = Host.widget_model(184, 7)
+print(model and model.id)
+```
+
+## Host.lamp_skill
+
+Definition:
+```luau
+Host.lamp_skill: (account: string) -> (string?, string?)
+```
+The skill set on the loader's Accounts page for spending the lamps of the account with this name (`game_state().account_name`), asked by the hash of the name. Nil when none is set or the run has no loader; nil and the reason when the loader can't say. Use `Randoms.lamp_skill`, which also checks the answer.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+print(Host.lamp_skill(Host.game_state().account_name or ""))
+```
+
+## Host.unix_time
+
+Definition:
+```luau
+Host.unix_time: () -> number
+```
+Seconds since the Unix epoch on this computer, with the milliseconds as the fraction. Use it with the game's variables that store a moment, such as varp 892, the minute of the last home teleport.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+local minutes = (Host.unix_time() / 60) - (Host.varp(892) or 0)
+print("last home teleport", math.floor(minutes), "minutes ago")
+```
 
 ## Host.clock
 

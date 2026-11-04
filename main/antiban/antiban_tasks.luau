@@ -15,6 +15,7 @@ local Mouse = require("@lib/utils/input/mouse")
 local Npcs = require("@lib/main/entities/npcs")
 local Players = require("@lib/main/entities/players")
 local Random = require("@lib/utils/math/random")
+local Randoms = require("@lib/main/antiban/randoms")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
@@ -842,7 +843,13 @@ function Tasks.random_deposit_task(async: boolean?)
 	end
 end
 
+-- Deals with a random event that is trying to interact with you, by `Randoms.handle`. Costs one read of the NPCs when there is none, so it can be due often.
+function Tasks.handle_randoms()
+	Randoms.handle()
+end
+
 Tasks.TASKS = {
+	HandleRandoms = Tasks.handle_randoms,
 	HoverSkills = Tasks.hover_skills,
 	SmallRandomMouse = Tasks.small_random_mouse,
 	LargeRandomMouse = Tasks.large_random_mouse,

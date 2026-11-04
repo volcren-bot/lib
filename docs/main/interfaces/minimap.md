@@ -117,6 +117,21 @@ local Minimap = require("@lib/main/interfaces/minimap")
 print(Minimap.set_zoom(6))
 ```
 
+## Minimap.set_run
+
+Definition:
+```luau
+function Minimap.set_run(enabled: boolean): boolean
+```
+Switches run on or off with the run orb ("Toggle Run" on interface 160, child 28) and waits up to 1.5 s for `Player.is_running()` to change. Returns true when run is already as asked or the change showed; false when the orb can't be read or didn't change.
+
+Example:
+```luau
+local Minimap = require("@lib/main/interfaces/minimap")
+
+Minimap.set_run(false)
+```
+
 ## Minimap.set_zoom_async
 
 Definition:
