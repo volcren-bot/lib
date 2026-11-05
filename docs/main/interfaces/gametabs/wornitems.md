@@ -206,3 +206,68 @@ if Wornitems.secondary_ammo_holder() ~= nil and Wornitems.secondary_ammo() ~= ni
 	print(Wornitems.swap_ammo())
 end
 ```
+
+## Wornitems.is_quiver
+
+Definition:
+```luau
+function Wornitems.is_quiver(id: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Wornitems.secondary_ammo_holder
+
+Definition:
+```luau
+function Wornitems.secondary_ammo_holder(): SecondaryHolder?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Wornitems.secondary_ammo_accepts
+
+Definition:
+```luau
+function Wornitems.secondary_ammo_accepts(holder: SecondaryHolder, id: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Wornitems.secondary_ammo
+
+Definition:
+```luau
+function Wornitems.secondary_ammo(): ItemSlot?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Wornitems.swap_ammo
+
+Definition:
+```luau
+function Wornitems.swap_ammo(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
