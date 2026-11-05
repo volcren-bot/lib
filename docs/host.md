@@ -1107,7 +1107,7 @@ Definition:
 ```luau
 Host.wind_mouse: (x: number, y: number, options: WindMouseOptions?) -> ()
 ```
-Moves the mouse to a point along a curved, human-like path. Optional `speed`, `wind`, `gravity` and `timeout` tune the movement.
+Moves the mouse to a point along a curved, human-like path. Optional `speed`, `wind`, `gravity` and `timeout` tune the movement, and `pace` (`HOST_API` 12, default 1) divides the wait between the path's points, so 1.2 runs the same path 20% faster (a rare hesitation pause keeps its length).
 
 Example:
 ```luau

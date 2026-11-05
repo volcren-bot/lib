@@ -10,6 +10,7 @@ local Item = require("@lib/utils/item")
 type Item = Item.Item
 local Biometrics = require("@lib/main/antiban/biometrics")
 local Geometry = require("@lib/utils/math/geometry")
+type Point = Geometry.Point
 local Interact = require("@lib/main/interact")
 local Inv = require("@lib/main/interfaces/inv")
 local Keyboard = require("@lib/utils/input/keyboard")
@@ -99,279 +100,6 @@ local Inventory = {
 	move = items.move,
 	interact = items.interact,
 }
-
-Inventory.PATTERNS = table.freeze({
-	table.freeze({
-		0,
-		1,
-		2,
-		3,
-		4,
-		5,
-		6,
-		7,
-		8,
-		9,
-		10,
-		11,
-		12,
-		13,
-		14,
-		15,
-		16,
-		17,
-		18,
-		19,
-		20,
-		21,
-		22,
-		23,
-		24,
-		25,
-		26,
-		27,
-	}),
-	table.freeze({
-		3,
-		2,
-		1,
-		0,
-		7,
-		6,
-		5,
-		4,
-		11,
-		10,
-		9,
-		8,
-		15,
-		14,
-		13,
-		12,
-		19,
-		18,
-		17,
-		16,
-		23,
-		22,
-		21,
-		20,
-		27,
-		26,
-		25,
-		24,
-	}),
-	table.freeze({
-		0,
-		1,
-		2,
-		3,
-		7,
-		6,
-		5,
-		4,
-		8,
-		9,
-		10,
-		11,
-		15,
-		14,
-		13,
-		12,
-		16,
-		17,
-		18,
-		19,
-		23,
-		22,
-		21,
-		20,
-		24,
-		25,
-		26,
-		27,
-	}),
-	table.freeze({
-		3,
-		2,
-		1,
-		0,
-		4,
-		5,
-		6,
-		7,
-		11,
-		10,
-		9,
-		8,
-		12,
-		13,
-		14,
-		15,
-		19,
-		18,
-		17,
-		16,
-		20,
-		21,
-		22,
-		23,
-		27,
-		26,
-		25,
-		24,
-	}),
-	table.freeze({
-		0,
-		4,
-		8,
-		12,
-		16,
-		20,
-		24,
-		1,
-		5,
-		9,
-		13,
-		17,
-		21,
-		25,
-		2,
-		6,
-		10,
-		14,
-		18,
-		22,
-		26,
-		3,
-		7,
-		11,
-		15,
-		19,
-		23,
-		27,
-	}),
-	table.freeze({
-		3,
-		7,
-		11,
-		15,
-		19,
-		23,
-		27,
-		2,
-		6,
-		10,
-		14,
-		18,
-		22,
-		26,
-		1,
-		5,
-		9,
-		13,
-		17,
-		21,
-		25,
-		0,
-		4,
-		8,
-		12,
-		16,
-		20,
-		24,
-	}),
-	table.freeze({
-		0,
-		1,
-		2,
-		3,
-		7,
-		11,
-		15,
-		19,
-		23,
-		27,
-		26,
-		25,
-		24,
-		20,
-		16,
-		12,
-		8,
-		4,
-		5,
-		6,
-		10,
-		14,
-		18,
-		22,
-		21,
-		17,
-		13,
-		9,
-	}),
-	table.freeze({
-		0,
-		4,
-		1,
-		5,
-		2,
-		6,
-		3,
-		7,
-		8,
-		12,
-		9,
-		13,
-		10,
-		14,
-		11,
-		15,
-		16,
-		20,
-		17,
-		21,
-		18,
-		22,
-		19,
-		23,
-		24,
-		25,
-		26,
-		27,
-	}),
-	table.freeze({
-		0,
-		4,
-		1,
-		5,
-		2,
-		6,
-		3,
-		7,
-		11,
-		15,
-		10,
-		14,
-		9,
-		13,
-		8,
-		12,
-		16,
-		20,
-		17,
-		21,
-		18,
-		22,
-		19,
-		23,
-		24,
-		27,
-		26,
-		25,
-	}),
-})
 
 local function wait_until(check: () -> boolean, timeout_ms: number): boolean
 	local waited = 0
@@ -541,16 +269,176 @@ function Inventory.combine(items_a: Item | { Item }, items_b: Item | { Item }): 
 	return Inventory.combine_slots(best_a, best_b)
 end
 
-function Inventory.random_pattern(): { number }
-	local count = #Inventory.PATTERNS
-	local pattern = Inventory.PATTERNS[Biometrics.random_mode_integer((count - 1) // 2, 0, count - 1) + 1]
-	local order = table.clone(pattern)
-	if not Biometrics.random_boolean(0.7) then
-		for i = 1, #order // 2 do
-			order[i], order[#order - i + 1] = order[#order - i + 1], order[i]
+-- The ranges an account's click order habit is picked from (see `Inventory.pattern`), and what a move of one slot costs along and across its preferred axis.
+Inventory.PATTERN_HABIT = {
+	turn = { 1, 2.5 },
+	sloppy = { 0.12, 0.37 },
+	finish = { 1.5, 3 },
+	stick = { 0.85, 0.95 },
+	corner_left = 0.7,
+	corner_top = 0.7,
+	along = 0.8,
+	across = 1.3,
+}
+
+local COLUMNS, ROWS = 4, 7
+
+type Habit = {
+	rows: boolean,
+	turn: number,
+	sloppy: number,
+	finish: number,
+	stick: number,
+	corner: number,
+}
+
+-- A number from 0 to 1 that stays the same for the account (it comes from the Biometrics hash), one per `salt`.
+local function account_roll(hash: string, salt: number): number
+	return Host.murmur2a(hash, salt) / 4294967295
+end
+
+local function habit(): Habit
+	local hash = table.concat(Biometrics.hash(), ",")
+	local ranges = Inventory.PATTERN_HABIT
+	local function pick(range: { number }, salt: number): number
+		return range[1] + (range[2] - range[1]) * account_roll(hash, salt)
+	end
+	local left = account_roll(hash, 1) < ranges.corner_left
+	local top = account_roll(hash, 2) < ranges.corner_top
+	return {
+		rows = Biometrics.get_probability(Biometrics.PATTERN) < 0.5,
+		turn = pick(ranges.turn, 3),
+		sloppy = pick(ranges.sloppy, 4),
+		finish = pick(ranges.finish, 5),
+		stick = pick(ranges.stick, 6),
+		corner = (if top then 0 else ROWS - 1) * COLUMNS + (if left then 0 else COLUMNS - 1),
+	}
+end
+
+-- The slot of `slots` whose centre is nearest `from`; nil when the slots can't be seen.
+local function nearest_slot(slots: { number }, from: Point): number?
+	local boxes = Inventory.boxes()
+	if boxes == nil then
+		return nil
+	end
+	local best, best_distance = nil, math.huge
+	for _, slot in ipairs(slots) do
+		local box = boxes[slot]
+		if box then
+			local dx = box.x + box.width / 2 - from.x
+			local dy = box.y + box.height / 2 - from.y
+			local distance = dx * dx + dy * dy
+			if distance < best_distance then
+				best, best_distance = slot, distance
+			end
 		end
 	end
-	return order
+	return best
+end
+
+function Inventory.pattern(slots: { number }?, from: Point?): ({ number }, { boolean })
+	local h = habit()
+	local ranges = Inventory.PATTERN_HABIT
+	local column_cost = if h.rows then ranges.along else ranges.across
+	local row_cost = if h.rows then ranges.across else ranges.along
+
+	local remaining: { [number]: boolean } = {}
+	local left = 0
+	local wanted = slots
+	if wanted == nil then
+		wanted = {}
+		for slot = 0, SIZE - 1 do
+			table.insert(wanted, slot)
+		end
+	end
+	for _, slot in ipairs(wanted) do
+		if not remaining[slot] then
+			remaining[slot] = true
+			left += 1
+		end
+	end
+
+	local function line_of(slot: number): number
+		return if h.rows then slot // COLUMNS else slot % COLUMNS
+	end
+	local function place_on_line(slot: number): number
+		return if h.rows then slot % COLUMNS else slot // COLUMNS
+	end
+	-- along the preferred axis, towards the side of the inventory with more slots
+	local function heading_from(slot: number): Point
+		if h.rows then
+			return { x = if slot % COLUMNS <= (COLUMNS - 1) / 2 then 1 else -1, y = 0 }
+		end
+		return { x = 0, y = if slot // COLUMNS <= (ROWS - 1) / 2 then 1 else -1 }
+	end
+	-- on a new line, head along it towards the farthest slot left on it
+	local function heading_on_line(slot: number): Point?
+		local farthest, gap = nil, 0
+		for other in pairs(remaining) do
+			if line_of(other) == line_of(slot) then
+				local d = place_on_line(other) - place_on_line(slot)
+				if math.abs(d) > gap then
+					farthest, gap = d, math.abs(d)
+				end
+			end
+		end
+		if farthest == nil then
+			return nil
+		end
+		local sign = if farthest > 0 then 1 else -1
+		return if h.rows then { x = sign, y = 0 } else { x = 0, y = sign }
+	end
+
+	local mouse = from or Mouse.position()
+	local current = (if mouse then nearest_slot(wanted, mouse) else nil) or h.corner
+	local heading = heading_from(current)
+	local snake = Biometrics.random_boolean(0.5)
+	local order: { number } = {}
+	local modes: { boolean } = {}
+	if remaining[current] then
+		remaining[current] = nil
+		left -= 1
+		table.insert(order, current)
+		table.insert(modes, snake)
+	end
+
+	while left > 0 do
+		if #order > 0 and Random.chance(1 - h.stick) then
+			snake = not snake
+		end
+		local line_unfinished = false
+		for slot in pairs(remaining) do
+			if line_of(slot) == line_of(current) then
+				line_unfinished = true
+				break
+			end
+		end
+		local choices: { number } = {}
+		local directions: { Point } = {}
+		local weights: { number } = {}
+		for slot in pairs(remaining) do
+			local dx = slot % COLUMNS - current % COLUMNS
+			local dy = slot // COLUMNS - current // COLUMNS
+			local length = math.sqrt(dx * dx + dy * dy)
+			local direction = { x = dx / length, y = dy / length }
+			local distance = math.sqrt((dx * column_cost) ^ 2 + (dy * row_cost) ^ 2)
+			local away = (1 - (direction.x * heading.x + direction.y * heading.y)) / 2
+			local leaving = if snake and line_unfinished and line_of(slot) ~= line_of(current) then h.finish else 0
+			table.insert(choices, slot)
+			table.insert(directions, direction)
+			table.insert(weights, math.exp(-(distance + h.turn * away + leaving) / h.sloppy))
+		end
+		local i = Random.weighted_index(weights) or 1
+		local picked = choices[i]
+		remaining[picked] = nil
+		left -= 1
+		table.insert(order, picked)
+		table.insert(modes, snake)
+		local changed_line = line_of(picked) ~= line_of(current)
+		current = picked
+		heading = (if snake and changed_line then heading_on_line(current) else nil) or directions[i]
+	end
+	return order, modes
 end
 
 local function in_order(slots: { number }, pattern: { number }): { number }
@@ -663,7 +551,7 @@ function Inventory.drop(items: Item | { Item }, pattern: { number }?): boolean
 	if #slots == 0 then
 		return false
 	end
-	return Inventory.drop_slots(in_order(slots, pattern or Inventory.random_pattern()))
+	return Inventory.drop_slots(if pattern then in_order(slots, pattern) else (Inventory.pattern(slots)))
 end
 
 local function shift_drops(slot: number): boolean
@@ -743,7 +631,7 @@ function Inventory.shift_drop(items: Item | { Item }, pattern: { number }?): boo
 	if #slots == 0 then
 		return false
 	end
-	return Inventory.shift_drop_slots(in_order(slots, pattern or Inventory.random_pattern()))
+	return Inventory.shift_drop_slots(if pattern then in_order(slots, pattern) else (Inventory.pattern(slots)))
 end
 
 return Inventory

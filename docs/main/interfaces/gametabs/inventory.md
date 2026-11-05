@@ -17,20 +17,22 @@ Inventory.shift_enabled = true
 ```
 The container id of the inventory, how many slots it has and its interface. `shift_enabled` is cleared by `shift_drop_slots` when Shift doesn't make "Drop" the left-click option.
 
-## Inventory.PATTERNS
+## Inventory.PATTERN_HABIT
 
 Definition:
 ```luau
-Inventory.PATTERNS: { { number } }
+Inventory.PATTERN_HABIT = {
+	turn = { 1, 2.5 },
+	sloppy = { 0.12, 0.37 },
+	finish = { 1.5, 3 },
+	stick = { 0.85, 0.95 },
+	corner_left = 0.7,
+	corner_top = 0.7,
+	along = 0.8,
+	across = 1.3,
+}
 ```
-Orders to go through the 28 slots in (slots from 0): by column and reversed, column snakes both ways, by row and reversed, a clockwise spiral from the top left and 2 by 2 columns both ways.
-
-Example:
-```luau
-local Inventory = require("@lib/main/interfaces/gametabs/inventory")
-
-print(table.concat(Inventory.PATTERNS[1], ","))
-```
+What an account's click order habit (see `pattern`) is picked from. `turn`, `sloppy`, `finish` and `stick` are ranges an account gets one value in; `corner_left` and `corner_top` are the chances its fallback start is on the left and at the top; `along` and `across` are what a move of one slot costs along its preferred axis (rows or columns) and across it.
 
 ## Inventory functions from Inv
 
@@ -195,19 +197,22 @@ local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 print(Inventory.combine("Knife", "Logs"))
 ```
 
-## Inventory.random_pattern
+## Inventory.pattern
 
 Definition:
 ```luau
-function Inventory.random_pattern(): { number }
+function Inventory.pattern(slots: { number }?, from: Point?): ({ number }, { boolean })
 ```
-One of `PATTERNS`, the middle ones more often, reversed 30% of the time (Biometrics decide both).
+An order to click `slots` in (every slot by default), made up for each call the way a person goes over the inventory, and the mode each slot was reached in (`true` snake, `false` spiral). It starts on the slot whose centre is nearest `from` (the mouse by default), or at the account's corner when the slots can't be seen. Each next slot is picked at random among the rest, the cheap ones much more often: a slot costs its distance in slots, more for a move across the account's preferred axis, more for turning away from the way it was going, and in snake mode more for leaving a row (or column) that still has slots to click. So a snake goes over its line and steps to the next one, heading back, while a spiral keeps on and turns at the edges. Each order starts in snake or spiral mode on an even roll (Biometrics) and keeps its mode from slot to slot with the account's `stick` chance, so a snake can turn into a spiral and back.
+
+The habit is the account's: whether it prefers rows or columns (`Biometrics.PATTERN`), how much it dislikes turning, how sloppy it is, how much it wants to finish a line, how long it sticks to a mode and its corner all come from the Biometrics hash, inside the ranges of `PATTERN_HABIT`. Without `Biometrics.setup` the hash, and so the habit, is random for the run. `examples/inventory_patterns.luau` draws the orders over the inventory.
 
 Example:
 ```luau
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
-print(table.concat(Inventory.random_pattern(), ","))
+print(table.concat((Inventory.pattern()), ","))
+print(table.concat((Inventory.pattern({ 3, 9, 14, 20 })), ","))
 ```
 
 ## Inventory.drop_slots
@@ -231,7 +236,7 @@ Definition:
 ```luau
 function Inventory.drop(items: Item | { Item }, pattern: { number }?): boolean
 ```
-Drops every matching item, going over their slots in `pattern` (`random_pattern()` by default).
+Drops every matching item, going over their slots in the order of `pattern` (by default a new `Inventory.pattern` of those slots).
 
 Example:
 ```luau
@@ -261,11 +266,12 @@ Definition:
 ```luau
 function Inventory.shift_drop(items: Item | { Item }, pattern: { number }?): boolean
 ```
-Shift drops every matching item, going over their slots in `pattern` (`random_pattern()` by default).
+Shift drops every matching item, going over their slots in the order of `pattern` (by default a new `Inventory.pattern` of those slots).
 
 Example:
 ```luau
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 
-print(Inventory.shift_drop("Raw shrimps", Inventory.PATTERNS[1]))
+-- top to bottom, row by row
+print(Inventory.shift_drop("Raw shrimps", { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 }))
 ```

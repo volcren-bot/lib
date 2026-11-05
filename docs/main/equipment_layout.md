@@ -32,9 +32,12 @@ Definition:
 ```luau
 EquipmentLayout.EQUIP_TIMEOUT_MS = 2500
 EquipmentLayout.POLL_MS = 50
+EquipmentLayout.CONFIRM_MS = 1200
+EquipmentLayout.WEAR_ATTEMPTS = 3
+EquipmentLayout.SWAP_MOUSE_PACE = 1.2
 EquipmentLayout.SLOTS: { number }
 ```
-How long to wait for the worn items to change after a click and between looks, and the worn items slots a layout lists (`Wornitems.HEAD` to `Wornitems.AMMO`, in the container's order, then `Wornitems.SECONDARY_AMMO`).
+How long to wait for the worn items to change after a click that takes something off or moves ammo, and between looks; how long `equip`'s clicked items get to show as worn, and how many rounds of clicks they get; how many times faster the mouse moves while `equip` clicks the items (`Mouse.pace`, `HOST_API` 12; 1.2 is 20% faster); and the worn items slots a layout lists (`Wornitems.HEAD` to `Wornitems.AMMO`, in the container's order, then `Wornitems.SECONDARY_AMMO`).
 
 ## Types
 
@@ -83,7 +86,7 @@ Definition:
 ```luau
 function EquipmentLayout.equip(layout: Layout): boolean
 ```
-Wears each of the layout's items from the inventory, clicking them in one of the inventory's patterns (`Inventory.random_pattern`), then takes off what is worn where the layout wants nothing. The bank must be closed, since a click in the inventory would deposit. True when the layout matches afterwards. An item that isn't in the inventory, or no room to take something off, fails it.
+Wears each of the layout's items from the inventory, then takes off what is worn where the layout wants nothing. The items are clicked in the order `Inventory.pattern` gives (starting by the mouse) with no wait between them, through the async mouse queue, so a swap has no misses or idling either; it then waits up to `CONFIRM_MS` for them to show as worn and clicks again whatever didn't change, `WEAR_ATTEMPTS` rounds at most. It blocks until the swap is done. The bank must be closed, since a click in the inventory would deposit. True when the layout matches afterwards. An item that isn't in the inventory, or no room to take something off, fails it.
 
 With the secondary ammo slot in play the ammo comes last, because an item only reaches that slot through the worn ammo slot: it is worn, then swapped across (`Wornitems.swap_ammo`), which leaves the slot's old ammo worn, and the ammo slot's own item replaces that.
 

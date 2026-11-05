@@ -14,6 +14,7 @@ local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 local Item = require("@lib/utils/item")
 local Log = require("@lib/utils/log")
 local Magic = require("@lib/main/interfaces/gametabs/magic")
+local Mouse = require("@lib/utils/input/mouse")
 local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 local EquipmentLayout = {}
@@ -24,6 +25,11 @@ export type Slot = EquipmentLayoutSlot
 -- How long to wait for the worn items to change after a click, and between looks.
 EquipmentLayout.EQUIP_TIMEOUT_MS = 2500
 EquipmentLayout.POLL_MS = 50
+-- After clicking the items: how long they get to show as worn, and how many rounds of clicks they get.
+EquipmentLayout.CONFIRM_MS = 1200
+EquipmentLayout.WEAR_ATTEMPTS = 3
+-- How many times faster the mouse moves while clicking the items of a swap (`Mouse.pace`).
+EquipmentLayout.SWAP_MOUSE_PACE = 1.2
 
 -- The worn items slots a layout lists, in the container's order, then the secondary ammo.
 EquipmentLayout.SLOTS = table.freeze({
@@ -225,45 +231,99 @@ local function wait_slot(slot: Slot): boolean
 	return false
 end
 
--- Wears the items of the slots not in `skip` from the inventory, in one of the inventory's click patterns, then takes off what is worn where they want nothing.
-local function wear(layout: Layout, skip: { [number]: boolean }): boolean
-	local worn = worn_by_slot()
-	if worn == nil then
+-- Queues a click on each inventory slot in the order `Inventory.pattern` gives, with no wait between them, and waits for the mouse to finish.
+local function click_all(slots: { [number]: Slot }): boolean
+	if not Inventory.open() then
 		return false
 	end
-	local by_inventory_slot: { [number]: Slot } = {}
-	local to_remove: { Slot } = {}
-	for _, slot in ipairs(layout.slots) do
-		if skip[slot.slot] or slot_matches(slot, worn[slot.slot]) then
-			continue
+	local list: { number } = {}
+	for at in pairs(slots) do
+		table.insert(list, at)
+	end
+	-- each queued move takes the pace it was queued with
+	local pace = Mouse.pace
+	Mouse.pace = pace * EquipmentLayout.SWAP_MOUSE_PACE
+	local queued = true
+	for _, at in ipairs((Inventory.pattern(list))) do
+		if slots[at] then
+			local box = Inventory.box(at)
+			-- forced: the queue runs later, so where the mouse is now says nothing about where it will be
+			if box == nil or not Mouse.click_async(box, nil, true) then
+				queued = false
+				break
+			end
 		end
-		if slot.mode == "item" then
+	end
+	Mouse.pace = pace
+	if not queued then
+		Mouse.cancel()
+		return false
+	end
+	return Mouse.wait()
+end
+
+-- Waits for the items to show as worn; the game applies a click on its next tick.
+local function wait_worn(slots: { [number]: Slot })
+	local deadline = time() + EquipmentLayout.CONFIRM_MS
+	while time() < deadline do
+		local worn = worn_by_slot()
+		local done = worn ~= nil
+		for _, slot in pairs(slots) do
+			if worn == nil or not slot_matches(slot, worn[slot.slot]) then
+				done = false
+				break
+			end
+		end
+		if done then
+			return
+		end
+		sleep(EquipmentLayout.POLL_MS)
+	end
+end
+
+-- Wears the items of the slots not in `skip`, then looks at what is worn and clicks again whatever didn't change.
+local function wear_items(layout: Layout, skip: { [number]: boolean }): boolean
+	for attempt = 1, EquipmentLayout.WEAR_ATTEMPTS + 1 do
+		local worn = worn_by_slot()
+		if worn == nil then
+			return false
+		end
+		local by_inventory_slot: { [number]: Slot } = {}
+		for _, slot in ipairs(layout.slots) do
+			if slot.mode ~= "item" or skip[slot.slot] or slot_matches(slot, worn[slot.slot]) then
+				continue
+			end
+			if attempt > EquipmentLayout.WEAR_ATTEMPTS then
+				Log.log("EquipmentLayout", `equip: couldn't wear {label(slot)}`)
+				return false
+			end
 			local at = Inventory.index_of(wanted(slot))
 			if at == nil then
 				Log.log("EquipmentLayout", `equip: {label(slot)} isn't in the inventory`)
 				return false
 			end
 			by_inventory_slot[at] = slot
-		elseif slot.mode == "empty" then
-			table.insert(to_remove, slot)
 		end
-	end
-	if next(by_inventory_slot) ~= nil and not Inventory.open() then
-		return false
-	end
-	for _, at in ipairs(Inventory.random_pattern()) do
-		local slot = by_inventory_slot[at]
-		if slot == nil then
-			continue
+		if next(by_inventory_slot) == nil then
+			return true
 		end
-		-- the item may have moved: a two handed weapon puts the shield back in the inventory
-		local now = Inventory.index_of(wanted(slot))
-		if now == nil or not Inventory.click_slot(now) or not wait_slot(slot) then
-			Log.log("EquipmentLayout", `equip: couldn't wear {label(slot)}`)
+		if not click_all(by_inventory_slot) then
 			return false
 		end
+		wait_worn(by_inventory_slot)
 	end
-	for _, slot in ipairs(to_remove) do
+	return false
+end
+
+-- Wears the items of the slots not in `skip` from the inventory, then takes off what is worn where they want nothing.
+local function wear(layout: Layout, skip: { [number]: boolean }): boolean
+	if not wear_items(layout, skip) then
+		return false
+	end
+	for _, slot in ipairs(layout.slots) do
+		if slot.mode ~= "empty" or skip[slot.slot] then
+			continue
+		end
 		-- wearing something else there may have taken it off already
 		local again = worn_by_slot()
 		if again and again[slot.slot] ~= nil then
@@ -332,7 +392,7 @@ local function settle_ammo(layout: Layout): boolean
 	return true
 end
 
--- Wears each of the layout's items from the inventory, in one of the inventory's click patterns, then takes off what is worn where the layout wants nothing. With a secondary ammo slot in play the ammo comes last, since filling that slot goes through the worn ammo slot. The bank must be closed (a click in the inventory would deposit). True when the layout matches afterwards.
+-- Wears each of the layout's items from the inventory, in the order `Inventory.pattern` gives, then takes off what is worn where the layout wants nothing. With a secondary ammo slot in play the ammo comes last, since filling that slot goes through the worn ammo slot. The bank must be closed (a click in the inventory would deposit). True when the layout matches afterwards.
 function EquipmentLayout.equip(layout: Layout): boolean
 	if EquipmentLayout.matches(layout) then
 		return true

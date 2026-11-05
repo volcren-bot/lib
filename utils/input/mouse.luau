@@ -38,6 +38,7 @@ export type Target = Point | Box | Circle | Quad | Area
 local Mouse = {}
 
 Mouse.speed = 14
+Mouse.pace = 1
 Mouse.wind = 5
 Mouse.gravity = 10
 Mouse.timeout = 15000
@@ -60,9 +61,9 @@ function Mouse.position(): Point?
 	return Point.new(conn.mouse_x, conn.mouse_y)
 end
 
--- wind_mouse plans 100 + 14 * sqrt(distance) / (speed / 10) ms for a move, give or take 22%.
+-- wind_mouse plans 100 + 14 * sqrt(distance) / (speed / 10) ms for a move, give or take 22%, and runs it `pace` times faster.
 local function planned_ms(distance: number): number
-	return 100 + 14 * math.sqrt(distance) / (math.clamp(Mouse.speed, 2, 30) / 10)
+	return (100 + 14 * math.sqrt(distance) / (math.clamp(Mouse.speed, 2, 30) / 10)) / math.clamp(Mouse.pace, 0.25, 4)
 end
 
 -- How long moves really take next to their plan, learned from the moves made so far.
@@ -153,6 +154,7 @@ local function move_to(destination: Point)
 		wind = Mouse.wind,
 		gravity = Mouse.gravity,
 		timeout = Mouse.timeout,
+		pace = Mouse.pace,
 	})
 	local distance = if start then Point.distance(start, destination) else 0
 	if distance >= 20 then
@@ -226,6 +228,7 @@ local function queue_move(target: Target, forced: boolean?, distribution: Distri
 			wind = Mouse.wind,
 			gravity = Mouse.gravity,
 			timeout = Mouse.timeout,
+			pace = Mouse.pace,
 		})
 	end
 	return Point.new(x, y)

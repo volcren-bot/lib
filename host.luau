@@ -638,6 +638,8 @@ export type WindMouseOptions = {
 	wind: number?,
 	gravity: number?,
 	timeout: number?,
+	-- divides the wait between the move's points: 1.2 runs the same path 20% faster (host API 12)
+	pace: number?,
 }
 
 export type Tile = {
