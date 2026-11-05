@@ -8,9 +8,12 @@ local selected_widget = Host.selected_widget
 local menu_click = Host.menu_click
 local connection = Host.connection
 local sleep = Host.sleep
+local time = Host.time
 type Widget = Host.Widget
 type SelectedWidget = Host.SelectedWidget
 type MenuEntry = Host.MenuEntry
+local Chat = require("@lib/main/interfaces/chatbox/chat")
+local CombatAchievements = require("@lib/main/combat_achievements")
 local Geometry = require("@lib/utils/math/geometry")
 local Interact = require("@lib/main/interact")
 local Log = require("@lib/utils/log")
@@ -803,6 +806,112 @@ function Magic.cast(spell: SpellRef, option: string?): boolean
 		return false
 	end
 	return Magic.was_cast(s)
+end
+
+-- Thralls (Arceuus): the kinds, by the word their spells end in.
+export type Thrall = "Zombie" | "Skeleton" | "Ghost"
+Magic.Thrall = table.freeze({
+	MELEE = "Zombie" :: Thrall,
+	RANGED = "Skeleton" :: Thrall,
+	MAGIC = "Ghost" :: Thrall,
+})
+-- the tiers from the highest down
+Magic.THRALL_TIERS = table.freeze({ "Greater", "Superior", "Lesser" })
+Magic.THRALL_ACTIVE_VARBIT = 12413
+Magic.THRALL_COOLDOWN_VARBIT = 12290
+-- how long a cast gets to show as a summoned thrall, and how long after it the thrall rises: its time runs from then
+Magic.THRALL_CONFIRM_MS = 1800
+Magic.THRALL_RISE_MS = 3000
+
+-- when the thrall summoned in this run rises and when it goes away, by `Host.time`
+local thrall_rises_at: number? = nil
+local thrall_expires_at: number? = nil
+
+-- How long a thrall summoned now lasts: a tick per current Magic level, twice that with the Master combat achievement rewards claimed.
+function Magic.thrall_duration_ms(): number?
+	local level = Stats.level("Magic")
+	if level == nil then
+		return nil
+	end
+	local ms = level * 600
+	if CombatAchievements.is_claimed("master") then
+		ms *= 2
+	end
+	return ms
+end
+
+local function last_game_message_uid(): number
+	local messages = Chat.messages({ Chat.MessageType.GAME }) or {}
+	local last = messages[#messages]
+	return if last then last.uid else -1
+end
+
+-- The newest game message after the one with uid `seen`, nil for none.
+local function game_message_since(seen: number): string?
+	local messages = Chat.messages({ Chat.MessageType.GAME }) or {}
+	local last = messages[#messages]
+	if last and last.uid ~= seen then
+		return last.text
+	end
+	return nil
+end
+
+-- Whether a resurrection spell was cast too recently to cast another (10 seconds).
+function Magic.thrall_on_cooldown(): boolean
+	return (Varbits.get(Magic.THRALL_COOLDOWN_VARBIT) or 0) ~= 0
+end
+
+-- Summons the highest tier of the thrall you can cast now (level, runes, the Book of the Dead), replacing one that is out.
+function Magic.summon_thrall(thrall: Thrall): boolean
+	if not Magic.is_spellbook("arceuus") then
+		Log.log("Magic", "summon_thrall: thralls need the Arceuus spellbook")
+		return false
+	end
+	if Magic.thrall_on_cooldown() then
+		Log.log("Magic", "summon_thrall: still on cooldown")
+		return false
+	end
+	for _, tier in ipairs(Magic.THRALL_TIERS) do
+		local name = `Resurrect {tier} {thrall}`
+		if Magic.can_cast(name) then
+			local duration = Magic.thrall_duration_ms()
+			local seen = last_game_message_uid()
+			if not Magic.cast(name) then
+				Log.log("Magic", `summon_thrall: couldn't cast {name}`)
+				return false
+			end
+			if not wait_until(Magic.thrall_on_cooldown, Magic.THRALL_CONFIRM_MS) then
+				-- the game says why, like "You can't resurrect a thrall here."
+				local reason = game_message_since(seen)
+				Log.log("Magic", `summon_thrall: {name} didn't summon{if reason then `: {reason}` else ""}`)
+				return false
+			end
+			thrall_rises_at = time() + Magic.THRALL_RISE_MS
+			thrall_expires_at = if duration then thrall_rises_at + duration else nil
+			return true
+		end
+	end
+	Log.log("Magic", `summon_thrall: no {thrall} spell can be cast (level, runes, the Book of the Dead)`)
+	return false
+end
+
+-- Whether a thrall is out (risen and not gone yet), as the game says.
+function Magic.thrall_active(): boolean
+	return Varbits.get(Magic.THRALL_ACTIVE_VARBIT) == 1
+end
+
+-- How long the thrall summoned in this run has left: 0 once it is gone (its time ran out, it was dismissed or it went away
+-- early), nil when none was summoned in this run.
+function Magic.thrall_remaining_ms(): number?
+	local expires, rises = thrall_expires_at, thrall_rises_at
+	if expires == nil or rises == nil then
+		return nil
+	end
+	-- still rising: not out yet, but on its way
+	if not Magic.thrall_active() and time() > rises + Magic.THRALL_CONFIRM_MS then
+		return 0
+	end
+	return math.max(0, expires - time())
 end
 
 return Magic

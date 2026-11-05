@@ -554,3 +554,76 @@ if Magic.cast("High Level Alchemy") then
 	print("now click the item to alch", Inventory.index_of("Yew longbow"))
 end
 ```
+
+## Thralls
+
+Thralls are summoned from the Arceuus spellbook with A Kingdom Divided done and the Book of the Dead worn or in the inventory. A thrall lasts a tick per current Magic level from when it rises, about 3 seconds after the cast, and twice that once the Master combat achievement rewards are claimed ([CombatAchievements](../../combat_achievements.md)). Resurrecting has a 10 second cooldown, and a new thrall replaces the one that is out. The game keeps whether a thrall is out (`arceuus_resurrection_active`) and the cooldown (`arceuus_resurrection_cooldown`) in varbits.
+
+Definition:
+```luau
+export type Thrall = "Zombie" | "Skeleton" | "Ghost"
+Magic.Thrall = { MELEE = "Zombie", RANGED = "Skeleton", MAGIC = "Ghost" }
+Magic.THRALL_TIERS = { "Greater", "Superior", "Lesser" }
+Magic.THRALL_ACTIVE_VARBIT = 12413
+Magic.THRALL_COOLDOWN_VARBIT = 12290
+Magic.THRALL_CONFIRM_MS = 1800
+Magic.THRALL_RISE_MS = 3000
+```
+The kinds of thrall, by the word their spells end in (`Resurrect Greater Zombie`); the tiers from the highest down; the varbits; how long a cast gets to show as summoned (the cooldown starting); and how long after the cast the thrall rises and its time starts, as measured once.
+
+## Magic.summon_thrall
+
+Definition:
+```luau
+function Magic.summon_thrall(thrall: Thrall): boolean
+```
+Summons the highest tier of that kind of thrall you can cast now (`Magic.can_cast`: the Magic level, the runes, the Book of the Dead), so a missing rune for the Greater spell falls back to Superior, then Lesser. True once the game starts the cooldown. False, with the reason in the log, when you aren't on the Arceuus spellbook, it is still on cooldown, no tier can be cast, or the cast didn't summon (the log then has the game's message, like "You can't resurrect a thrall here.").
+
+Example:
+```luau
+local Magic = require("@lib/main/interfaces/gametabs/magic")
+
+print(Magic.summon_thrall(Magic.Thrall.MELEE))
+```
+
+## Magic.thrall_on_cooldown
+
+Definition:
+```luau
+function Magic.thrall_on_cooldown(): boolean
+```
+Whether a resurrection spell was cast too recently to cast another.
+
+## Magic.thrall_active
+
+Definition:
+```luau
+function Magic.thrall_active(): boolean
+```
+Whether a thrall is out, risen and not gone yet, as the game says. Also true for one summoned before the script started.
+
+## Magic.thrall_duration_ms
+
+Definition:
+```luau
+function Magic.thrall_duration_ms(): number?
+```
+How long a thrall summoned now lasts, in milliseconds: 600 per current (boosted) Magic level, doubled with the Master tier rewards claimed. Nil when the Magic level can't be read.
+
+## Magic.thrall_remaining_ms
+
+Definition:
+```luau
+function Magic.thrall_remaining_ms(): number?
+```
+How long the thrall summoned in this run with `summon_thrall` has left, in milliseconds, counted from when it rises. 0 once it is gone: its time ran out, or the game says it went away early (`thrall_active` is false after it should have risen). Nil when none was summoned in this run, since the game doesn't say when a thrall was summoned. Summon a new one early when this gets low, keeping the cooldown in mind.
+
+Example:
+```luau
+local Magic = require("@lib/main/interfaces/gametabs/magic")
+
+local left = Magic.thrall_remaining_ms()
+if left == nil or left < 5000 then
+	Magic.summon_thrall(Magic.Thrall.MAGIC)
+end
+```

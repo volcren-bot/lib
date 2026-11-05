@@ -2,13 +2,25 @@
 -- Prayer layouts: what a `prayer` form field gives a script (a set of prayers the user put together in the loader), turned on as the
 -- regular prayers or made the quick prayers. The script picks which; the layout itself is only the set.
 local Host = require("@lib/host")
+local sleep = Host.sleep
+local time = Host.time
 type PrayerLayout = Host.PrayerLayout
+local Log = require("@lib/utils/log")
+local Mouse = require("@lib/utils/input/mouse")
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 local Varbits = require("@lib/main/varbits")
 
 local PrayerLayout = {}
 
 export type Layout = PrayerLayout
+
+-- After clicking prayers in `activate`: how long they get to show the change, how many rounds of clicks they get, and how many times
+-- faster than `Mouse.pace` the mouse moves while it clicks.
+PrayerLayout.CONFIRM_MS = 1200
+PrayerLayout.ATTEMPTS = 3
+PrayerLayout.MOUSE_PACE = 1.2
+
+local POLL_MS = 50
 
 -- The layout's prayers as the prayer tab knows them, skipping keys it doesn't (a layout from a newer loader).
 local function infos(layout: Layout): { Prayer.Info }
@@ -79,30 +91,126 @@ function PrayerLayout.is_quick(layout: Layout): boolean
 	return true
 end
 
--- Turns the layout's prayers on and every other prayer off, through the prayer tab. True when exactly they are on afterwards.
-function PrayerLayout.activate(layout: Layout): boolean
-	if PrayerLayout.is_active(layout) then
-		return true
+-- Queues a click on each prayer's slot, nearest the mouse first, with no wait between them, and waits for the mouse to finish.
+local function click_all(list: { Prayer.Info }): boolean
+	if not Prayer.open() then
+		return false
 	end
+	local slots: { Host.Widget } = {}
+	for _, p in ipairs(list) do
+		local w = Prayer.widget(p)
+		if w == nil or w.hidden then
+			Log.log("PrayerLayout", `the {p.name} slot isn't visible, check the prayer filters`)
+			return false
+		end
+		table.insert(slots, w)
+	end
+	-- each queued move takes the pace it was queued with
+	local pace = Mouse.pace
+	Mouse.pace = pace * PrayerLayout.MOUSE_PACE
+	local at = Mouse.position()
+	local queued = true
+	while #slots > 0 do
+		local nearest, best = 1, math.huge
+		if at then
+			for i, w in ipairs(slots) do
+				local d = (w.x + w.width / 2 - at.x) ^ 2 + (w.y + w.height / 2 - at.y) ^ 2
+				if d < best then
+					nearest, best = i, d
+				end
+			end
+		end
+		local w = table.remove(slots, nearest)
+		-- forced: the queue runs later, so where the mouse is now says nothing about where it will be
+		if not Mouse.click_async(w, nil, true) then
+			queued = false
+			break
+		end
+		at = { x = w.x + w.width / 2, y = w.y + w.height / 2 }
+	end
+	Mouse.pace = pace
+	if not queued then
+		Mouse.cancel()
+		return false
+	end
+	return Mouse.wait()
+end
+
+-- Waits for the prayers to show as `on` (or off); the game applies a click on its next tick.
+local function wait_states(list: { Prayer.Info }, on: boolean)
+	local deadline = time() + PrayerLayout.CONFIRM_MS
+	while time() < deadline do
+		local done = true
+		for _, p in ipairs(list) do
+			if is_on(p) ~= on then
+				done = false
+				break
+			end
+		end
+		if done then
+			return
+		end
+		sleep(POLL_MS)
+	end
+end
+
+local function names(list: { Prayer.Info }): string
+	local out: { string } = {}
+	for _, p in ipairs(list) do
+		table.insert(out, p.name)
+	end
+	return table.concat(out, ", ")
+end
+
+-- Turns the layout's prayers on and every other prayer off, through the prayer tab. The ones that are off are clicked with no wait between
+-- them; the game turns off what they can't be used with, so the prayers still on that aren't in the layout are clicked off in a round after.
+-- Each round waits up to `CONFIRM_MS` for the change, and whatever is still wrong gets more rounds, `ATTEMPTS` in all. True when exactly the layout's prayers are on.
+function PrayerLayout.activate(layout: Layout): boolean
+	local list = infos(layout)
 	local wanted: { [string]: boolean } = {}
-	for _, p in ipairs(infos(layout)) do
+	for _, p in ipairs(list) do
 		wanted[p.key] = true
 	end
-	local others: { Prayer.Info } = {}
-	for _, p in ipairs(Prayer.PRAYERS) do
-		if not wanted[p.key] and is_on(p) then
-			table.insert(others, p)
+	for attempt = 1, PrayerLayout.ATTEMPTS + 1 do
+		if PrayerLayout.is_active(layout) then
+			return true
 		end
+		local turn_on: { Prayer.Info } = {}
+		for _, p in ipairs(list) do
+			if not is_on(p) then
+				table.insert(turn_on, p)
+			end
+		end
+		-- only once the layout's are on: clicking one the game is about to turn off would turn it back on
+		local turn_off: { Prayer.Info } = {}
+		if #turn_on == 0 then
+			for _, p in ipairs(Prayer.PRAYERS) do
+				if not wanted[p.key] and is_on(p) then
+					table.insert(turn_off, p)
+				end
+			end
+		end
+		if attempt > PrayerLayout.ATTEMPTS then
+			if #turn_on > 0 then
+				Log.log("PrayerLayout", `activate: {names(turn_on)} won't stay on`)
+			else
+				Log.log("PrayerLayout", `activate: {names(turn_off)} won't turn off`)
+			end
+			return false
+		end
+		for _, p in ipairs(turn_on) do
+			if not Prayer.can_activate(p) then
+				Log.log("PrayerLayout", `activate: can't turn on {p.name}`)
+				return false
+			end
+		end
+		local clicks = if #turn_on > 0 then turn_on else turn_off
+		if not click_all(clicks) then
+			return false
+		end
+		wait_states(clicks, #turn_on > 0)
 	end
-	-- off first: turning a prayer on turns off the ones it can't be used with, so the order is otherwise unsafe
-	if #others > 0 and not Prayer.deactivate(others) then
-		return false
-	end
-	local list = infos(layout)
-	if #list > 0 and not Prayer.activate(list) then
-		return false
-	end
-	return PrayerLayout.is_active(layout)
+	return false
 end
 
 -- Turns every prayer off. True when none is on afterwards.

@@ -25,6 +25,16 @@ if layout then
 end
 ```
 
+## Constants
+
+Definition:
+```luau
+PrayerLayout.CONFIRM_MS = 1200
+PrayerLayout.ATTEMPTS = 3
+PrayerLayout.MOUSE_PACE = 1.2
+```
+For `activate`: how long clicked prayers get to show the change, how many rounds of clicks it makes at most, and how many times faster than `Mouse.pace` the mouse moves while it clicks (1.2 is 20% faster).
+
 ## Types
 
 Definition:
@@ -63,7 +73,7 @@ Definition:
 ```luau
 function PrayerLayout.activate(layout: Layout): boolean
 ```
-Turns the layout's prayers on and every other prayer off, through the prayer tab: the others first, since turning a prayer on turns off the ones it can't be used with. True when exactly they are on afterwards. Needs the prayer points and levels for them; `Prayer.can_activate` says which can't be.
+Turns the layout's prayers on and every other prayer off, through the prayer tab. The layout's prayers that are off are clicked first, nearest the mouse first, with no wait between them, through the async mouse at `MOUSE_PACE`. Turning a prayer on turns off the ones it can't be used with (Protect from Magic turns off Protect from Missiles), so the prayers still on that aren't in the layout are clicked off in a round after; clicking them in the same round could turn one back on just as the game turned it off. Each round waits up to `CONFIRM_MS` for the change, and whatever is still wrong gets more rounds, `ATTEMPTS` in all: a switch between two protection and offensive pairs is one round of two clicks. True when exactly the layout's prayers are on afterwards; false, with the prayers that wouldn't change in the log, when they aren't. Needs the prayer points and levels for them; `Prayer.can_activate` says which can't be.
 
 ## PrayerLayout.deactivate
 
