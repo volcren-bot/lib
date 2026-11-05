@@ -84,7 +84,7 @@ Definition:
 ```luau
 function InventoryLayout.withdraw(layout: Layout): boolean
 ```
-With the bank open, makes the inventory hold the layout: deposits what doesn't belong (`deposit_diff`), puts the layout's runes in the pouch, then takes each item the layout has more of than the inventory. True when the layout matches at the end. The pouch's runes come out of the bank into the inventory; neither the bank (which offers only the pouch's own configuration screen) nor the pouch's menu fills it, so the bank is closed, each rune stack is used on the pouch (`Inventory.combine`, the pouch takes the whole stack), and the nearest bank is opened again before the rest is withdrawn.
+With the bank open, makes the inventory hold the layout: deposits what doesn't belong (`deposit_diff`), puts the layout's runes in the pouch, then takes each item the layout has more of than the inventory. True when the layout matches at the end. Everything the layout doesn't list is deposited, gear waiting to be worn included, so with an equipment layout too, get that worn first (`EquipmentLayout.prepare`) and fill the inventory after. The pouch comes out of the bank first when the inventory holds none, and its runes come out of the bank into the inventory; neither the bank (which offers only the pouch's own configuration screen) nor the pouch's menu fills it, so the bank is closed, each rune stack is used on the pouch (`Inventory.combine`, the pouch takes the whole stack), and the nearest bank is opened again before the rest is withdrawn.
 
 ## InventoryLayout.reorder
 
@@ -92,4 +92,4 @@ Definition:
 ```luau
 function InventoryLayout.reorder(layout: Layout): boolean
 ```
-Drags the items into the layout's slots, one slot at a time from the first, with the inventory tab open. True when every item of the layout sits where it says, or there was nothing to move; false when an item the layout wants in a slot isn't anywhere later in the inventory.
+Drags the items into the layout's slots, one slot at a time from the first, with the inventory tab open. True when every item of the layout sits where it says, or there was nothing to move; false when an item the layout wants in a slot isn't in the inventory outside the slots that already hold it for the layout.

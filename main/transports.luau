@@ -818,7 +818,8 @@ local function some_row_names(note: Note): boolean
 		return known
 	end
 	local named = false
-	for _, kind in { "climb_gated", "link_gated" } do
+	-- the paying rows are often far hops, as Karamja's Travel cart is, which keep the file's kind
+	for _, kind in { "climb_gated", "link_gated", "transports" } do
 		for _, t in ipairs(rows_of(kind)) do
 			if t.note == note.text and t.items == note.items then
 				named = true

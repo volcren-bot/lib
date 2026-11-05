@@ -3,7 +3,7 @@ name: release
 # Publishes the lib the loader downloads for store scripts to the public `client` bucket: lib/<version>/lib-<version>.zip
 # and lib/index.json (the last 20 releases, newest first, each with the HOST_API the loader needs). The version is
 # YYYY.MM.DD-<7 character commit>, like the loader's. The HOST_API file in the repo root holds that number: bump it in the
-# same commit that makes the lib use a new host global.
+# same commit that makes the lib use a new host global; tools/check-host-api.sh fails the release when it was missed.
 on:
   push:
     branches: [main]
@@ -27,6 +27,11 @@ jobs:
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check HOST_API
+        run: tools/check-host-api.sh "${{ github.event.before }}"
 
       - name: Package and upload
         id: package

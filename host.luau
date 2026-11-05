@@ -868,7 +868,7 @@ return {
 	input_cancel = g.input_cancel :: () -> (),
 	-- Enters the account's bank PIN on the open keypad; the PIN lives in the injector and is never shown to the script.
 	bank_pin_enter = g.bank_pin_enter :: () -> string,
-	lamp_skill = g.lamp_skill :: (account: string) -> (string?, string?),
+	lamp_skill = g.lamp_skill :: () -> (string?, string?),
 	-- Makes an HTTP request through the loader, to a host on the loader's whitelist. Needs no client.
 	http_request = g.http_request :: (options: HttpRequest) -> (HttpResponse?, string?),
 	draw_rect = g.draw_rect :: (

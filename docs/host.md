@@ -1662,15 +1662,15 @@ print(model and model.id)
 
 Definition:
 ```luau
-Host.lamp_skill: (account: string) -> (string?, string?)
+Host.lamp_skill: () -> (string?, string?)
 ```
-The skill set on the loader's Accounts page for spending the lamps of the account with this name (`game_state().account_name`), asked by the hash of the name. Nil when none is set or the run has no loader; nil and the reason when the loader can't say. Use `Randoms.lamp_skill`, which also checks the answer.
+The skill set on the loader's Accounts page for spending the lamps of the logged in account (`HOST_API` 11). The sandbox reads the account itself and asks by the hash of its name, so a script can't ask about another saved account. Nil when none is set, nobody is logged in or the run has no loader; nil and the reason when there is no client or the loader can't say. Use `Randoms.lamp_skill`, which also checks the answer.
 
 Example:
 ```luau
 local Host = require("@lib/host")
 
-print(Host.lamp_skill(Host.game_state().account_name or ""))
+print(Host.lamp_skill())
 ```
 
 ## Host.unix_time

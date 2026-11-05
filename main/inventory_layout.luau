@@ -123,7 +123,17 @@ function InventoryLayout.deposit_diff(layout: Layout): boolean
 	return true
 end
 
--- Puts the layout's runes in the pouch: takes the missing ones out of the bank, closes it, uses each stack on the pouch (which takes the whole stack) and opens the bank again.
+-- The layout's slot that holds a rune pouch, nil when it has none.
+local function pouch_slot(layout: Layout): Slot?
+	for _, slot in ipairs(layout.slots) do
+		if table.find(Runepouch.POUCHES, slot.name) then
+			return slot
+		end
+	end
+	return nil
+end
+
+-- Puts the layout's runes in the pouch: takes the pouch (when the inventory holds none) and the missing runes out of the bank, closes it, uses each stack on the pouch (which takes the whole stack) and opens the bank again.
 local function fill_pouch(layout: Layout): boolean
 	local missing = pouch_missing(layout)
 	if missing == nil then
@@ -133,8 +143,14 @@ local function fill_pouch(layout: Layout): boolean
 		return true
 	end
 	if not Runepouch.held() then
-		Log.log("InventoryLayout", "withdraw: the layout has runes for a pouch, but the inventory holds no pouch")
-		return false
+		local pouch = pouch_slot(layout)
+		if pouch == nil or not Bankmain.withdraw(pouch.id, 1, false) then
+			Log.log(
+				"InventoryLayout",
+				"withdraw: the layout has runes for a pouch, but no pouch is in the inventory or the bank"
+			)
+			return false
+		end
 	end
 	for id, need in pairs(missing) do
 		if not Bankmain.withdraw(id, need, false) then
@@ -171,7 +187,7 @@ local function fill_pouch(layout: Layout): boolean
 	return Bankmain.open()
 end
 
--- With the bank open, makes the inventory hold the layout: deposits what doesn't belong, fills the pouch, then takes each item the layout has more of than the inventory. True when the layout matches at the end.
+-- With the bank open, makes the inventory hold the layout: deposits what doesn't belong (gear waiting to be worn included, so an equipment layout goes on first), fills the pouch, then takes each item the layout has more of than the inventory. True when the layout matches at the end.
 function InventoryLayout.withdraw(layout: Layout): boolean
 	if not Bankmain.is_open() then
 		Log.log("InventoryLayout", "withdraw: the bank isn't open")
@@ -213,9 +229,9 @@ function InventoryLayout.reorder(layout: Layout): boolean
 		end
 		local from: number? = nil
 		for _, at in ipairs(Inventory.indices_of(wanted.id) or {}) do
-			-- an item already where the layout wants it stays there
+			-- an item already where the layout wants it stays there; the rest may sit anywhere, before this slot too when the layout leaves that one empty
 			local here = by_slot[at]
-			if at > destination and not (here and here.id == wanted.id) then
+			if at ~= destination and not (here and here.id == wanted.id) then
 				from = at
 				break
 			end

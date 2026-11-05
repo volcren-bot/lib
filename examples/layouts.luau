@@ -89,22 +89,24 @@ if equipment_done and inventory_done then
 	return
 end
 
-if not Bankmain.open() then
-	print("couldn't open a bank")
-	return
+-- the gear first: filling the inventory deposits everything its layout doesn't list, gear waiting to be worn included
+if equipment and not equipment_done then
+	if not Bankmain.open() then
+		print("couldn't open a bank")
+		return
+	end
+	-- withdraws what is missing, closes the bank, wears it and sets the autocast spell
+	print("equipped:", EquipmentLayout.prepare(equipment))
 end
-if equipment and not EquipmentLayout.withdraw(equipment) then
-	print("couldn't withdraw the equipment")
-	return
-end
-if inventory and not InventoryLayout.withdraw(inventory) then
-	print("couldn't withdraw the inventory")
-	return
-end
-Bankmain.close()
-if equipment then
-	print("equipped:", EquipmentLayout.equip(equipment), "autocast set:", EquipmentLayout.set_autocast(equipment))
-end
-if inventory then
+if inventory and not inventory_done then
+	if not Bankmain.open() then
+		print("couldn't open a bank")
+		return
+	end
+	if not InventoryLayout.withdraw(inventory) then
+		print("couldn't withdraw the inventory")
+		return
+	end
+	Bankmain.close()
 	print("reordered:", InventoryLayout.reorder(inventory))
 end

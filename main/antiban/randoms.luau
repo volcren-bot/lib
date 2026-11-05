@@ -55,11 +55,7 @@ end
 
 -- The skill this account's lamps go on, chosen on the loader's Accounts page. Nil when none is set, there is no loader, or the loader can't say, which is logged.
 function Randoms.lamp_skill(): Stats.SkillName?
-	local account = Host.game_state().account_name
-	if account == nil then
-		return nil
-	end
-	local skill, why = Host.lamp_skill(account)
+	local skill, why = Host.lamp_skill()
 	if why ~= nil then
 		Log.log("Randoms", `can't read the lamp skill: {why}`)
 	end

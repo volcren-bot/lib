@@ -75,7 +75,7 @@ Definition:
 ```luau
 function EquipmentLayout.withdraw(layout: Layout): boolean
 ```
-With the bank open, withdraws each missing item (a stack's whole quantity, else one). True when none is missing afterwards.
+With the bank open, withdraws each missing item (a stack's whole quantity, else one). True when none is missing afterwards. The items wait in the inventory for `equip`, so wear them before `InventoryLayout.withdraw`, which deposits whatever its layout doesn't list.
 
 ## EquipmentLayout.equip
 
