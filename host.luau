@@ -202,7 +202,7 @@ export type LayoutItem = {
 	stackable: boolean,
 }
 
--- One of the worn items slots in an equipment layout (`slot` is the container's: 0 head, 1 cape, 2 amulet, 3 weapon, 4 body, 5 shield, 7 legs, 9 hands, 10 feet, 12 ring, 13 ammo): `item` wants that item worn there, `empty` wants nothing worn there and `any` doesn't care.
+-- One of the worn items slots in an equipment layout (`slot` is the container's: 0 head, 1 cape, 2 amulet, 3 weapon, 4 body, 5 shield, 7 legs, 9 hands, 10 feet, 12 ring, 13 ammo, and 14 for the secondary ammo of a bolt pouch or Dizana's quiver, which isn't in the container and is ignored without one): `item` wants that item worn there, `empty` wants nothing worn there and `any` doesn't care.
 export type EquipmentLayoutSlot = {
 	slot: number,
 	mode: "item" | "empty" | "any",

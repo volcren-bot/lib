@@ -42,7 +42,7 @@ The data the functions below hand back. Each one is a plain table, so you read i
 | `Tile` / `Area` / `Corners` / `ScreenPoint` / `FinePoint` | Small helper shapes for coordinates. |
 | `Shape` | One shape for `Host.draw_batch`: a rect, a line or a clear. |
 | `FormSpec` / `FormField` | The description of a settings window. |
-| `EquipmentLayout` / `EquipmentLayoutSlot` / `EquipmentSpell` | What an `equipment` form field gives: a layout's name, every worn items slot with its `mode` (`item`, `empty` or `any`) and the item (`id`, `quantity`, `name`, `stackable`) when it wants one, and its `spell` (`key`, `name`, `book`, `level`, `autocast`) when one was picked. See [EquipmentLayout](main/equipment_layout.md). |
+| `EquipmentLayout` / `EquipmentLayoutSlot` / `EquipmentSpell` | What an `equipment` form field gives: a layout's name, every worn items slot (and 14, the secondary ammo) with its `mode` (`item`, `empty` or `any`) and the item (`id`, `quantity`, `name`, `stackable`) when it wants one, and its `spell` (`key`, `name`, `book`, `level`, `autocast`) when one was picked. See [EquipmentLayout](main/equipment_layout.md). |
 | `PrayerLayout` | What a `prayer` form field gives: a layout's name and its prayers by key, in the prayer book's order. See [PrayerLayout](main/prayer_layout.md). |
 | `InventoryLayout` / `InventoryLayoutSlot` / `LayoutItem` | What an `inventory` form field gives: a layout's name, its filled slots (`slot`, `id`, `quantity`, `name`, `stackable`) and the rune pouch's runes (`pouch`, each a `LayoutItem`) when it holds a pouch. See [InventoryLayout](main/inventory_layout.md). |
 | `WindMouseOptions` | Tuning for human-like mouse movement. |

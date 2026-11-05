@@ -25,8 +25,9 @@ Wornitems.HANDS = 9
 Wornitems.FEET = 10
 Wornitems.RING = 12
 Wornitems.AMMO = 13
+Wornitems.SECONDARY_AMMO = 14
 ```
-The container id, its size, the tab's interface and the slot number of each place on the body.
+The container id, its size, the tab's interface and the slot number of each place on the body. `SECONDARY_AMMO` isn't in the container, so the functions from Inv and `worn` don't see it: see [the secondary ammo slot](#the-secondary-ammo-slot).
 
 ## Wornitems.BUTTONS
 
@@ -139,7 +140,7 @@ Definition:
 ```luau
 function Wornitems.remove(slot: number | string): boolean
 ```
-Takes off what's worn in `slot` (a number or a name) with its "Remove" option. `false` when the slot is empty.
+Takes off what's worn in `slot` (a number or a name) with its "Remove" option. `false` when the slot is empty. The secondary ammo goes through what holds it: the bolt pouch's interface, or the quiver's "Quiver-Remove".
 
 Example:
 ```luau
@@ -178,4 +179,30 @@ Example:
 local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
 
 print(Wornitems.press("follower"))
+```
+
+## The secondary ammo slot
+
+A bolt pouch in the inventory or Dizana's quiver, worn or carried, adds a second ammo slot above the ammo slot (`387:30` for a pouch, `387:28` for a quiver). A quiver turns the pouch's slot off, as the client does. Its item lives in client variables: the pouch's fourth stack ([Boltpouch](../mainscreen/boltpouch.md)), or varps 4142 and 4141 for a quiver. The client's scripts hide the pouch's slot on free worlds and Deadman worlds, and this doesn't check for those.
+
+Definition:
+```luau
+export type SecondaryHolder = "quiver" | "pouch"
+function Wornitems.is_quiver(id: number): boolean
+function Wornitems.secondary_ammo_holder(): SecondaryHolder?
+function Wornitems.secondary_ammo_accepts(holder: SecondaryHolder, id: number): boolean
+function Wornitems.secondary_ammo(): ItemSlot?
+function Wornitems.swap_ammo(): boolean
+```
+`is_quiver` checks the item's param 1910, cached per id. `secondary_ammo_holder` is what gives the slot now, nil when nothing does. `secondary_ammo_accepts` says whether the slot can take an item: a pouch only stores the bolts on its list (enum 336), and a quiver isn't checked. `secondary_ammo` is what the slot holds, with `slot = SECONDARY_AMMO`; nil when it is empty or nothing gives it.
+
+`swap_ammo` swaps the worn ammo with the slot's, either of which may be empty, and waits for it. A slot holding something uses the tab's option: "Wear" for a pouch, its left click, or "Swap" for a quiver, whose left click takes the ammo out. An empty slot uses "Fill" for a quiver, or a drag from the worn ammo in the pouch's interface. False when nothing gives the slot.
+
+Example:
+```luau
+local Wornitems = require("@lib/main/interfaces/gametabs/wornitems")
+
+if Wornitems.secondary_ammo_holder() ~= nil and Wornitems.secondary_ammo() ~= nil then
+	print(Wornitems.swap_ammo())
+end
 ```

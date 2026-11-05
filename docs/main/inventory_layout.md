@@ -31,14 +31,10 @@ end
 Definition:
 ```luau
 InventoryLayout.SIZE = 28
-InventoryLayout.POUCHES = { "Rune pouch", "Rune pouch (l)", "Divine rune pouch", "Divine rune pouch (l)" }
-InventoryLayout.POUCH_RUNE_VARBITS = { 29, 1622, 1623, 14285 }
-InventoryLayout.POUCH_AMOUNT_VARBITS = { 1624, 1625, 1626, 14286 }
-InventoryLayout.POUCH_RUNES_ENUM = 982
 InventoryLayout.POUCH_TIMEOUT_MS = 2500
 InventoryLayout.POLL_MS = 50
 ```
-The inventory's size; the rune pouches as the inventory names them; the client variables that hold each pouch slot's rune (a number the enum maps to an item id) and amount; and how long to wait for the pouch to take a stack of runes used on it, and between looks.
+The inventory's size, and how long to wait for the pouch to take a stack of runes used on it, and between looks. The pouch's own data is in [Runepouch](interfaces/mainscreen/runepouch.md).
 
 ## Types
 
@@ -65,14 +61,6 @@ Definition:
 function InventoryLayout.wanted(layout: Layout): { [number]: number }
 ```
 How much of each item the layout holds, by id: a stack's quantity, else the number of copies.
-
-## InventoryLayout.pouch_runes
-
-Definition:
-```luau
-function InventoryLayout.pouch_runes(): { Rune }?
-```
-The runes in the rune pouch now, from the client's variables (they keep their values whether or not a pouch is in the inventory). Nil when they can't be read.
 
 ## InventoryLayout.matches
 
