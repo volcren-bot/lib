@@ -6,7 +6,33 @@ Finding and interacting with NPCs (the non-player characters walking around): ta
 local Npcs = require("@lib/main/entities/npcs")
 ```
 
-An NPC is a table with `index`, `id`, `name`, `x`, `y` (world tile) and `local_x`, `local_y`. Names are matched ignoring upper/lower case.
+An NPC is a table with `index`, `id`, `name`, `x`, `y` (world tile), `local_x`, `local_y` and `head_icons` (see `overhead`). Names are matched ignoring upper/lower case.
+
+## Constants
+
+Definition:
+```luau
+Npcs.PRAYER_ICONS = 440
+Npcs.PRAYER_SPRITES = { [0] = "melee", [1] = "ranged", [2] = "magic" }
+```
+The sprite archive of the prayer head icons (`headicons_prayer`) and the protection prayers its first sprites show.
+
+## Npcs.overhead
+
+Definition:
+```luau
+function Npcs.overhead(npc: Npc): string?
+```
+The protection prayer an NPC has up: `"melee"`, `"ranged"` or `"magic"`, read from the head icons the server set on it (`npc.head_icons`, `HOST_API` 13, each an `{ archive, sprite }`). Nil for none, and for a prayer icon other than those three; `head_icons` still has it. Read it again after a while (`Npcs.refresh`): NPCs like Tormented Demons switch prayers.
+
+Example:
+```luau
+local Npcs = require("@lib/main/entities/npcs")
+
+for _, demon in ipairs(Npcs.find("Tormented Demon") or {}) do
+	print(demon.index, Npcs.overhead(demon) or "no prayer")
+end
+```
 
 ## Npcs.clean_name
 

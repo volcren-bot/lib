@@ -616,7 +616,7 @@ Definition:
 ```luau
 Host.npcs: () -> { Npc }?
 ```
-Lists the NPCs currently loaded around you.
+Lists the NPCs currently loaded around you. Each has `head_icons` (`HOST_API` 13): the head icons the server set on it, like an overhead prayer, as `{ archive, sprite }` (archive 440 is the prayer icons; `Npcs.overhead` names them).
 
 Example:
 ```luau
@@ -625,6 +625,24 @@ local Host = require("@lib/host")
 for _, npc in ipairs(Host.npcs() or {}) do
 	print(npc.name, npc.x, npc.y)
 end
+```
+
+## Host.npc_type_model
+
+Definition:
+```luau
+Host.npc_type_model: (id: number, animation: number, frame: number, fine_x: number, fine_y: number, orientation: number) -> NpcModel?
+```
+Has the client build an NPC type's model (`HOST_API` 13), the way it builds one for an NPC it shows, posed at `frame` of `animation` (-1 for none, frame then ignored), and returns its on-screen outline as if it stood at local fine `fine_x`, `fine_y` (128 to a tile, as `game_state().position.local_x` counts) facing `orientation` (0 to 2047). Nothing is added to the game: it's for showing a model or an animation. `frame_count` says how many frames the animation has, from 0. Nil for an id with no model; an error for an animation that doesn't have that frame or is skeletal (not supported yet). See `examples/show_npc_animation.luau`.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+local pos = assert(Host.game_state().position)
+-- Zulrah (green) two tiles east of you, at the first frame of its attack
+local model = Host.npc_type_model(2042, 5069, 0, pos.local_x + 256, pos.local_y, 0)
+print(model and #model.faces, model and model.frame_count)
 ```
 
 ## Host.npc_model

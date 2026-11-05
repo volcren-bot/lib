@@ -467,6 +467,14 @@ export type Npc = {
 	-- the actor it interacts with: an npc index or a player index (-1 for the other kind or none)
 	interacting_npc: number,
 	interacting_player: number,
+	-- the head icons the server set on it, like an overhead prayer (empty for none; host API 13)
+	head_icons: { HeadIcon },
+}
+
+-- A head icon over an NPC: a sprite of a sprite archive (440 is the prayer icons).
+export type HeadIcon = {
+	archive: number,
+	sprite: number,
 }
 
 -- A hitsplat on an actor: its type, the damage it shows and the client cycle it was added on.
@@ -485,6 +493,8 @@ export type NpcModel = {
 	corners: { ScreenPoint },
 	hull: { ScreenPoint },
 	faces: { { ScreenPoint } },
+	-- `npc_type_model`: how many frames its animation has (0 for the other models)
+	frame_count: number,
 }
 
 export type Loc = {
@@ -820,6 +830,15 @@ return {
 	selected_widget = g.selected_widget :: () -> SelectedWidget?,
 	npcs = g.npcs :: () -> { Npc }?,
 	npc_model = g.npc_model :: (index: number) -> NpcModel?,
+	-- an NPC type's model built by the client, posed at `frame` of `animation` (-1 for none), at local fine x and y (host API 13)
+	npc_type_model = g.npc_type_model :: (
+		id: number,
+		animation: number,
+		frame: number,
+		fine_x: number,
+		fine_y: number,
+		orientation: number
+	) -> NpcModel?,
 	npc_sizes = g.npc_sizes :: (indices: { number }) -> { [number]: number }?,
 	npc_hitsplats = g.npc_hitsplats :: (indices: { number }) -> { [number]: { Hitsplat } }?,
 	locs = g.locs :: (plane: number?) -> { Loc }?,

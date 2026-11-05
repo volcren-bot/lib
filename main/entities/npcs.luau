@@ -26,6 +26,20 @@ local function matches(npc: Npc, what: string | number): boolean
 	return string.lower(Npcs.clean_name(npc.name)) == string.lower(what)
 end
 
+-- The sprite archive of the prayer head icons (`headicons_prayer`), and the prayers its first sprites are.
+Npcs.PRAYER_ICONS = 440
+Npcs.PRAYER_SPRITES = table.freeze({ [0] = "melee", [1] = "ranged", [2] = "magic" })
+
+-- The protection prayer over an NPC: "melee", "ranged" or "magic"; nil for none or another prayer icon (see `head_icons`).
+function Npcs.overhead(npc: Npc): string?
+	for _, icon in ipairs(npc.head_icons or {}) do
+		if icon.archive == Npcs.PRAYER_ICONS then
+			return Npcs.PRAYER_SPRITES[icon.sprite]
+		end
+	end
+	return nil
+end
+
 function Npcs.distance(a: Tile, b: Tile): number
 	return math.max(math.abs(a.x - b.x), math.abs(a.y - b.y))
 end
