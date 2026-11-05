@@ -153,15 +153,29 @@ function Npcs.hover_async(npc: Npc): boolean
 	return Clickbox.hover_async(clickbox_of(npc), npc.name)
 end
 
-function Npcs.click(npc: Npc, button: Mouse.Button?): boolean
-	return Clickbox.click(clickbox_of(npc), hovered_by(npc), npc.name, button, tile_of(npc))
+function Npcs.click(npc: Npc, button: Mouse.Button?, spam: number?): boolean
+	return Clickbox.click(clickbox_of(npc), hovered_by(npc), npc.name, button, tile_of(npc), spam)
 end
 
-function Npcs.interact(npc: Npc, option: string | { string }, walk_timeout_ms: (number | false)?): boolean
+function Npcs.interact(
+	npc: Npc,
+	option: string | { string },
+	walk_timeout_ms: (number | false)?,
+	spam: number?
+): boolean
 	local function owns(entry: MenuEntry): boolean
 		return Npcs.owns(npc, entry)
 	end
-	return Clickbox.interact(clickbox_of(npc), hovered_by(npc), npc.name, option, owns, tile_of(npc), walk_timeout_ms)
+	return Clickbox.interact(
+		clickbox_of(npc),
+		hovered_by(npc),
+		npc.name,
+		option,
+		owns,
+		tile_of(npc),
+		walk_timeout_ms,
+		spam
+	)
 end
 
 function Npcs.approach(npc: Npc, options: string | { string }, opts: Clickbox.Approach?): boolean

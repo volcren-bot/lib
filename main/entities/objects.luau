@@ -149,8 +149,8 @@ function Objects.hover_async(loc: Loc, at: Tile?): boolean
 	end, name)
 end
 
-function Objects.click(loc: Loc, button: Mouse.Button?): boolean
-	return Clickbox.click(clickbox_of(loc), hovered_by(loc), loc.name or tostring(loc.id), button, tile_of(loc))
+function Objects.click(loc: Loc, button: Mouse.Button?, spam: number?): boolean
+	return Clickbox.click(clickbox_of(loc), hovered_by(loc), loc.name or tostring(loc.id), button, tile_of(loc), spam)
 end
 
 -- `face` false leaves the camera alone (for a loc already on screen).
@@ -158,7 +158,8 @@ function Objects.interact(
 	loc: Loc,
 	option: string | { string },
 	walk_timeout_ms: (number | false)?,
-	face: boolean?
+	face: boolean?,
+	spam: number?
 ): boolean
 	local function owns(entry: MenuEntry): boolean
 		return Objects.owns(loc, entry)
@@ -170,7 +171,8 @@ function Objects.interact(
 		option,
 		owns,
 		if face == false then nil else tile_of(loc),
-		walk_timeout_ms
+		walk_timeout_ms,
+		spam
 	)
 end
 

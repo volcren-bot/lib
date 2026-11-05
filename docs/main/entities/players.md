@@ -213,9 +213,9 @@ end
 
 Definition:
 ```luau
-function Players.click(player: PlayerInfo, button: Mouse.Button?): boolean
+function Players.click(player: PlayerInfo, button: Mouse.Button?, spam: number?): boolean
 ```
-Hovers the player and clicks them (left button by default).
+Hovers the player and clicks them (left button by default). `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](../interact.md#interactspam_click).
 
 Example:
 ```luau
@@ -232,8 +232,10 @@ end
 
 Definition:
 ```luau
-function Players.interact(player: PlayerInfo, option: string, walk_timeout_ms: (number | false)?): boolean
+function Players.interact(player: PlayerInfo, option: string, walk_timeout_ms: (number | false)?, spam: number?): boolean
 ```
+`spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](../interact.md#interactspam_click).
+
 Picks an option (such as `"Trade with"` or `"Follow"`) on the player. Retries if the wrong thing got clicked. It doesn't wait for you to stop walking after `"Follow"`, since following never really stops; pass a timeout to change that, or `false` to never wait.
 
 Example:

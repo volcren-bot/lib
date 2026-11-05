@@ -47,6 +47,8 @@ export type Approach = {
 	settle: boolean?,
 	-- when the pick fails, walk to this many tiles from the thing and pick again
 	closer: number?,
+	-- the chance of clicking a few more times, see Interact.spam_click
+	spam: number?,
 }
 
 local Clickbox = {}
@@ -413,13 +415,15 @@ function Clickbox.click(
 	hovered: () -> boolean,
 	what: string,
 	button: Mouse.Button?,
-	tile: (() -> Tile?)?
+	tile: (() -> Tile?)?,
+	spam: number?
 ): boolean
 	local ok = Clickbox.hover(clickbox, hovered, what, tile)
 	if not ok then
 		return false
 	end
 	Mouse.click(nil, button)
+	Interact.spam_click(spam, hovered, button)
 	return true
 end
 
@@ -441,7 +445,8 @@ function Clickbox.interact(
 	option: string | { string },
 	target: Minimenu.Target?,
 	tile: (() -> Tile?)?,
-	walk_timeout_ms: (number | false)?
+	walk_timeout_ms: (number | false)?,
+	spam: number?
 ): boolean
 	local options: { string } = if type(option) == "string" then { option } else option :: { string }
 	local handled, result = Interact.open_menu(options, target, walk_timeout_ms)
@@ -459,7 +464,7 @@ function Clickbox.interact(
 		end
 		local pick = offered(options, target) or options[1]
 		local walking = Player.destination() ~= nil
-		local done, misclicked = Interact.with(at, pick, target, walk_timeout_ms)
+		local done, misclicked = Interact.with(at, pick, target, walk_timeout_ms, spam)
 		-- while walking the thing can slide out from under the mouse before the click, so try again
 		if done or (misclicked == nil and not walking) then
 			return done
@@ -526,7 +531,7 @@ function Clickbox.approach(
 					and aimable(clickbox, what)
 				then
 					last_try = Host.time()
-					if Clickbox.interact(clickbox, hovered, what, option, target, tile, false) == true then
+					if Clickbox.interact(clickbox, hovered, what, option, target, tile, false, o.spam) == true then
 						picked_early = true
 						return false
 					end
@@ -548,7 +553,7 @@ function Clickbox.approach(
 	if o.settle then
 		Player.wait_walk(o.timeout_ms or Clickbox.APPROACH_TIMEOUT_MS)
 	end
-	if Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms) then
+	if Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms, o.spam) then
 		return true
 	end
 	local closer = o.closer
@@ -566,7 +571,7 @@ function Clickbox.approach(
 		return false
 	end
 	Player.wait_still(3000)
-	return Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms)
+	return Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms, o.spam)
 end
 
 function Clickbox.draw(box: Clickbox, color: Draw.Color?)

@@ -421,10 +421,9 @@ function Inventory.deselect(): boolean
 	if current == nil then
 		return true
 	end
-	local ok
-	if current.id == ITEMS_ID then
-		ok = Inventory.interact_slot(current.index, "Use")
-	else
+	-- the item can be gone while the client still has it selected: then only "Cancel" clears it
+	local ok = current.id == ITEMS_ID and Inventory.interact_slot(current.index, "Use")
+	if not ok then
 		local at = Mouse.position()
 		if at == nil then
 			return false

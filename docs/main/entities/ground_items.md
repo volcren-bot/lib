@@ -209,9 +209,9 @@ end
 
 Definition:
 ```luau
-function GroundItems.click(item: GroundItem, button: Mouse.Button?): boolean
+function GroundItems.click(item: GroundItem, button: Mouse.Button?, spam: number?): boolean
 ```
-Hovers the item and clicks it (left button by default).
+Hovers the item and clicks it (left button by default). `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](../interact.md#interactspam_click).
 
 Example:
 ```luau
@@ -228,8 +228,10 @@ end
 
 Definition:
 ```luau
-function GroundItems.interact(item: GroundItem, option: string, walk_timeout_ms: (number | false)?): boolean
+function GroundItems.interact(item: GroundItem, option: string, walk_timeout_ms: (number | false)?, spam: number?): boolean
 ```
+`spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](../interact.md#interactspam_click).
+
 Picks an option (such as `"Take"` or `"Examine"`) on the item. Retries if the wrong thing got clicked, and waits for you to arrive if it made you walk. `false` skips the wait.
 
 Example:

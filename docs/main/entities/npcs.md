@@ -234,9 +234,9 @@ end
 
 Definition:
 ```luau
-function Npcs.click(npc: Npc, button: Mouse.Button?): boolean
+function Npcs.click(npc: Npc, button: Mouse.Button?, spam: number?): boolean
 ```
-Hovers the NPC and clicks it (left button by default).
+Hovers the NPC and clicks it (left button by default). `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](../interact.md#interactspam_click).
 
 Example:
 ```luau
@@ -253,8 +253,10 @@ end
 
 Definition:
 ```luau
-function Npcs.interact(npc: Npc, option: string, walk_timeout_ms: (number | false)?): boolean
+function Npcs.interact(npc: Npc, option: string | { string }, walk_timeout_ms: (number | false)?, spam: number?): boolean
 ```
+`spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](../interact.md#interactspam_click).
+
 Picks an option (such as `"Talk-to"` or `"Attack"`) on this NPC. Retries if the wrong thing got clicked, and waits for you to arrive if it made you walk. `walk_timeout_ms` changes how long it waits; `false` skips the wait.
 
 Example:

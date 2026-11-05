@@ -126,7 +126,7 @@ Definition:
 ```luau
 function Inventory.deselect(): boolean
 ```
-Cancels what waits for a target. A selected inventory item is clicked (using it on itself only cancels it), anything else (a spell, an item of another interface) gets "Cancel" from the menu. Then it waits for the selection to go.
+Cancels what waits for a target. A selected inventory item is clicked (using it on itself only cancels it), anything else (a spell, an item of another interface, a selected item that has since left the inventory) gets "Cancel" from the menu. Then it waits for the selection to go.
 
 Example:
 ```luau

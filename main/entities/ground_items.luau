@@ -147,11 +147,16 @@ function GroundItems.hover_async(item: GroundItem): boolean
 	return Clickbox.hover_async(clickbox_of(item), what(item))
 end
 
-function GroundItems.click(item: GroundItem, button: Mouse.Button?): boolean
-	return Clickbox.click(clickbox_of(item), hovered_by(item), what(item), button, tile_of(item))
+function GroundItems.click(item: GroundItem, button: Mouse.Button?, spam: number?): boolean
+	return Clickbox.click(clickbox_of(item), hovered_by(item), what(item), button, tile_of(item), spam)
 end
 
-function GroundItems.interact(item: GroundItem, option: string, walk_timeout_ms: (number | false)?): boolean
+function GroundItems.interact(
+	item: GroundItem,
+	option: string,
+	walk_timeout_ms: (number | false)?,
+	spam: number?
+): boolean
 	local function owns(entry: MenuEntry): boolean
 		return GroundItems.owns(item, entry)
 	end
@@ -162,7 +167,8 @@ function GroundItems.interact(item: GroundItem, option: string, walk_timeout_ms:
 		option,
 		owns,
 		tile_of(item),
-		walk_timeout_ms
+		walk_timeout_ms,
+		spam
 	)
 end
 

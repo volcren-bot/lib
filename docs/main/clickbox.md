@@ -154,10 +154,11 @@ function Clickbox.click(
 	hovered: () -> boolean,
 	what: string,
 	button: Mouse.Button?,
-	tile: (() -> Tile?)?
+	tile: (() -> Tile?)?,
+	spam: number?
 ): boolean
 ```
-Hovers the thing (see `hover`) and clicks it with the given mouse button (left by default).
+Hovers the thing (see `hover`) and clicks it with the given mouse button (left by default). `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](interact.md#interactspam_click).
 
 Example:
 ```luau
@@ -182,10 +183,11 @@ function Clickbox.interact(
 	option: string,
 	target: Minimenu.Target?,
 	tile: (() -> Tile?)?,
-	walk_timeout_ms: (number | false)?
+	walk_timeout_ms: (number | false)?,
+	spam: number?
 ): boolean
 ```
-Hovers the thing and picks an option on it (like "Talk-to"), then waits until you arrive if it made you walk. If the game clicked something else by mistake it tries again, up to `MISCLICK_ATTEMPTS` times.
+Hovers the thing and picks an option on it (like "Talk-to"), then waits until you arrive if it made you walk. If the game clicked something else by mistake it tries again, up to `MISCLICK_ATTEMPTS` times. `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](interact.md#interactspam_click).
 
 Example:
 ```luau
@@ -279,7 +281,7 @@ function Clickbox.approach(
 	opts: Approach?
 ): boolean
 ```
-Walks to the thing and picks `options` on it (see `Clickbox.interact`), so the player doesn't have to stand near it first. Before the walk the camera turns so the thing shows in the upper half of the screen (`Camera.face`). The walk ends `near` tiles away, where the pick happens as `interact` does. While walking, once the thing is on screen it may be picked straight away (tried again every `EARLY_RETRY_MS`): the client walks the player there and does the option on arrival. With `settle` the pick waits until the walk has stopped, so a thing sliding under the mouse is never picked. If the pick fails, `closer` makes it walk to that many tiles from the thing, stand still, and pick once more. Returns once they've arrived (`arrive_ms`), or right after the pick with `arrive_ms` false. `walk.on_step` or `walk.before_click` returning false stops the walk, and this returns false.
+Walks to the thing and picks `options` on it (see `Clickbox.interact`), so the player doesn't have to stand near it first. Before the walk the camera turns so the thing shows in the upper half of the screen (`Camera.face`). The walk ends `near` tiles away, where the pick happens as `interact` does. While walking, once the thing is on screen it may be picked straight away (tried again every `EARLY_RETRY_MS`): the client walks the player there and does the option on arrival. With `settle` the pick waits until the walk has stopped, so a thing sliding under the mouse is never picked. If the pick fails, `closer` makes it walk to that many tiles from the thing, stand still, and pick once more. Returns once they've arrived (`arrive_ms`), or right after the pick with `arrive_ms` false. `walk.on_step` or `walk.before_click` returning false stops the walk, and this returns false. `opts.spam` is passed to each pick as `spam`.
 
 Example:
 ```luau

@@ -147,11 +147,16 @@ function Players.hover_async(player: PlayerInfo): boolean
 	return Clickbox.hover_async(clickbox_of(player), player.name)
 end
 
-function Players.click(player: PlayerInfo, button: Mouse.Button?): boolean
-	return Clickbox.click(clickbox_of(player), hovered_by(player), player.name, button, tile_of(player))
+function Players.click(player: PlayerInfo, button: Mouse.Button?, spam: number?): boolean
+	return Clickbox.click(clickbox_of(player), hovered_by(player), player.name, button, tile_of(player), spam)
 end
 
-function Players.interact(player: PlayerInfo, option: string, walk_timeout_ms: (number | false)?): boolean
+function Players.interact(
+	player: PlayerInfo,
+	option: string,
+	walk_timeout_ms: (number | false)?,
+	spam: number?
+): boolean
 	local timeout = walk_timeout_ms
 	if timeout == nil and string.lower(option) == "follow" then
 		timeout = false
@@ -166,7 +171,8 @@ function Players.interact(player: PlayerInfo, option: string, walk_timeout_ms: (
 		option,
 		owns,
 		tile_of(player),
-		timeout
+		timeout,
+		spam
 	)
 end
 

@@ -5,6 +5,7 @@ local Log = require("@lib/utils/log")
 local Minimenu = require("@lib/main/interfaces/minimenu")
 local Mouse = require("@lib/utils/input/mouse")
 local Player = require("@lib/main/player")
+local Random = require("@lib/utils/math/random")
 type Target = Mouse.Target
 type MenuClick = Host.MenuClick
 
@@ -13,6 +14,22 @@ local Interact = {}
 Interact.HOVER_TIMEOUT = 600
 -- While walking the scene slides under the mouse, so an option that isn't there soon won't come.
 Interact.WALK_HOVER_TIMEOUT = 100
+
+Interact.SPAM_MAX = 3
+
+-- With probability `chance`, a few more clicks on the same spot, each only while `still` holds and no animation has started.
+function Interact.spam_click(chance: number?, still: () -> boolean, button: Mouse.Button?)
+	if chance == nil or not Random.chance(chance) then
+		return
+	end
+	for _ = 1, Random.trunc(Random.left(1, Interact.SPAM_MAX + 0.999)) do
+		Random.sleep(30, 150, "left")
+		if Player.is_animating() or not still() then
+			return
+		end
+		Mouse.click(nil, button)
+	end
+end
 
 function Interact.wait_option(option: string, target: Minimenu.Target?, timeout_ms: number?): number?
 	local timeout = timeout_ms or Interact.HOVER_TIMEOUT
@@ -38,7 +55,8 @@ function Interact.with(
 	at: Target,
 	option: string,
 	target: Minimenu.Target?,
-	walk_timeout_ms: (number | false)?
+	walk_timeout_ms: (number | false)?,
+	spam: number?
 ): (boolean, MenuClick?)
 	Mouse.move(at)
 	local walking = Player.destination() ~= nil
@@ -64,6 +82,11 @@ function Interact.with(
 			Log.log("Interact", `misclicked: the client did "{Minimenu.text(clicked.entry)}" instead of "{option}"`)
 			return false, clicked
 		end
+	end
+	if index == 1 then
+		Interact.spam_click(spam, function(): boolean
+			return Minimenu.find(option, target) == 1
+		end)
 	end
 	if walk_timeout_ms == false then
 		return true, nil
