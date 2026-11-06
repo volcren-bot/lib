@@ -6,7 +6,9 @@ Equipment layouts: what an `equipment` form field gives a script, checked agains
 local EquipmentLayout = require("@lib/main/equipment_layout")
 ```
 
-The user makes layouts in the loader, on the Equipment tab of the script's page: it reads the worn items from the client, keeps the layouts per script, and the form's `equipment` field picks one (see `Host.form` in [Host](../host.md)). A layout lists every worn items slot once: it wants an item there (`mode = "item"`, by id, as the client held it), nothing there (`empty`) or doesn't care (`any`). The script never has to guess an id. Some items are worn under another id than they are held in the inventory and the bank (graceful pieces: 13624 worn, 13623 held), so the inventory and the bank are searched by the slot's id or its name.
+The user makes layouts in the loader, on the Equipment tab of the script's page: it reads the worn items from the client, keeps the layouts per script, and the form's `equipment` field picks one (see `Host.form` in [Host](../host.md)). A layout lists every worn items slot once: it wants an item there (`mode = "item"`, by its `ids`, as the client held it), nothing there (`empty`) or doesn't care (`any`). The script never has to guess an id. Some items are worn under another id than they are held in the inventory and the bank (graceful pieces: 13624 worn, 13623 held), so the inventory and the bank are searched by the slot's ids or its name. A dose or charge item counts by its accepted `doses` (an `Amulet of glory(6)` slot accepting 6 to 2 is happy with `Amulet of glory(3)`) and the bank takes them in that order; see [LayoutItem](layout_item.md). A worn stack (ammo) wants at least its `min`, and is topped up to its `max`; one over its `max` stays worn, since only all of it can be taken off.
+
+A field's `required` items, each with its `slot`, are in every layout the user makes, padlocked: they replace whatever the user's layout had in that slot, can't be changed, and come with `locked = true`.
 
 ```luau
 local Host = require("@lib/host")
@@ -14,7 +16,10 @@ local EquipmentLayout = require("@lib/main/equipment_layout")
 
 local values = Host.form({
 	title = "Slayer",
-	fields = { { id = "equipment", kind = "equipment", label = "Equipment" } },
+	fields = {
+		-- a charged glory in the amulet slot, the most charges first
+		{ id = "equipment", kind = "equipment", label = "Equipment", required = { { ids = { 11978 }, slot = 2, doses = { 6, 5, 4, 3, 2, 1 } } } },
+	},
 })
 local layout = values and values.equipment
 if layout and not EquipmentLayout.prepare(layout) then
@@ -46,7 +51,7 @@ Definition:
 export type Layout = Host.EquipmentLayout
 export type Slot = Host.EquipmentLayoutSlot
 ```
-A layout is `{ name, slots, spell? }`; a slot is `{ slot, mode, id?, quantity?, name?, stackable? }`, the item fields set when `mode` is `"item"`; the spell is `{ key, name, book, level, autocast }`.
+A layout is `{ name, slots, spell? }`; a slot is `{ slot, mode }` plus a `LayoutItem`'s fields (`id`, `ids`, `name`, `stackable`, `min`, `max`, `doses`, `locked`) when `mode` is `"item"`; the spell is `{ key, name, book, level, autocast }`.
 
 ## EquipmentLayout.from_client
 
@@ -54,7 +59,7 @@ Definition:
 ```luau
 function EquipmentLayout.from_client(name: string?): Layout?
 ```
-A layout of what is worn now: every slot its item, or `empty`, and `any` for a secondary ammo slot nothing gives. Nil when the worn items can't be read. `stackable` is only known for a stack of more than one, which is all the bank needs.
+A layout of what is worn now: every slot its item, or `empty`, and `any` for a secondary ammo slot nothing gives. Nil when the worn items can't be read. `stackable` is only known for a stack of more than one, which wants exactly what is worn.
 
 ## EquipmentLayout.matches
 
@@ -62,7 +67,7 @@ Definition:
 ```luau
 function EquipmentLayout.matches(layout: Layout): boolean?
 ```
-Whether every slot of the layout holds: its item worn (by id, the quantity of ammo doesn't count), or nothing worn where it wants nothing. A secondary ammo slot that doesn't count is ignored. Nil when the worn items can't be read.
+Whether every slot of the layout holds: its item worn (anything that counts as it, a stack at least its `min`), or nothing worn where it wants nothing. A secondary ammo slot that doesn't count is ignored. Nil when the worn items can't be read.
 
 ## EquipmentLayout.missing
 
@@ -70,7 +75,7 @@ Definition:
 ```luau
 function EquipmentLayout.missing(layout: Layout): { Slot }
 ```
-The slots whose item is neither worn (the other ammo slot counts, being a swap away) nor in the inventory: what has to come out of the bank. A secondary ammo slot that doesn't count isn't listed. Bolts stored in the pouch's other rows aren't looked at.
+The slots whose item is neither worn (the other ammo slot counts, being a swap away) nor in the inventory, or whose stack is under its `min` with what is worn and carried together: what has to come out of the bank. A secondary ammo slot that doesn't count isn't listed. Bolts stored in the pouch's other rows aren't looked at.
 
 ## EquipmentLayout.withdraw
 
@@ -78,7 +83,7 @@ Definition:
 ```luau
 function EquipmentLayout.withdraw(layout: Layout): boolean
 ```
-With the bank open, withdraws each missing item (a stack's whole quantity, else one). True when none is missing afterwards. The items wait in the inventory for `equip`, so wear them before `InventoryLayout.withdraw`, which deposits whatever its layout doesn't list.
+With the bank open, withdraws each missing item: a stack up to its `max` with what is worn and carried (all the bank has when both ends are 0), else one of the first of its items the bank has. True when none is missing afterwards. The items wait in the inventory for `equip`, so wear them before `InventoryLayout.withdraw`, which deposits whatever its layout doesn't list.
 
 ## EquipmentLayout.equip
 
@@ -86,7 +91,7 @@ Definition:
 ```luau
 function EquipmentLayout.equip(layout: Layout): boolean
 ```
-Wears each of the layout's items from the inventory, then takes off what is worn where the layout wants nothing. The items are clicked in the order `Inventory.pattern` gives (starting by the mouse) with no wait between them, through the async mouse queue, so a swap has no misses or idling either; it then waits up to `CONFIRM_MS` for them to show as worn and clicks again whatever didn't change, `WEAR_ATTEMPTS` rounds at most. It blocks until the swap is done. The bank must be closed, since a click in the inventory would deposit. True when the layout matches afterwards. An item that isn't in the inventory, or no room to take something off, fails it.
+Wears each of the layout's items from the inventory (of its items, the first one carried), then takes off what is worn where the layout wants nothing. The items are clicked in the order `Inventory.pattern` gives (starting by the mouse) with no wait between them, through the async mouse queue, so a swap has no misses or idling either; it then waits up to `CONFIRM_MS` for them to show as worn and clicks again whatever didn't change, `WEAR_ATTEMPTS` rounds at most. It blocks until the swap is done. The bank must be closed, since a click in the inventory would deposit. True when the layout matches afterwards. An item that isn't in the inventory, or no room to take something off, fails it.
 
 With the secondary ammo slot in play the ammo comes last, because an item only reaches that slot through the worn ammo slot: it is worn, then swapped across (`Wornitems.swap_ammo`), which leaves the slot's old ammo worn, and the ammo slot's own item replaces that.
 

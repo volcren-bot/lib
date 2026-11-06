@@ -1,6 +1,6 @@
 --!strict
 -- Equipment layouts: what an `equipment` form field gives a script (the user reads them from the client in the loader), checked against and put on with the worn items, the inventory and the bank.
--- A slot wants an item (by id), nothing (`empty`) or doesn't care (`any`). Nothing here guesses an id: an item is the id the client holds, found in the inventory and the bank by that id or by its name, since some items are worn under another id than they are held (graceful pieces).
+-- A slot wants an item (by its ids, or a dose or charge item by its accepted doses), nothing (`empty`) or doesn't care (`any`). Nothing here guesses an id: an item is the id the client holds, found in the inventory and the bank by its ids or by its name, since some items are worn under another id than they are held (graceful pieces). A worn stack (ammo) wants at least its `min`; a worn stack over its `max` stays, since only all of it can be taken off.
 -- The secondary ammo slot only exists with a bolt pouch or Dizana's quiver, which a layout can't promise, so without one (or when a pouch can't store the item) the slot is ignored.
 local Host = require("@lib/host")
 local sleep = Host.sleep
@@ -12,6 +12,7 @@ local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 local Combat = require("@lib/main/interfaces/gametabs/combat")
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 local Item = require("@lib/utils/item")
+local LayoutItems = require("@lib/main/layout_item")
 local Log = require("@lib/utils/log")
 local Magic = require("@lib/main/interfaces/gametabs/magic")
 local Mouse = require("@lib/utils/input/mouse")
@@ -94,19 +95,30 @@ local function counts(slot: Slot, holder: Wornitems.SecondaryHolder?): boolean
 	return slot.mode ~= "item" or Wornitems.secondary_ammo_accepts(holder, slot.id :: number)
 end
 
--- What to look for in the inventory or the bank for a slot's item: its id, or its name, since some items are worn under another id than they are held (graceful pieces).
+-- What to look for in the inventory or the bank for a slot's item, in the order to take it: its accepted doses by name, else its ids and then its name, since some items are worn under another id than they are held (graceful pieces).
 local function wanted(slot: Slot): { Item.Item }
-	local items: { Item.Item } = { slot.id :: number }
-	if slot.name and slot.name ~= "" then
+	local items = LayoutItems.items(slot)
+	if slot.doses == nil and slot.name and slot.name ~= "" then
 		table.insert(items, slot.name)
 	end
 	return items
 end
 
+-- The first inventory slot holding the slot's item, taking its items in order.
+local function carried_at(slot: Slot): number?
+	for _, item in ipairs(wanted(slot)) do
+		local at = Inventory.index_of(item)
+		if at then
+			return at
+		end
+	end
+	return nil
+end
+
 local function label(slot: Slot): string
 	local name = Wornitems.slot_name(slot.slot) or tostring(slot.slot)
 	if slot.mode == "item" then
-		return `{name}: {slot.name or slot.id}`
+		return `{name}: {if slot.name and slot.name ~= "" then slot.name else slot.id}`
 	end
 	return `{name}: {slot.mode}`
 end
@@ -132,13 +144,18 @@ function EquipmentLayout.from_client(name: string?): Layout?
 		local item = worn[slot]
 		if item then
 			named += 1
+			local stackable = item.quantity > 1
+			local amount = if stackable then item.quantity else 1
 			table.insert(slots, {
 				slot = slot,
 				mode = "item" :: "item",
 				id = item.id,
-				quantity = item.quantity,
+				ids = { item.id },
 				name = if names then names[named] else nil,
-				stackable = item.quantity > 1,
+				stackable = stackable,
+				min = amount,
+				max = amount,
+				locked = false,
 			})
 		elseif slot == Wornitems.SECONDARY_AMMO and holder == nil then
 			table.insert(slots, { slot = slot, mode = "any" :: "any" })
@@ -149,17 +166,20 @@ function EquipmentLayout.from_client(name: string?): Layout?
 	return { name = name or "From client", slots = slots }
 end
 
--- Whether a slot's rule holds for what is worn in it.
+-- Whether a slot's rule holds for what is worn in it: its item, and a stack at least its `min`.
 local function slot_matches(slot: Slot, worn: ItemSlot?): boolean
 	if slot.mode == "any" then
 		return true
 	elseif slot.mode == "empty" then
 		return worn == nil
 	end
-	return worn ~= nil and worn.id == slot.id
+	if worn == nil or not LayoutItems.counts_as(slot, worn.id, nil) then
+		return false
+	end
+	return not slot.stackable or worn.quantity >= (slot.min or 0)
 end
 
--- Whether every slot of the layout holds: its item worn (by id), or nothing worn where it wants nothing. A secondary ammo slot that doesn't count is ignored. Nil when the worn items can't be read.
+-- Whether every slot of the layout holds: its item worn (a stack at least its `min`), or nothing worn where it wants nothing. A secondary ammo slot that doesn't count is ignored. Nil when the worn items can't be read.
 function EquipmentLayout.matches(layout: Layout): boolean?
 	local worn = worn_by_slot()
 	if worn == nil then
@@ -181,37 +201,63 @@ local function in_other_ammo_slot(slot: Slot, worn: { [number]: ItemSlot }): boo
 		elseif slot.slot == Wornitems.SECONDARY_AMMO then Wornitems.AMMO
 		else nil
 	local item = if other then worn[other] else nil
-	return item ~= nil and item.id == slot.id
+	return item ~= nil and LayoutItems.counts_as(slot, item.id, nil)
 end
 
--- The slots whose item is neither worn nor in the inventory: what has to come out of the bank. A secondary ammo slot that doesn't count isn't listed.
+-- How much of a slot's stack the player has: worn there and carried.
+local function stack_held(slot: Slot, worn: { [number]: ItemSlot }): number
+	local on = worn[slot.slot]
+	local wearing = if on and LayoutItems.counts_as(slot, on.id, nil) then on.quantity else 0
+	return wearing + (Inventory.count_ex(wanted(slot)) or 0)
+end
+
+-- Whether the worn items and the inventory fall short of a slot: its item is in neither, or a stack is under its `min` with both.
+local function short(slot: Slot, worn: { [number]: ItemSlot }): boolean
+	if slot.stackable then
+		return not in_other_ammo_slot(slot, worn) and LayoutItems.top_up(slot, stack_held(slot, worn)) ~= nil
+	end
+	return not slot_matches(slot, worn[slot.slot])
+		and not in_other_ammo_slot(slot, worn)
+		and not Inventory.contains_any(wanted(slot))
+end
+
+-- The slots whose item is neither worn nor in the inventory, or whose stack is under its `min` with both: what has to come out of the bank. A secondary ammo slot that doesn't count isn't listed.
 function EquipmentLayout.missing(layout: Layout): { Slot }
 	local worn = worn_by_slot() or {}
 	local holder = secondary_holder(layout)
 	local missing: { Slot } = {}
 	for _, slot in ipairs(layout.slots) do
-		if
-			slot.mode == "item"
-			and counts(slot, holder)
-			and not slot_matches(slot, worn[slot.slot])
-			and not in_other_ammo_slot(slot, worn)
-			and not Inventory.contains_any(wanted(slot))
-		then
+		if slot.mode == "item" and counts(slot, holder) and short(slot, worn) then
 			table.insert(missing, slot)
 		end
 	end
 	return missing
 end
 
--- With the bank open, withdraws each missing item (a stack's whole quantity, else one). True when none is missing afterwards.
+-- Takes a missing slot's item out of the bank: a stack up to its `max` (all of it for any amount), else one, of the first of its items the bank has.
+local function take(slot: Slot, worn: { [number]: ItemSlot }): boolean
+	local items = wanted(slot)
+	if slot.stackable then
+		local amount = LayoutItems.top_up(slot, stack_held(slot, worn))
+		return amount == nil or Bankmain.withdraw(items, amount, false)
+	end
+	for _, item in ipairs(items) do
+		if (Bankmain.count_ex(item) or 0) > 0 then
+			return Bankmain.withdraw(item, 1, false)
+		end
+	end
+	return false
+end
+
+-- With the bank open, withdraws what each missing slot needs. True when none is missing afterwards.
 function EquipmentLayout.withdraw(layout: Layout): boolean
 	if not Bankmain.is_open() then
 		Log.log("EquipmentLayout", "withdraw: the bank isn't open")
 		return false
 	end
+	local worn = worn_by_slot() or {}
 	for _, slot in ipairs(EquipmentLayout.missing(layout)) do
-		local amount = if slot.stackable then slot.quantity else 1
-		if not Bankmain.withdraw(wanted(slot), amount, false) then
+		if not take(slot, worn) then
 			Log.log("EquipmentLayout", `withdraw: couldn't take {label(slot)}`)
 			return false
 		end
@@ -297,7 +343,7 @@ local function wear_items(layout: Layout, skip: { [number]: boolean }): boolean
 				Log.log("EquipmentLayout", `equip: couldn't wear {label(slot)}`)
 				return false
 			end
-			local at = Inventory.index_of(wanted(slot))
+			local at = carried_at(slot)
 			if at == nil then
 				Log.log("EquipmentLayout", `equip: {label(slot)} isn't in the inventory`)
 				return false
@@ -361,7 +407,7 @@ local function settle_ammo(layout: Layout): boolean
 			elseif secondary.mode == "item" then
 				local ammo: Slot = { slot = Wornitems.AMMO, mode = "item", id = secondary.id }
 				if not slot_matches(ammo, worn[Wornitems.AMMO]) then
-					local at = Inventory.index_of(wanted(secondary))
+					local at = carried_at(secondary)
 					if at == nil then
 						Log.log("EquipmentLayout", `equip: {label(secondary)} isn't in the inventory`)
 						return false

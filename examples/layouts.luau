@@ -1,7 +1,8 @@
 --!strict
 -- Asks for an equipment, an inventory and a prayer layout, which adds Equipment, Inventory and Prayer tabs to the script's page in the loader.
 -- Make a layout there (Read from client, Save), pick it in Settings, then press Start: the script says what it got, and if a layout
--- isn't matched yet it goes to the bank for it, equips it and puts the inventory in order.
+-- isn't matched yet it goes to the bank for it, equips it and puts the inventory in order. The inventory field requires a prayer potion
+-- (4 or 3 doses) and the prayer field keeps Protect from Melee for the script: the loader padlocks both.
 local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 local EquipmentLayout = require("@lib/main/equipment_layout")
 local Host = require("@lib/host")
@@ -14,8 +15,13 @@ local values = Host.form({
 	fields = {
 		{ kind = "label", text = "Pick the layouts to use. Make them in the Equipment and Inventory tabs." },
 		{ id = "equipment", kind = "equipment", label = "Equipment" },
-		{ id = "inventory", kind = "inventory", label = "Inventory" },
-		{ id = "prayers", kind = "prayer", label = "Prayers" },
+		{
+			id = "inventory",
+			kind = "inventory",
+			label = "Inventory",
+			required = { { ids = { 2434 }, slot = 0, doses = { 4, 3 } } },
+		},
+		{ id = "prayers", kind = "prayer", label = "Prayers", locked = { "protect_from_melee" } },
 		{ id = "act", kind = "check", label = "Go to the bank and get them", default = true },
 		{
 			id = "quick",
@@ -33,11 +39,32 @@ local equipment: EquipmentLayout.Layout? = values.equipment
 local inventory: InventoryLayout.Layout? = values.inventory
 local prayers: PrayerLayout.Layout? = values.prayers
 
+-- What a layout item asks for: a stack's range, the doses that count and whether the script requires it.
+local function wants(
+	item: { stackable: boolean?, min: number?, max: number?, doses: { number }?, locked: boolean? }
+): string
+	local parts: { string } = {}
+	if item.stackable then
+		local min, max = item.min or 0, item.max or 0
+		table.insert(
+			parts,
+			if min == 0 and max == 0 then "any amount" elseif min == max then `x{min}` else `{min} to {max}`
+		)
+	end
+	if item.doses then
+		table.insert(parts, `doses {table.concat(item.doses, ", ")}`)
+	end
+	if item.locked then
+		table.insert(parts, "required")
+	end
+	return table.concat(parts, ", ")
+end
+
 if equipment then
 	print(`equipment layout "{equipment.name}":`)
 	for _, slot in ipairs(equipment.slots) do
 		if slot.mode == "item" then
-			print(`  slot {slot.slot}: {slot.name} (id {slot.id}) x{slot.quantity}`)
+			print(`  slot {slot.slot}: {slot.name} (id {slot.id}) {wants(slot)}`)
 		else
 			print(`  slot {slot.slot}: {slot.mode}`)
 		end
@@ -57,10 +84,10 @@ end
 if inventory then
 	print(`inventory layout "{inventory.name}":`)
 	for _, slot in ipairs(inventory.slots) do
-		print(`  slot {slot.slot}: {slot.name} (id {slot.id}) x{slot.quantity}`)
+		print(`  slot {slot.slot}: {slot.name} (id {slot.id}) {wants(slot)}`)
 	end
 	for _, rune in ipairs(inventory.pouch or {}) do
-		print(`  pouch: {rune.name} x{rune.quantity}`)
+		print(`  pouch: {rune.name} {wants(rune)}`)
 	end
 	print("  held now:", InventoryLayout.matches(inventory))
 else
@@ -69,6 +96,7 @@ end
 
 if prayers then
 	print(`prayer layout "{prayers.name}": {table.concat(prayers.prayers, ", ")}`)
+	print(`  the script's: {table.concat(prayers.locked or {}, ", ")}`)
 	print("  on now:", PrayerLayout.is_active(prayers), "quick prayers:", PrayerLayout.is_quick(prayers))
 	if values.quick then
 		print("  set as quick prayers:", PrayerLayout.set_quick(prayers))

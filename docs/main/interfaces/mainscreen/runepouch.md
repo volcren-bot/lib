@@ -31,9 +31,11 @@ The components, each with a child per slot by index; the pouches as the inventor
 
 Definition:
 ```luau
-export type Rune = Host.LayoutItem
+export type Rune = { id: number, name: string, quantity: number }
 export type Amount = number | "All"
 ```
+
+A rune in the pouch and how many of it.
 
 ## Runepouch.held
 

@@ -6,7 +6,6 @@ local sleep = Host.sleep
 local time = Host.time
 local varbit = Host.varbit
 local widget_children = Host.widget_children
-type LayoutItem = Host.LayoutItem
 type Widget = Host.Widget
 local Interact = require("@lib/main/interact")
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
@@ -15,7 +14,8 @@ local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 local Runepouch = {}
 
-export type Rune = LayoutItem
+-- A rune in the pouch and how many of it.
+export type Rune = { id: number, name: string, quantity: number }
 export type Amount = number | "All"
 
 Runepouch.GROUP = 190
@@ -86,7 +86,7 @@ function Runepouch.runes(): { Rune }?
 		end
 		local id = by_index[index]
 		if id and amount > 0 then
-			table.insert(held, { id = id, quantity = amount, name = "", stackable = true })
+			table.insert(held, { id = id, quantity = amount, name = "" })
 			table.insert(ids, id)
 		end
 	end
