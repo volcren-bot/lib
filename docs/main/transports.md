@@ -72,7 +72,7 @@ Nil when walking is possible and no transport saves `MIN_SAVING_TICKS`, when non
 
 Usable means the row's varbit tests hold, its skills, quests and items are met (items count in the inventory or worn), and for a spell the game says it can be cast. A transport that failed in the last `RETRY_AFTER_MS` is out.
 
-**The Wilderness.** A trip never goes from safety into the Wilderness unless a script asks, with `options.wilderness = true` for one plan or `Transports.WILDERNESS = true` for all of them. From outside, nothing that starts or ends in it is chosen, except a trip that lands in the Ferox Enclave when the goal is inside it too (`Transports.in_ferox`): that's how Clan Wars and Last Man Standing are reached. The Enclave is safe, and with the goal inside, no walk through the Wilderness follows. Its bounds are approximate. Once you are in it, a trip that leaves it or stays inside it is fine, but walking out to a start in safety that leads back in isn't. A goal in the Wilderness doesn't count as asking: the walk there is on foot. The player's own house is left out: the data puts it where "Teleport to House" lands, a stand-in for an instance somewhere else. Fares are not weighed against time.
+**The Wilderness.** A trip never goes from safety into the Wilderness unless a script asks, with `options.wilderness = true` for one plan or `Transports.WILDERNESS = true` for all of them. From outside, nothing that starts or ends in it is chosen, except a trip that lands in the Ferox Enclave when the goal is inside it too (`Ferox.contains`): that's how Clan Wars and Last Man Standing are reached. The Enclave is safe, and with the goal inside, no walk through the Wilderness follows. Its bounds are approximate. Once you are in it, a trip that leaves it or stays inside it is fine, but walking out to a start in safety that leads back in isn't. A goal in the Wilderness doesn't count as asking: the walk there is on foot. The player's own house is left out: the data puts it where "Teleport to House" lands, a stand-in for an instance somewhere else. Fares are not weighed against time.
 
 `options.exclude` names what never to use: a spell's or item's name, a charter's or ride's label, a minigame's activity (`Castle Wars`), or a group: `spells`, `minigames`, `items`, `charter`, `ride`, `canoes`, `portals`, `house`, `gates`, `levers`, `passages`, or a network's kind (`fairy_rings`).
 
@@ -254,7 +254,7 @@ function Transports.house(choice: Choice): (boolean, boolean?)
 ```
 Takes a trip from inside the player's house, by its Portal Nexus, its jewellery box or something mounted on its walls (`Mounted`; the data's `teleportation_portals_poh` and `teleportation_boxes`). A house's layout can change, so the data's single tile stands for the whole house (`House.TILE`): a tablet, a spell or the home portal arrives there, and the furniture is found by name in that visit's scene, on any floor.
 
-**What is built.** It can only be seen from inside, so `choose` looks around whenever the player is in a house (`House.survey`), and from then on in that run what it saw decides, even from outside. Before the first visit of a run, the variables say what's likely for the Nexus and the box (`House.NEXUS_VARBIT`, `House.BOX_VARBIT`). Nothing can say it for the mounted pieces, the fairy ring or the spirit tree, so they count as not met until a visit shows them and no teleport is spent to find out. A teleport that turns out not to be there is left out for the rest of the run, and so is furniture that isn't built, and the walk plans again from inside the house. The way out is `Transports.house_exit`, so a walk never gets stuck in there. The second result is true when trying again is pointless.
+**What is built.** A trip counts when `House.offers` names its furniture for its place. The variables say what the Nexus holds by name and how big the box is (fancy and ornate; a basic box reads like none until a visit), from anywhere. The rest can only be seen from inside, so `choose` looks around whenever the player is in a house (`House.survey`), and from then on in that run what it saw decides, even from outside: the mounted pieces, the fairy ring and the spirit tree count as not met until a visit shows them, and no teleport is spent to find out. The trip runs by `House.start_teleport`. A teleport that turns out not to be there is left out for the rest of the run, and the walk plans again from inside the house. The way out is `Transports.house_exit`, so a walk never gets stuck in there. The second result is true when trying again is pointless.
 
 **The fairy rings and spirit trees** take the house as one more stop, once a visit has shown one (`furniture` on the network, run by `Transports.hub`): out of it, and in by code DIQ or "Your house". A Spiritual Fairy Tree counts as both.
 
@@ -312,21 +312,6 @@ Example:
 local Transports = require("@lib/main/transports")
 
 print(Transports.wear_for_climb({ x = 2866, y = 3428, plane = 0 }, { x = 2869, y = 3428, plane = 0 }, "Grapple"))
-```
-
-## Transports.in_ferox
-
-Definition:
-```luau
-function Transports.in_ferox(x: number, y: number): boolean
-```
-Whether a tile is in the Ferox Enclave, by approximate bounds.
-
-Example:
-```luau
-local Transports = require("@lib/main/transports")
-
-print(Transports.in_ferox(3150, 3635))
 ```
 
 ## Transports.is_enabled
@@ -452,6 +437,21 @@ local choice = Transports.choose(here, goal)
 if choice and choice.kind == "item" then
 	print(Transports.use(choice))
 end
+```
+
+## Transports.teleport_item
+
+Definition:
+```luau
+function Transports.teleport_item(name: string): (boolean, boolean?)
+```
+Uses the teleport item of the data's row called `name` ("Ring of dueling: Ferox Enclave"), held or worn, without planning, and waits to land, as `Transports.use_item` does. For a script that wants one trip rather than the fastest one. False when the data has no such row or the trip didn't work; the second result is true when trying again is pointless (no such row, the item isn't held, the destination isn't offered).
+
+Example:
+```luau
+local Transports = require("@lib/main/transports")
+
+print(Transports.teleport_item("Ring of dueling: Ferox Enclave"))
 ```
 
 ## Transports.whistle

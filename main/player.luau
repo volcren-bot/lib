@@ -298,6 +298,33 @@ function Player.in_combat(): boolean
 	return Player.attacking() ~= nil or Player.is_attacked()
 end
 
+-- Runs `drink` (a click on a pool, say) and waits up to `timeout_ms` for it to take: hitpoints, prayer or run energy going up, or all of them full. False and why.
+function Player.restore_with(drink: () -> boolean, timeout_ms: number): (boolean, string?)
+	local function levels(): (number, number, number)
+		return Player.hitpoints() or 0, Player.prayer() or 0, Player.run_energy() or 0
+	end
+	local function full(): boolean
+		local hp, max_hp = Player.hitpoints()
+		local prayer, max_prayer = Player.prayer()
+		return hp == max_hp and prayer == max_prayer and (Player.run_energy() or 0) >= 100
+	end
+	local hp, prayer, run = levels()
+	if not drink() then
+		return false, "couldn't drink from it"
+	end
+	local deadline = time() + timeout_ms
+	while true do
+		local h, p, r = levels()
+		if h > hp or p > prayer or r > run or full() then
+			return true, nil
+		end
+		if time() >= deadline then
+			return false, "it didn't restore anything"
+		end
+		sleep(100)
+	end
+end
+
 function Player.is_animating(): boolean
 	local id = Player.animation()
 	return id ~= nil and id ~= -1

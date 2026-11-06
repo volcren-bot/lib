@@ -6,7 +6,7 @@ The Portal Nexus in a player's house (group 17, `telenexus_teleport` in the cach
 local Nexus = require("@lib/main/interfaces/mainscreen/nexus")
 ```
 
-Each row is like `B :  Marim`, and its letter is also its key. The list's names are short ("Fenken' Castle"), so `find` is loose. The rows scroll in a view far shorter than the list, and below the view a click would land on the floor, so `select` scrolls first and only clicks once the menu offers that row. What a Nexus holds is only known by opening it: `poh_nexus_tele_1` and on (varbit 6654 and on) say it has teleports, not which by name.
+Each row is like `B :  Marim`, and its letter is also its key. The list's names are short ("Fenken' Castle"), so `find` is loose. The rows scroll in a view far shorter than the list, and below the view a click would land on the floor, so `select` scrolls first and only clicks once the menu offers that row. What a Nexus holds can be read without opening it: `House.nexus_teleports`.
 
 ## Nexus.is_open
 
@@ -61,7 +61,7 @@ Definition:
 ```luau
 function Nexus.find(name: string): Destination?
 ```
-The teleport called `name`: the exact name, else one that starts with the other, else a list name whose first word starts the wanted one's.
+The teleport called `name` in the open list: the exact name, else the same place by `House.same_place` ("Fenken' Castle" for "Fenkenstrain's Castle").
 
 Example:
 ```luau

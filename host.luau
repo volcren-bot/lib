@@ -844,6 +844,8 @@ return {
 	-- host API 14
 	player_hitsplats = g.player_hitsplats :: (indices: { number }) -> { [number]: { Hitsplat } }?,
 	client_cycle = g.client_cycle :: () -> number?,
+	-- whether each item stacks in the inventory, in the order given (nil for an id the cache doesn't know)
+	item_stackable = g.item_stackable :: (ids: { number }) -> { boolean? }?,
 	locs = g.locs :: (plane: number?) -> { Loc }?,
 	-- how each object id looks to the player now (see `LocView`), in the order given; nil when the cache can't be read
 	loc_shown = g.loc_shown :: (ids: { number }) -> { LocView }?,

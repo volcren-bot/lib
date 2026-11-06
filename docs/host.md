@@ -754,6 +754,21 @@ Host.sleep(1000)
 print(assert(Host.client_cycle()) - a) -- about 50
 ```
 
+## Host.item_stackable
+
+Definition:
+```luau
+Host.item_stackable: (ids: { number }) -> { boolean? }?
+```
+Whether each item stacks in the inventory (coins, runes, noted items), read from the game cache, in the order of `ids`; `nil` for an id the cache doesn't know. Host API 14.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+print((Host.item_stackable({ 995, 1127 }) or {})[1]) -- coins: true
+```
+
 ## Host.locs
 
 Definition:

@@ -416,6 +416,27 @@ if not Player.in_combat() then
 end
 ```
 
+## Player.restore_with
+
+Definition:
+```luau
+function Player.restore_with(drink: () -> boolean, timeout_ms: number): (boolean, string?)
+```
+Runs `drink`, a click that restores the player such as a pool's "Drink", and waits up to `timeout_ms` for it to take: hitpoints, prayer or run energy going up, or all of them already full. False and why. `House.restore` and `Ferox.restore` use it.
+
+Example:
+```luau
+local Objects = require("@lib/main/entities/objects")
+local Player = require("@lib/main/player")
+
+local pool = Objects.nearest("Pool of Refreshment", assert(Player.position()))
+if pool then
+	print(Player.restore_with(function()
+		return Objects.approach(pool, "Drink")
+	end, 10000))
+end
+```
+
 ## Player.is_animating
 
 Definition:

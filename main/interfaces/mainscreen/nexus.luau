@@ -1,5 +1,5 @@
 --!strict
--- The Portal Nexus in a player's house (group 17, `telenexus_teleport` in the cache): up to 33 teleports in two lists, opened by "Teleport Menu". The list's names are short ("Fenken' Castle"), so `find` is loose.
+-- The Portal Nexus in a player's house (group 17, `telenexus_teleport` in the cache): up to 33 teleports in two lists, opened by "Teleport Menu". The list's names are short ("Fenken' Castle"), so `find` is loose. What it holds can be read without opening it: `House.nexus_teleports`.
 -- The rows scroll in a view far shorter than the list, and below the view a click would land on the floor, so a row is scrolled to first and only clicked once the menu offers it. Each list's rows are text, and the component after it holds the rows' clickable areas, by the same index.
 local Host = require("@lib/host")
 local menu = Host.menu
@@ -103,29 +103,16 @@ function Nexus.destinations(): { Destination }?
 	return found
 end
 
-local function plain(text: string): string
-	return (string.gsub(string.lower(text), "[^%w ]", ""))
-end
-
--- The teleport called `name`: the exact name, else one that starts with the other, else a list name whose first word starts the wanted one's ("Fenken' Castle" for "Fenkenstrain's Castle").
+-- The teleport called `name`: the exact name, else the same place by `House.same_place` ("Fenken' Castle" for "Fenkenstrain's Castle").
 function Nexus.find(name: string): Destination?
 	local all = Nexus.destinations() or {}
-	local wanted = plain(name)
 	for _, d in ipairs(all) do
-		if plain(d.name) == wanted then
+		if string.lower(d.name) == string.lower(name) then
 			return d
 		end
 	end
 	for _, d in ipairs(all) do
-		local have = plain(d.name)
-		if string.sub(have, 1, #wanted) == wanted or string.sub(wanted, 1, #have) == have then
-			return d
-		end
-	end
-	local first = string.match(wanted, "^%S+") or wanted
-	for _, d in ipairs(all) do
-		local head = string.match(plain(d.name), "^%S+") or ""
-		if #head >= 4 and string.sub(first, 1, #head) == head then
+		if House.same_place(d.name, name) then
 			return d
 		end
 	end

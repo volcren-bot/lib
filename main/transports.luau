@@ -4,6 +4,7 @@ local Host = require("@lib/host")
 local sleep = Host.sleep
 local time = Host.time
 local Chartering = require("@lib/main/interfaces/mainscreen/chartering")
+local Ferox = require("@lib/main/ferox")
 local GameState = require("@lib/main/game_state")
 local Log = require("@lib/utils/log")
 local Random = require("@lib/utils/math/random")
@@ -237,10 +238,6 @@ function Transports.split(name: string): (string, string?)
 end
 
 -- The wilderness level of a tile, 0 outside it.
--- Whether a tile is in the Ferox Enclave: inside the Wilderness's bounds, but a safe zone with no fighting.
-function Transports.in_ferox(x: number, y: number): boolean
-	return x >= 3123 and x <= 3155 and y >= 3618 and y <= 3639
-end
 
 function Transports.wilderness_level(x: number, y: number): number
 	if x >= 2944 and x < 3392 then
@@ -780,11 +777,7 @@ local function wild_allowed(o: Host.TransportTile?, to: Host.TransportTile, c: C
 		return true
 	end
 	-- going to Clan Wars or Last Man Standing: the Enclave is safe, and with the goal inside it no walk through the Wilderness follows
-	if
-		c.goal_in_ferox
-		and Transports.in_ferox(to.x, to.y)
-		and (o == nil or Transports.wilderness_level(o.x, o.y) == 0)
-	then
+	if c.goal_in_ferox and Ferox.contains(to.x, to.y) and (o == nil or Transports.wilderness_level(o.x, o.y) == 0) then
 		return true
 	end
 	local to_wild = Transports.wilderness_level(to.x, to.y) > 0
@@ -1091,22 +1084,13 @@ local FAMILIES: { Family } = {
 				option = label,
 			}
 		end,
-		-- what is built can only be seen from inside. Until a visit has shown it, the variables say what is likely for the Nexus and the box, and nothing says it for the rest
+		-- the variables say what the Nexus and the box offer, and a visit shows what is mounted (`House.offers`)
 		usable = function(route: Route, c: Check): boolean
-			local House = lib("@lib/main/house")
-			local built = House.seen(route.spell)
-			if built == nil then
-				local varbit = if route.spell == "box"
-					then House.BOX_VARBIT
-					elseif route.spell == "nexus" then House.NEXUS_VARBIT
-					else nil
-				built = varbit ~= nil and (Host.varbit(varbit) or 0) ~= 0
+			local offered = false
+			for _, by in ipairs(lib("@lib/main/house").offers(route.option :: string)) do
+				offered = offered or by == route.spell
 			end
-			return built == true
-				and safe(route.transport, c)
-				and row_ok(route.transport, c)
-				and not house_missing[route.spell]
-				and not house_missing[route.id]
+			return offered and safe(route.transport, c) and row_ok(route.transport, c) and not house_missing[route.id]
 		end,
 	},
 	{
@@ -1768,7 +1752,7 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 	local plane = goal.plane or from.plane or 0
 	local into_wild = if opts.wilderness ~= nil then opts.wilderness else Transports.WILDERNESS
 	local check = new_check(from, into_wild)
-	check.goal_in_ferox = Transports.in_ferox(goal.x, goal.y)
+	check.goal_in_ferox = Ferox.contains(goal.x, goal.y)
 	local off = turned_off()
 
 	local nodes: { Node } = {}
@@ -2917,6 +2901,27 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 	return false
 end
 
+-- Uses the teleport item of the data's row with this name ("Ring of dueling: Ferox Enclave") without planning, and waits to land
+-- (`Transports.use_item`). False when there is no such row or it didn't work; the second result is true when trying again is pointless.
+function Transports.teleport_item(name: string): (boolean, boolean?)
+	for _, t in ipairs(rows_of("teleportation_items")) do
+		if t.name == name then
+			local item, destination = Transports.split(t.name)
+			return Transports.use_item({
+				kind = "item",
+				transport = t,
+				id = t.name,
+				spell = item,
+				option = destination,
+				ticks = t.duration,
+				saved = 0,
+			})
+		end
+	end
+	Log.log("Transports", `no teleport item called {name} in the data`)
+	return false, true
+end
+
 -- Whether a choice failed in the last `RETRY_AFTER_MS`, and so isn't chosen.
 function Transports.failed_lately(choice: Choice): boolean
 	return not not_failed(choice.id or choice.transport.name)
@@ -3005,7 +3010,7 @@ function Transports.wear_for_climb(from: Host.NavTile, to: Host.NavTile, option:
 	return true
 end
 
--- Takes a trip from inside the house: finds the furniture (the Nexus, the jewellery box or something mounted), wherever it is, and picks the place. What turns out not to be there is left out for the run, and the walk plans again.
+-- Takes a trip from inside the house by `House.start_teleport`: the Nexus, the jewellery box or something mounted, wherever it is. What turns out not to be there is left out for the run, and the walk plans again.
 function Transports.house(choice: Choice): (boolean, boolean?)
 	local House = lib("@lib/main/house")
 	local t = choice.transport
@@ -3015,50 +3020,16 @@ function Transports.house(choice: Choice): (boolean, boolean?)
 		return fail(id, "not in the house")
 	end
 	Log.log("Transports", `house {furniture} to {label}: saves about {math.floor(choice.saved)} ticks`)
-	if furniture ~= "box" and furniture ~= "nexus" then
-		local went, why, missing = lib("@lib/main/interfaces/mainscreen/mounted").teleport(furniture, label)
-		if went then
-			return wait_to_land(id, t.destination :: Host.TransportTile, Transports.HUB_TIMEOUT_MS)
-		end
-		if missing then
-			house_missing[id] = true
-			fail(id, why or "it isn't there")
-			return false, true
-		end
-		return fail(id, why or "couldn't use it")
+	local started, why, pointless = House.start_teleport(furniture, label)
+	if started then
+		return wait_to_land(id, t.destination :: Host.TransportTile, Transports.HUB_TIMEOUT_MS)
 	end
-	local module = lib(
-		if furniture == "box"
-			then "@lib/main/interfaces/mainscreen/jewellerybox"
-			else "@lib/main/interfaces/mainscreen/nexus"
-	)
-	local opened, why
-	if furniture == "box" then
-		local box = House.reach(module.OBJECT)
-		if box == nil then
-			why = "no jewellery box in this house"
-		else
-			opened, why = module.open(box)
-		end
-	else
-		opened, why = module.open()
-	end
-	if not opened then
-		house_missing[furniture] = true
-		fail(id, why or "couldn't open it")
-		return false, true
-	end
-	if module.find(label) == nil then
+	if pointless then
 		house_missing[id] = true
-		module.close()
-		fail(id, `{label} isn't there`)
+		fail(id, why or "it isn't there")
 		return false, true
 	end
-	if furniture == "box" and module.select(label) == nil or furniture ~= "box" and not module.select(label) then
-		module.close()
-		return fail(id, `{label} couldn't be chosen`)
-	end
-	return wait_to_land(id, t.destination :: Host.TransportTile, Transports.HUB_TIMEOUT_MS)
+	return fail(id, why or "couldn't use it")
 end
 
 -- Leaves the house by its portal, wherever that is.
