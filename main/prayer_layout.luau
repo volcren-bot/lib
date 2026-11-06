@@ -1,6 +1,7 @@
 --!strict
 -- Prayer layouts: what a `prayer` form field gives a script (a set of prayers the user put together in the loader), turned on as the
--- regular prayers or made the quick prayers. The script picks which; the layout itself is only the set.
+-- regular prayers or made the quick prayers. The script picks which; the layout itself is only the set. The prayers the script controls
+-- (`locked`) are left alone: they are neither turned on nor off, and keep their quick prayer selection.
 local Host = require("@lib/host")
 local sleep = Host.sleep
 local time = Host.time
@@ -34,6 +35,15 @@ local function infos(layout: Layout): { Prayer.Info }
 	return list
 end
 
+-- The prayers the script controls, by key.
+local function controlled(layout: Layout): { [string]: boolean }
+	local set: { [string]: boolean } = {}
+	for _, key in ipairs(layout.locked or {}) do
+		set[key] = true
+	end
+	return set
+end
+
 -- Whether the prayer itself is on: unlike `Prayer.is_on`, a base prayer doesn't count as on while its upgrade is.
 local function is_on(p: Prayer.Info): boolean
 	return Varbits.get(p.varbit) == 1
@@ -63,28 +73,30 @@ function PrayerLayout.from_client(name: string?, quick: boolean?): Layout
 	return { name = name or "From client", prayers = prayers }
 end
 
--- Whether exactly the layout's prayers are on: all of them, and no other.
+-- Whether exactly the layout's prayers are on: all of them, and no other but the ones the script controls.
 function PrayerLayout.is_active(layout: Layout): boolean
 	local wanted: { [string]: boolean } = {}
 	for _, p in ipairs(infos(layout)) do
 		wanted[p.key] = true
 	end
+	local skip = controlled(layout)
 	for _, p in ipairs(Prayer.PRAYERS) do
-		if is_on(p) ~= (wanted[p.key] == true) then
+		if not skip[p.key] and is_on(p) ~= (wanted[p.key] == true) then
 			return false
 		end
 	end
 	return true
 end
 
--- Whether the quick prayers are exactly the layout's prayers, by their bits (an upgrade and its base share one).
+-- Whether the quick prayers are exactly the layout's prayers, by their bits (an upgrade and its base share one), whatever the ones the script controls are.
 function PrayerLayout.is_quick(layout: Layout): boolean
 	local wanted: { [string]: boolean } = {}
 	for _, p in ipairs(infos(layout)) do
 		wanted[p.replaces or p.key] = true
 	end
+	local skip = controlled(layout)
 	for _, p in ipairs(Prayer.PRAYERS) do
-		if p.replaces == nil and Prayer.is_quick_selected(p) ~= (wanted[p.key] == true) then
+		if p.replaces == nil and not skip[p.key] and Prayer.is_quick_selected(p) ~= (wanted[p.key] == true) then
 			return false
 		end
 	end
@@ -162,7 +174,7 @@ local function names(list: { Prayer.Info }): string
 	return table.concat(out, ", ")
 end
 
--- Turns the layout's prayers on and every other prayer off, through the prayer tab. The ones that are off are clicked with no wait between
+-- Turns the layout's prayers on and every other prayer but the ones the script controls off, through the prayer tab. The ones that are off are clicked with no wait between
 -- them; the game turns off what they can't be used with, so the prayers still on that aren't in the layout are clicked off in a round after.
 -- Each round waits up to `CONFIRM_MS` for the change, and whatever is still wrong gets more rounds, `ATTEMPTS` in all. True when exactly the layout's prayers are on.
 function PrayerLayout.activate(layout: Layout): boolean
@@ -171,6 +183,7 @@ function PrayerLayout.activate(layout: Layout): boolean
 	for _, p in ipairs(list) do
 		wanted[p.key] = true
 	end
+	local skip = controlled(layout)
 	for attempt = 1, PrayerLayout.ATTEMPTS + 1 do
 		if PrayerLayout.is_active(layout) then
 			return true
@@ -185,7 +198,7 @@ function PrayerLayout.activate(layout: Layout): boolean
 		local turn_off: { Prayer.Info } = {}
 		if #turn_on == 0 then
 			for _, p in ipairs(Prayer.PRAYERS) do
-				if not wanted[p.key] and is_on(p) then
+				if not wanted[p.key] and not skip[p.key] and is_on(p) then
 					table.insert(turn_off, p)
 				end
 			end
@@ -218,12 +231,19 @@ function PrayerLayout.deactivate(): boolean
 	return Prayer.deactivate_all()
 end
 
--- Makes the layout's prayers the quick prayers, through the setup panel. True when the quick prayers are exactly them afterwards.
+-- Makes the layout's prayers the quick prayers, through the setup panel; the ones the script controls keep their selection. True when the quick prayers are exactly them afterwards.
 function PrayerLayout.set_quick(layout: Layout): boolean
 	if PrayerLayout.is_quick(layout) then
 		return true
 	end
-	return Prayer.set_quick_prayers(infos(layout)) and PrayerLayout.is_quick(layout)
+	local list = infos(layout)
+	local skip = controlled(layout)
+	for _, p in ipairs(Prayer.PRAYERS) do
+		if p.replaces == nil and skip[p.key] and Prayer.is_quick_selected(p) then
+			table.insert(list, p)
+		end
+	end
+	return Prayer.set_quick_prayers(list) and PrayerLayout.is_quick(layout)
 end
 
 -- Makes the layout the quick prayers and turns them on (or off with `active` false) with the orb.

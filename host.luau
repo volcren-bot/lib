@@ -194,12 +194,19 @@ export type FinePoint = {
 	tile: { x: number, y: number }?,
 }
 
--- An item in an equipment or inventory layout: `stackable` says whether its `quantity` is a stack or one of several copies.
+-- An item in an equipment or inventory layout (host API 15). `ids` are every id that counts as it, `id` first. A stack wants `min` to `max`
+-- of it (equal: exactly that many, both 0: any amount but at least one); an item that doesn't stack is one per slot (both 1). `doses`,
+-- for an item whose name ends in a dose or charge number, are the numbers that count, in the order the bank takes them. A `locked`
+-- item is one of the script's `required` items. `name` is empty when the loader didn't know it.
 export type LayoutItem = {
 	id: number,
-	quantity: number,
+	ids: { number },
 	name: string,
 	stackable: boolean,
+	min: number,
+	max: number,
+	doses: { number }?,
+	locked: boolean,
 }
 
 -- One of the worn items slots in an equipment layout (`slot` is the container's: 0 head, 1 cape, 2 amulet, 3 weapon, 4 body, 5 shield, 7 legs, 9 hands, 10 feet, 12 ring, 13 ammo, and 14 for the secondary ammo of a bolt pouch or Dizana's quiver, which isn't in the container and is ignored without one): `item` wants that item worn there, `empty` wants nothing worn there and `any` doesn't care.
@@ -207,9 +214,13 @@ export type EquipmentLayoutSlot = {
 	slot: number,
 	mode: "item" | "empty" | "any",
 	id: number?,
-	quantity: number?,
+	ids: { number }?,
 	name: string?,
 	stackable: boolean?,
+	min: number?,
+	max: number?,
+	doses: { number }?,
+	locked: boolean?,
 }
 
 -- The spell of an equipment layout: `autocast` when the weapon read from the client could autocast (the script sets it on the combat tab), else one the script casts by hand. `book` is "standard", "ancient" or "arceuus".
@@ -232,9 +243,13 @@ export type EquipmentLayout = {
 export type InventoryLayoutSlot = {
 	slot: number,
 	id: number,
-	quantity: number,
+	ids: { number },
 	name: string,
 	stackable: boolean,
+	min: number,
+	max: number,
+	doses: { number }?,
+	locked: boolean,
 }
 
 -- What an `inventory` form field gives: the layout the user picked in the loader, only the filled slots, and the rune pouch's runes when the layout holds a pouch.
@@ -248,6 +263,20 @@ export type InventoryLayout = {
 export type PrayerLayout = {
 	name: string,
 	prayers: { string },
+	-- the prayers the script controls (its field's `locked` ones and every one they can't be on with; host API 15), which the layout never holds and `PrayerLayout` leaves alone
+	locked: { string }?,
+}
+
+-- An item an `equipment` or `inventory` field puts in every layout of the user's (host API 15), padlocked in the loader: the user can
+-- move it but not remove or change it. `ids` count as it (the first is shown and taken first); an equipment item needs its worn items
+-- `slot`, an inventory item may give the slot (0 to 27) it starts in. A stack's `min` and `max` work as `LayoutItem`'s (both 0 when
+-- left out); `doses` are the doses or charges that count, in the order to take them.
+export type LayoutRequirement = {
+	ids: { number },
+	slot: number?,
+	min: number?,
+	max: number?,
+	doses: { number }?,
 }
 
 export type FormField = {
@@ -266,6 +295,10 @@ export type FormField = {
 	items: { { id: string, label: string?, default: boolean? } }?,
 	-- the id of a check; the field is greyed out while that check is off
 	enabled_by: string?,
+	-- equipment and inventory: items every layout holds (host API 15)
+	required: { LayoutRequirement }?,
+	-- prayer: the prayers, by key, the script controls itself; they and every prayer they can't be on with are padlocked in the loader (host API 15)
+	locked: { string }?,
 	-- only shown while the field `id` has this value, or one of these when it is a list (a choice's option, a check's boolean, ...); a list of such rules needs all of them to hold; its value is still sent while hidden
 	visible_when: ({ id: string, equals: any } | { { id: string, equals: any } })?,
 }

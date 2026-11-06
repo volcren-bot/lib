@@ -8,13 +8,16 @@ local PrayerLayout = require("@lib/main/prayer_layout")
 
 The user makes layouts in the loader, on the Prayer tab of the script's page: the prayer book as the game lays it out, where prayers are clicked together (the ones that can't be on at once deselect each other) or read from the client (the prayers on now, or the quick prayer selection); the layouts are kept per script and the form's `prayer` field picks one (see `Host.form` in [Host](../host.md)). A layout is only the set of prayers, by key as [Prayer](interfaces/gametabs/prayer.md) names them (the upgrades `deadeye`, `mystic_vigour` and `zeal` included, each taking its base prayer's slot and quick prayer bit once unlocked); the script decides whether to turn them on (`activate`) or make them the quick prayers (`set_quick`, `quick`).
 
+A field's `locked` prayers are the script's to control, such as the protection prayers of a boss script. The loader padlocks them and every prayer that can't be on with one of them (locking Protect from Melee locks all the overheads, locking Piety every stat prayer), so the user can't pick any of them, and the layout lists them all in `locked`. Everything here leaves them alone: `activate` neither turns them on nor off, and `set_quick` keeps their quick prayer selection.
+
 ```luau
 local Host = require("@lib/host")
 local PrayerLayout = require("@lib/main/prayer_layout")
 
 local values = Host.form({
 	title = "Slayer",
-	fields = { { id = "prayers", kind = "prayer", label = "Prayers" } },
+	-- the script switches the protection prayers itself
+	fields = { { id = "prayers", kind = "prayer", label = "Prayers", locked = { "protect_from_melee", "protect_from_missiles", "protect_from_magic" } } },
 })
 local layout = values and values.prayers
 if layout then
@@ -41,7 +44,7 @@ Definition:
 ```luau
 export type Layout = Host.PrayerLayout
 ```
-`{ name, prayers }`, the prayers by key (`"thick_skin"`, `"protect_from_melee"`, ...) in the prayer book's order. A key the prayer tab doesn't know (from a newer loader) is skipped.
+`{ name, prayers, locked? }`, the prayers by key (`"thick_skin"`, `"protect_from_melee"`, ...) in the prayer book's order, and the ones the script controls. A key the prayer tab doesn't know (from a newer loader) is skipped.
 
 ## PrayerLayout.from_client
 
@@ -57,7 +60,7 @@ Definition:
 ```luau
 function PrayerLayout.is_active(layout: Layout): boolean
 ```
-Whether exactly the layout's prayers are on: all of them, and no other.
+Whether exactly the layout's prayers are on: all of them, and no other but the ones the script controls.
 
 ## PrayerLayout.is_quick
 
@@ -65,7 +68,7 @@ Definition:
 ```luau
 function PrayerLayout.is_quick(layout: Layout): boolean
 ```
-Whether the quick prayers are exactly the layout's prayers, by their bits: an upgrade and the prayer it replaces share one, so either name matches.
+Whether the quick prayers are exactly the layout's prayers, by their bits: an upgrade and the prayer it replaces share one, so either name matches. The bits of the prayers the script controls don't count.
 
 ## PrayerLayout.activate
 
@@ -73,7 +76,7 @@ Definition:
 ```luau
 function PrayerLayout.activate(layout: Layout): boolean
 ```
-Turns the layout's prayers on and every other prayer off, through the prayer tab. The layout's prayers that are off are clicked first, nearest the mouse first, with no wait between them, through the async mouse at `MOUSE_PACE`. Turning a prayer on turns off the ones it can't be used with (Protect from Magic turns off Protect from Missiles), so the prayers still on that aren't in the layout are clicked off in a round after; clicking them in the same round could turn one back on just as the game turned it off. Each round waits up to `CONFIRM_MS` for the change, and whatever is still wrong gets more rounds, `ATTEMPTS` in all: a switch between two protection and offensive pairs is one round of two clicks. True when exactly the layout's prayers are on afterwards; false, with the prayers that wouldn't change in the log, when they aren't. Needs the prayer points and levels for them; `Prayer.can_activate` says which can't be.
+Turns the layout's prayers on and every other prayer off but the ones the script controls, through the prayer tab. The layout's prayers that are off are clicked first, nearest the mouse first, with no wait between them, through the async mouse at `MOUSE_PACE`. Turning a prayer on turns off the ones it can't be used with (Protect from Magic turns off Protect from Missiles), so the prayers still on that aren't in the layout are clicked off in a round after; clicking them in the same round could turn one back on just as the game turned it off. Each round waits up to `CONFIRM_MS` for the change, and whatever is still wrong gets more rounds, `ATTEMPTS` in all: a switch between two protection and offensive pairs is one round of two clicks. True when exactly the layout's prayers are on afterwards; false, with the prayers that wouldn't change in the log, when they aren't. Needs the prayer points and levels for them; `Prayer.can_activate` says which can't be.
 
 ## PrayerLayout.deactivate
 
@@ -89,7 +92,7 @@ Definition:
 ```luau
 function PrayerLayout.set_quick(layout: Layout): boolean
 ```
-Makes the layout's prayers the quick prayers, through the setup panel (`Prayer.set_quick_prayers`). True when the quick prayers are exactly them afterwards.
+Makes the layout's prayers the quick prayers, through the setup panel (`Prayer.set_quick_prayers`); the prayers the script controls keep their selection. True when the quick prayers are exactly them afterwards.
 
 ## PrayerLayout.quick
 
