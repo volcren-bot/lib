@@ -210,6 +210,94 @@ function Player.pose(): number?
 	return nil
 end
 
+local function me(): Host.PlayerInfo?
+	local name = game_state().player_name
+	if name == nil then
+		return nil
+	end
+	for _, p in ipairs(Host.players() or {}) do
+		if p.name == name then
+			return p
+		end
+	end
+	return nil
+end
+
+-- the hitsplat kinds of a hit that involves the player, dealt or taken: damage, a block, a max hit
+Player.HIT_KINDS = { [16] = true, [12] = true, [43] = true } :: { [number]: boolean }
+-- how long a landed hit keeps a fight going: longer than the slowest attacks take
+Player.COMBAT_MS = 6000
+-- the player's interaction state while it acts on an NPC (2 once the NPC is gone, 3 once it is done)
+Player.INTERACTING = 0
+
+local CYCLES_PER_MS = 50 / 1000
+
+-- Whether one of the hitsplats is a hit that ended less than COMBAT_MS ago (a hitsplat's cycle is when it stops showing).
+local function hit_lately(splats: { Host.Hitsplat }?, now: number): boolean
+	local since = now - Player.COMBAT_MS * CYCLES_PER_MS
+	for _, splat in ipairs(splats or {}) do
+		if Player.HIT_KINDS[splat.kind] and splat.cycle > since then
+			return true
+		end
+	end
+	return false
+end
+
+-- The NPC the player is fighting: the one it acts on, once its hits land on it or its projectiles fly at it.
+function Player.attacking(): Host.Npc?
+	local self, now = me(), Host.client_cycle()
+	if self == nil or now == nil or self.target_state ~= Player.INTERACTING or self.interacting_npc < 0 then
+		return nil
+	end
+	local target: Host.Npc? = nil
+	for _, npc in ipairs(Host.npcs() or {}) do
+		if npc.index == self.interacting_npc then
+			target = npc
+			break
+		end
+	end
+	if target == nil then
+		return nil
+	end
+	if hit_lately((Host.npc_hitsplats({ target.index }) or {})[target.index], now) then
+		return target
+	end
+	-- the client often stores only where a projectile starts: one from the player's tile at the target is the player's
+	local pos = game_state().position
+	for _, p in ipairs(Host.projectiles() or {}) do
+		local from_tile = p.source_player < 0
+			and p.source_npc < 0
+			and pos ~= nil
+			and p.source_x == pos.x
+			and p.source_y == pos.y
+		if p.target_npc == target.index and (p.source_player == self.index or from_tile) then
+			return target
+		end
+	end
+	return nil
+end
+
+-- Whether hits land on the player or a projectile flies at it.
+function Player.is_attacked(): boolean
+	local self, now = me(), Host.client_cycle()
+	if self == nil or now == nil then
+		return false
+	end
+	if hit_lately((Host.player_hitsplats({ self.index }) or {})[self.index], now) then
+		return true
+	end
+	for _, p in ipairs(Host.projectiles() or {}) do
+		if p.target_player == self.index then
+			return true
+		end
+	end
+	return false
+end
+
+function Player.in_combat(): boolean
+	return Player.attacking() ~= nil or Player.is_attacked()
+end
+
 function Player.is_animating(): boolean
 	local id = Player.animation()
 	return id ~= nil and id ~= -1

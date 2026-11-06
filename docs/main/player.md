@@ -17,6 +17,17 @@ Player.WALK_TIMEOUT = 20000
 ```
 `STILL_MS` is how long (in milliseconds) you must stay in one place to count as stopped. `WALK_TIMEOUT` is how long the waiting functions wait for you to arrive before giving up.
 
+```luau
+Player.HIT_KINDS = { [16] = true, [12] = true, [43] = true }
+Player.COMBAT_MS = 6000
+Player.INTERACTING = 0
+```
+These are what `Player.attacking` and `Player.is_attacked` go by:
+
+- `HIT_KINDS`: the hitsplat kinds of a hit that involves you, dealt or taken. 16 is damage and 12 a block (both seen live). 43 is a max hit, which hasn't been seen live.
+- `COMBAT_MS`: how long a landed hit keeps a fight going, set longer than the slowest attacks take.
+- `INTERACTING`: your interaction state while you act on an NPC.
+
 ## Player.is_logged_in
 
 Definition:
@@ -347,6 +358,62 @@ Example:
 local Player = require("@lib/main/player")
 
 print(Player.pose())
+```
+
+## Player.attacking
+
+Definition:
+```luau
+function Player.attacking(): Host.Npc?
+```
+The NPC the player is fighting, or `nil`. It takes all three of these:
+
+1. **Acting on an NPC:** the player's interaction state is `Player.INTERACTING` (0). The client sets it to 2 once the NPC dies and to 3 once the player walks off or the action ends, so a stale target never counts.
+2. **In the scene:** that NPC is still there.
+3. **Hits landing:** one of the player's hits (`Player.HIT_KINDS`) landed on it within `Player.COMBAT_MS`, or one of the player's projectiles is flying at it. The client often stores only where a projectile starts, so one that leaves the player's tile for the target counts as the player's. Projectiles show up as soon as the attack starts, before they leave, so a long shot counts while it flies.
+
+It is `nil` while the player walks up to an NPC it clicked, until the first hit or projectile. A thrall's hits on the target count as the player's.
+
+Example:
+```luau
+local Player = require("@lib/main/player")
+
+local npc = Player.attacking()
+print(if npc then `fighting {npc.name}` else "not fighting")
+```
+
+## Player.is_attacked
+
+Definition:
+```luau
+function Player.is_attacked(): boolean
+```
+Whether the player is being attacked: a hit on it (`Player.HIT_KINDS`, a miss included) within `Player.COMBAT_MS`, or any projectile flying at it. An NPC that only walks up to the player doesn't count until it attacks.
+
+Example:
+```luau
+local Player = require("@lib/main/player")
+
+if Player.is_attacked() then
+	print("under attack")
+end
+```
+
+## Player.in_combat
+
+Definition:
+```luau
+function Player.in_combat(): boolean
+```
+Whether the player is attacking an NPC (`Player.attacking`) or being attacked (`Player.is_attacked`).
+
+Example:
+```luau
+local Player = require("@lib/main/player")
+
+if not Player.in_combat() then
+	print("safe to bank")
+end
 ```
 
 ## Player.is_animating

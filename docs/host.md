@@ -693,7 +693,12 @@ Definition:
 ```luau
 Host.npc_hitsplats: (indices: { number }) -> { [number]: { Hitsplat } }?
 ```
-The hitsplats on the NPCs with these `index`es, keyed by index; the NPCs that are gone are left out. An NPC shows at most its last four, for about a second and a half, and a new hit replaces the oldest, so read them at least once a tick to see every hit. Each one has its `slot` (0 to 3, it keeps it until replaced), its `kind` (the splat type: 16 for damage, 12 for a block), the `damage` it shows and the client `cycle` it was added on, which tells hits apart. [NpcHealth](main/entities/npc_health.md) works the health of NPCs out from them.
+The hitsplats on the NPCs with these `index`es, keyed by index; the NPCs that are gone are left out. An actor keeps its last four hits, and a new hit replaces the oldest, so read them at least once a tick to see every hit. A hit stays in its slot after it fades from the screen. Each one has:
+
+- `slot`: 0 to 3, kept until the hit is replaced.
+- `kind`: the splat type. 16 is damage and 12 a block, for hits that involve you, dealt or taken; other players' hits have other kinds.
+- `damage`: the number it shows.
+- `cycle`: the client cycle it stops showing on, about 50 cycles (1 s) after it lands. Compare it with `Host.client_cycle` to tell how long ago the hit was; the `slot` and `cycle` together tell hits apart. [NpcHealth](main/entities/npc_health.md) works the health of NPCs out from them.
 
 Example:
 ```luau
@@ -710,6 +715,43 @@ for _, npc in ipairs(all) do
 		print(npc.name, splat.damage, splat.cycle)
 	end
 end
+```
+
+## Host.player_hitsplats
+
+Definition:
+```luau
+Host.player_hitsplats: (indices: { number }) -> { [number]: { Hitsplat } }?
+```
+The hitsplats on the players with these `index`es (`PlayerInfo.index`), keyed by index, as `Host.npc_hitsplats` gives them for NPCs. On your own player, kind 16 is damage you took and 12 a hit that missed you. Host API 14.
+
+Example:
+```luau
+local Host = require("@lib/host")
+local Players = require("@lib/main/entities/players")
+
+local me = assert(Players.me())
+local now = assert(Host.client_cycle())
+for _, splat in ipairs((Host.player_hitsplats({ me.index }) or {})[me.index] or {}) do
+	print(`hit for {splat.damage}, {(now - splat.cycle) / 50} s after it faded`)
+end
+```
+
+## Host.client_cycle
+
+Definition:
+```luau
+Host.client_cycle: () -> number?
+```
+The client's cycle counter, 50 a second: the clock that hitsplat, projectile and spot animation cycles count in. Host API 14.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+local a = assert(Host.client_cycle())
+Host.sleep(1000)
+print(assert(Host.client_cycle()) - a) -- about 50
 ```
 
 ## Host.locs

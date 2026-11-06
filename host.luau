@@ -477,7 +477,7 @@ export type HeadIcon = {
 	sprite: number,
 }
 
--- A hitsplat on an actor: its type, the damage it shows and the client cycle it was added on.
+-- A hitsplat on an actor: its type, the damage it shows and the client cycle it stops showing on.
 export type Hitsplat = {
 	-- which of the four slots it is in
 	slot: number,
@@ -841,6 +841,9 @@ return {
 	) -> NpcModel?,
 	npc_sizes = g.npc_sizes :: (indices: { number }) -> { [number]: number }?,
 	npc_hitsplats = g.npc_hitsplats :: (indices: { number }) -> { [number]: { Hitsplat } }?,
+	-- host API 14
+	player_hitsplats = g.player_hitsplats :: (indices: { number }) -> { [number]: { Hitsplat } }?,
+	client_cycle = g.client_cycle :: () -> number?,
 	locs = g.locs :: (plane: number?) -> { Loc }?,
 	-- how each object id looks to the player now (see `LocView`), in the order given; nil when the cache can't be read
 	loc_shown = g.loc_shown :: (ids: { number }) -> { LocView }?,
