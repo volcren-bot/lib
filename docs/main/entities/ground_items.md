@@ -17,6 +17,15 @@ GroundItems.PILE_HEIGHT = 40
 ```
 `ITEM_PILE` is the kind of shape the game uses for a tile's pile of items. `PILE_HEIGHT` is the height (fine units) of the box aimed at when the pile isn't drawn yet while walking (see `Clickbox.walking`).
 
+Definition:
+```luau
+GroundItems.PILE_TAKE_MS = 2400
+GroundItems.PILE_WALK_TILE_MS = 600
+GroundItems.PILE_REACTION_MS = { 60, 250 }
+GroundItems.PILE_ATTEMPTS = 3
+```
+For `take_pile`: how long a clicked item gets to leave the pile, plus `PILE_WALK_TILE_MS` for each tile the player was from it; the pause, rolled between the two numbers and leaning low, between an item leaving and the next click; and how many clicks in a row may take nothing before it gives up.
+
 ## GroundItems.distance
 
 Definition:
@@ -262,5 +271,32 @@ local Walker = require("@lib/main/walker")
 local item = GroundItems.nearest("Bones", assert(Walker.position()))
 if item then
 	print(GroundItems.approach(item, "Take"))
+end
+```
+
+## GroundItems.fits
+
+Definition:
+```luau
+function GroundItems.fits(item: GroundItem): boolean
+```
+Whether the item can be picked up now: the inventory has a free slot, or the item stacks and a stack of it is already carried. Whether an item stacks is asked of the client once per id.
+
+## GroundItems.take_pile
+
+Definition:
+```luau
+function GroundItems.take_pile(tile: Tile): (number, string?)
+```
+Takes every item on the tile by left-clicking its pile again and again, as a player clearing a pile does. Each click takes whatever the game puts on top of the menu (its own order, by the items' menu priority), so no right-click menu opens. The mouse is moved onto the pile only when the top row isn't Take on one of its items (the first click, or after the pile moved under it). After each click it waits for that item to leave the tile, then pauses `PILE_REACTION_MS` before the next. Returns how many items were taken, and nil once the tile is empty, `"full"` when the item on top doesn't fit (`fits`), or `"failed"` when the pile can't be hovered, its left click isn't Take, or `PILE_ATTEMPTS` clicks in a row took nothing. Use it when the whole pile is wanted; for some of its items, `interact` each one with "Take".
+
+Example:
+```luau
+local GroundItems = require("@lib/main/entities/ground_items")
+local Walker = require("@lib/main/walker")
+
+local item = GroundItems.nearest(nil, assert(Walker.position()))
+if item then
+	print(GroundItems.take_pile({ x = item.x, y = item.y }))
 end
 ```

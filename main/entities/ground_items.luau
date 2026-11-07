@@ -8,8 +8,13 @@ type MenuEntry = Host.MenuEntry
 type NpcModel = Host.NpcModel
 type Tile = Host.Tile
 local Clickbox = require("@lib/main/clickbox")
+local Inventory = require("@lib/main/interfaces/gametabs/inventory")
+local Log = require("@lib/utils/log")
+local Minimenu = require("@lib/main/interfaces/minimenu")
 local Mouse = require("@lib/utils/input/mouse")
+local Player = require("@lib/main/player")
 local Projection = require("@lib/main/projection/projection")
+local Random = require("@lib/utils/math/random")
 type Clickbox = Clickbox.Clickbox
 
 local GroundItems = {}
@@ -170,6 +175,112 @@ function GroundItems.interact(
 		walk_timeout_ms,
 		spam
 	)
+end
+
+-- For `take_pile`: how long a clicked item gets to leave the pile, plus a tile's walk for each tile away it was clicked from;
+-- the pause after one leaves before the next click; and how many clicks in a row may take nothing.
+GroundItems.PILE_TAKE_MS = 2400
+GroundItems.PILE_WALK_TILE_MS = 600
+GroundItems.PILE_REACTION_MS = { 60, 250 }
+GroundItems.PILE_ATTEMPTS = 3
+
+local stackable: { [number]: boolean } = {}
+
+-- Whether the item can be picked up: a free slot, or a stack of it already carried.
+function GroundItems.fits(item: GroundItem): boolean
+	if (Inventory.free_slots() or 0) > 0 then
+		return true
+	end
+	if stackable[item.id] == nil then
+		stackable[item.id] = (Host.item_stackable({ item.id }) or {})[1] == true
+	end
+	return stackable[item.id] and Inventory.find(item.id) ~= nil
+end
+
+local function pile_at(tile: Tile): { GroundItem }
+	local pile: { GroundItem } = {}
+	for _, item in ipairs(ground_items() or {}) do
+		if item.x == tile.x and item.y == tile.y then
+			table.insert(pile, item)
+		end
+	end
+	return pile
+end
+
+local function count_of(pile: { GroundItem }, id: number): number
+	local n = 0
+	for _, item in ipairs(pile) do
+		if item.id == id then
+			n += 1
+		end
+	end
+	return n
+end
+
+-- The pile's item the left click takes now: the top menu row, when it is Take on one of them.
+local function left_click_item(pile: { GroundItem }): GroundItem?
+	local top = (menu() or {})[1]
+	if top == nil or string.lower(top.option) ~= "take" then
+		return nil
+	end
+	for _, item in ipairs(pile) do
+		if GroundItems.owns(item, top) then
+			return item
+		end
+	end
+	return nil
+end
+
+-- Takes every item on the tile with left clicks on the pile, each the one the game puts on top of the menu, so the pile goes in the
+-- game's order with no right clicks. Returns how many were taken and nil once the tile is empty, "full" when the next one doesn't
+-- fit (`fits`), or "failed".
+function GroundItems.take_pile(tile: Tile): (number, string?)
+	local taken, misses = 0, 0
+	while true do
+		local pile = pile_at(tile)
+		if #pile == 0 then
+			return taken, nil
+		end
+		local item = left_click_item(pile)
+		if item == nil then
+			if not GroundItems.hover(pile[1]) then
+				return taken, "failed"
+			end
+			item = left_click_item(pile)
+		end
+		if item == nil then
+			Log.log("GroundItems", `the left click on the pile at {tile.x},{tile.y} isn't Take`)
+			return taken, "failed"
+		end
+		if not GroundItems.fits(item) then
+			return taken, "full"
+		end
+		local before, clicked = count_of(pile, item.id), Minimenu.clicked()
+		local me = Player.position()
+		local away = if me then GroundItems.distance(item, { x = me.x, y = me.y }) else 0
+		Mouse.click()
+		local left = false
+		if clicked == nil or Minimenu.wait_click(clicked) ~= nil then
+			local deadline = Host.time() + GroundItems.PILE_TAKE_MS + away * GroundItems.PILE_WALK_TILE_MS
+			while Host.time() < deadline do
+				if count_of(pile_at(tile), item.id) < before then
+					left = true
+					break
+				end
+				Host.sleep(50)
+			end
+		end
+		if left then
+			taken, misses = taken + 1, 0
+			Random.sleep(GroundItems.PILE_REACTION_MS[1], GroundItems.PILE_REACTION_MS[2], "left")
+		else
+			misses += 1
+			if misses >= GroundItems.PILE_ATTEMPTS then
+				Log.log("GroundItems", `the {what(item)} at {tile.x},{tile.y} didn't leave the pile`)
+				return taken, "failed"
+			end
+		end
+	end
 end
 
 -- Walks to the item and picks the first of `options` its menu has, walking early on the way when it's close.

@@ -295,6 +295,10 @@ export type FormField = {
 	items: { { id: string, label: string?, default: boolean? } }?,
 	-- the id of a check; the field is greyed out while that check is off
 	enabled_by: string?,
+	-- the fields next to each other with the same row name share a line, left to right (`FormSpec.row_gap` apart); stacked while they don't fit
+	row: string?,
+	-- label: 1 shows its text as a title, 2 as a section heading
+	heading: number?,
 	-- equipment and inventory: items every layout holds (host API 15)
 	required: { LayoutRequirement }?,
 	-- prayer: the prayers, by key, the script controls itself; they and every prayer they can't be on with are padlocked in the loader (host API 15)
@@ -308,6 +312,8 @@ export type FormSpec = {
 	submit: string?,
 	-- the checks go in a column on the right, everything else on the left; stacked in a narrow window
 	columns: boolean?,
+	-- points between the fields of a row (default 24, at most 500)
+	row_gap: number?,
 	fields: { FormField },
 }
 
