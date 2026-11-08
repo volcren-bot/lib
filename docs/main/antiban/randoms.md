@@ -8,7 +8,7 @@ local Randoms = require("@lib/main/antiban/randoms")
 
 An NPC counts only when its `interacting_player` is your own player index, so another player's event is left alone. To add an event, add its NPC id to `Randoms.HANDLERS`. Notes on the events seen so far are in `RANDOM_EVENTS.md` at the root of the workspace.
 
-The genie and the certers (Niles, Miles and Giles) are handled so far. The genie and Giles were only seen once, and Niles and Miles never, by hand or by running their steps piece by piece; `handle` itself has only run against a stubbed game, because events can't be made to appear.
+The genie, the certers (Niles, Miles and Giles) and the Dunce's Surprise Exam are handled so far. `handle` first finishes an exam already under way: a script that starts in the classroom sits it before anything else. The genie and Giles were only seen once, and Niles and Miles never, by hand or by running their steps piece by piece; `handle` itself has only run against a stubbed game, because events can't be made to appear.
 
 ## The genie
 
@@ -17,6 +17,10 @@ The genie and the certers (Niles, Miles and Giles) are handled so far. The genie
 ## The certers
 
 Niles, Miles and Giles are taken to be the same event from their cache names (`macro_niles`, `macro_miles`, `macro_giles`). `Talk-to` opens the certer's quiz, which `Certer.solve` answers (see `Main.Interfaces.Mainscreen.Certer`). When no answer fits the picture, the quiz is closed unanswered and that is logged.
+
+## The Dunce
+
+`Talk-to`, then "Sure, I fancy an exam." takes you to Mr. Mordaut's classroom, where `SurpriseExam.complete` answers the questions and leaves by the door (see `Main.Interfaces.Mainscreen.SurpriseExam`). Run by hand once, 2026-11-07: three of four answers right passed it, and the door gave a Book of Knowledge.
 
 ## Constants
 

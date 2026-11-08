@@ -11,6 +11,7 @@ local Lamp = require("@lib/main/interfaces/mainscreen/lamp")
 local Log = require("@lib/utils/log")
 local Npcs = require("@lib/main/entities/npcs")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
+local SurpriseExam = require("@lib/main/interfaces/mainscreen/surprise_exam")
 
 local Randoms = {}
 
@@ -123,6 +124,7 @@ end
 -- The events handled, by NPC id.
 Randoms.HANDLERS = {
 	[Randoms.GENIE] = handle_genie,
+	[SurpriseExam.DUNCE] = SurpriseExam.accept,
 	[Randoms.NILES] = handle_certer,
 	[Randoms.MILES] = handle_certer,
 	[Randoms.GILES] = handle_certer,
@@ -144,6 +146,11 @@ end
 
 -- Deals with a random event if one is trying to interact with you. True when one was dealt with.
 function Randoms.handle(): boolean
+	-- an exam already under way (the script started in the classroom): finished first
+	if SurpriseExam.inside() then
+		Log.log("Randoms", "in the Surprise Exam's classroom")
+		return SurpriseExam.complete()
+	end
 	local npc = Randoms.find()
 	if npc == nil then
 		return false

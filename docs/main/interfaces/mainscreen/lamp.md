@@ -8,7 +8,7 @@ local Lamp = require("@lib/main/interfaces/mainscreen/lamp")
 
 Rubbing a lamp, choosing a skill and closing the interface all keep the lamp. Only "Confirm" spends it, so only `Lamp.confirm` and `Lamp.use` do. Closing forgets the chosen skill. After "Confirm" the interface closes, the lamp leaves the inventory, and a message box (group 229, `messagebox`) says `Your wish has been granted!`, then `You have been awarded 990 Slayer XP!` (seen once, at level 99), until it is continued. `Lamp.confirm` and `Lamp.use` dismiss it.
 
-Only the plain `Lamp` (id 2528, from the genie) has been seen opening this. The other names in `Lamp.NAMES` come from the cache and are assumed to work the same; `open` fails with a reason if one doesn't. Many other items are called lamps, like an oil lamp, which is why these go by name.
+The plain `Lamp` (id 2528, from the genie) opens it with "Rub", and the `Book of Knowledge` (id 11640, from the Surprise Exam) with "Read" (`Lamp.OPTIONS`), both seen. The other names in `Lamp.NAMES` come from the cache and are assumed to work the same; `open` fails with a reason if one doesn't. Many other items are called lamps, like an oil lamp, which is why these go by name.
 
 A cell has `name` and `area` (where to hover and click). Skills are given with `Stats.Skill` (`Lamp.choose(Stats.Skill.Herblore)`), so a misspelled skill is a type error.
 
@@ -26,7 +26,8 @@ Lamp.CLOSE = 28
 Lamp.INVENTORY = 93
 Lamp.OPTION = "Rub"
 Lamp.CONFIRM_OPTION = "Confirm"
-Lamp.NAMES = { "Lamp", "Antique lamp", "Dusty lamp", "Ancient lamp", "Champion's lamp", "Lamp of knowledge", "Lamp of the Gatherer", "Event lamp", "Magic lamp" }
+Lamp.NAMES = { "Lamp", "Antique lamp", "Dusty lamp", "Ancient lamp", "Champion's lamp", "Lamp of knowledge", "Lamp of the Gatherer", "Event lamp", "Magic lamp", "Book of Knowledge" }
+Lamp.OPTIONS = { ["Book of Knowledge"] = "Read" }
 Lamp.OPEN_TIMEOUT_MS = 3000
 Lamp.HOVER_TIMEOUT_MS = 800
 Lamp.CHOOSE_TIMEOUT_MS = 2400
@@ -36,7 +37,7 @@ Lamp.POLL_MS = 50
 Lamp.SETTLE_MS = 150
 Lamp.OPEN_SETTLE_MS = { 250, 500 }
 ```
-The interface piece numbers, the inventory's container, the options that open the interface and spend the lamp, the items `open` looks for by default, and the waits: for `wait_open`, for a hover to show the menu, for a choice to show, for the interface to go after "Confirm", for the message after it, between looks, for the menu to follow the mouse, and the pause `open` makes once the interface shows.
+The interface piece numbers, the inventory's container, the options that open the interface and spend the lamp, the items `open` looks for by default and those it opens with another option than `OPTION`, and the waits: for `wait_open`, for a hover to show the menu, for a choice to show, for the interface to go after "Confirm", for the message after it, between looks, for the menu to follow the mouse, and the pause `open` makes once the interface shows.
 
 ## Lamp.is_open
 

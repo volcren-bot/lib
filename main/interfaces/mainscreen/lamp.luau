@@ -42,7 +42,10 @@ Lamp.NAMES = {
 	"Lamp of the Gatherer",
 	"Event lamp",
 	"Magic lamp",
+	"Book of Knowledge",
 }
+-- The items opened by another option than `OPTION`: the Book of Knowledge (from the Surprise Exam) is read.
+Lamp.OPTIONS = { ["Book of Knowledge"] = "Read" } :: { [string]: string }
 
 Lamp.OPEN_TIMEOUT_MS = 3000
 Lamp.HOVER_TIMEOUT_MS = 800
@@ -277,8 +280,15 @@ function Lamp.open(item: (number | string)?): (boolean, string?)
 	if not Toplevel.escape_clear() then
 		return false, "another interface is open"
 	end
-	if not Inventory.interact_slot(slot, Lamp.OPTION) then
-		return false, `couldn't {Lamp.OPTION} the lamp`
+	local name: string? = nil
+	for _, h in ipairs(Host.item_container(Lamp.INVENTORY) or {}) do
+		if h.slot == slot then
+			name = Item.name(h.id)
+		end
+	end
+	local option = name and Lamp.OPTIONS[name] or Lamp.OPTION
+	if not Inventory.interact_slot(slot, option) then
+		return false, `couldn't {option} the {name or "lamp"}`
 	end
 	if not Lamp.wait_open() then
 		return false, "the interface didn't open"
