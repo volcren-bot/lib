@@ -38,7 +38,7 @@ export type Target = Point | Box | Circle | Quad | Area
 local Mouse = {}
 
 Mouse.speed = 14
-Mouse.pace = 1
+Mouse.pace = 1.5
 Mouse.wind = 5
 Mouse.gravity = 10
 Mouse.timeout = 15000

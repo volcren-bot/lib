@@ -14,10 +14,10 @@ Definition:
 ```luau
 Clickbox.TARGET_TRIES = 30
 Clickbox.MIN_TRIANGLE_AREA = 4
+Clickbox.FOLLOW_AREA = 25
 Clickbox.MOUSE_FALLOFF = 0.25
 Clickbox.CAMERA_RANGE = 15
 Clickbox.ATTEMPTS = 5
-Clickbox.HOVER_TIMEOUT = 150
 Clickbox.MISCLICK_ATTEMPTS = 3
 Clickbox.ANCHOR_HEIGHT = 200
 Clickbox.WALK_REACTION_MS = 30
@@ -27,9 +27,10 @@ Clickbox.WALK_LEAD_TOLERANCE = 40
 ```
 - `TARGET_TRIES`: how many times to try finding a free spot.
 - `MIN_TRIANGLE_AREA`: parts of the shape smaller than this (in pixels) are ignored.
+- `FOLLOW_AREA`: `hover` follows a part of the shape at least this big (in pixels) when there is one.
 - `MOUSE_FALLOFF`: how strongly spots near the current mouse position are preferred.
 - `CAMERA_RANGE`: things closer than this many tiles that aren't on the screen may get the camera zoomed out to show them. Set to `nil` to never zoom out for them. Turning towards things is `Camera.face`, with its own settings.
-- `ATTEMPTS` / `HOVER_TIMEOUT`: how many times to aim and how long (milliseconds) to wait for the game to confirm the mouse is on the thing.
+- `ATTEMPTS`: how many times to aim (a triangle picked and followed) before giving up; the game's confirmation that the mouse is on the thing is waited for by [Track](../utils/input/track.md) (`Track.CONFIRM_MS`).
 - `MISCLICK_ATTEMPTS`: how many times to retry when the game did something else.
 - `ANCHOR_HEIGHT`: the height (fine units) of the reference point used to move a drawn box while walking (see `Clickbox.walking`).
 - `WALK_REACTION_MS`: while walking, how long after the mouse lands the click goes in; the box is aimed at where it'll be by then.
@@ -88,7 +89,7 @@ Definition:
 ```luau
 function Clickbox.reveal(clickbox: () -> Clickbox?, tile: () -> Tile?, what: string): boolean
 ```
-Makes sure the thing is on the screen. If it isn't, it zooms out until it is, as long as it is within `CAMERA_RANGE` tiles. Does nothing when it is already visible. `Clickbox.hover` first turns the camera so the thing shows in the upper half of the screen (`Camera.face`).
+Makes sure the thing is on the screen. If it isn't, it turns the camera to it (`Camera.face` forced, not left to its chance), then zooms out until it shows, as long as it is within `CAMERA_RANGE` tiles. Does nothing when it is already visible. `Clickbox.hover` first turns the camera so the thing shows in the upper half of the screen (`Camera.face`, on its chance), then reveals, so an attack or any other click on a thing off screen always brings it into view.
 
 Example:
 ```luau
@@ -118,7 +119,7 @@ function Clickbox.hover(
 	tile: (() -> Tile?)?
 ): boolean
 ```
-Moves the mouse onto the thing and waits until the game confirms (through `hovered`) that the mouse is really on it. It aims again if the thing moved. Passing `tile` lets it first turn the camera so the thing shows in the upper half of the screen (`Camera.face`), and bring it on screen (`Clickbox.reveal`).
+Moves the mouse onto the thing and waits until the game confirms (through `hovered`) that the mouse is really on it. It picks one triangle of the shape (a model's face, or for a drawn box one of its top and bottom halves): one of the bigger half of those at least `FOLLOW_AREA` pixels (a model's small faces are mostly its thin, moving parts), near the mouse more likely. It follows it with [Track](../utils/input/track.md) while the mouse goes, so a thing that moves (an NPC swaying, the scene sliding while you walk) is still under the mouse when it gets there. The mouse counts as there once it is anywhere on the shape after a move and the game agrees (`hovered`); when the game doesn't, the corrections go on to the chosen spot. A triangle that can't be followed (gone off screen, behind the interface) is logged and another is tried, `ATTEMPTS` times in all. Passing `tile` lets it first turn the camera so the thing shows in the upper half of the screen (`Camera.face`), and bring it on screen (`Clickbox.reveal`).
 
 Example:
 ```luau
@@ -184,10 +185,11 @@ function Clickbox.interact(
 	target: Minimenu.Target?,
 	tile: (() -> Tile?)?,
 	walk_timeout_ms: (number | false)?,
-	spam: number?
+	spam: number?,
+	menu: boolean?
 ): boolean
 ```
-Hovers the thing and picks an option on it (like "Talk-to"), then waits until you arrive if it made you walk. If the game clicked something else by mistake it tries again, up to `MISCLICK_ATTEMPTS` times. `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](interact.md#interactspam_click).
+Hovers the thing and picks an option on it (like "Talk-to"), then waits until you arrive if it made you walk. If the game clicked something else by mistake it tries again, up to `MISCLICK_ATTEMPTS` times. `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](interact.md#interactspam_click). `menu` picks the option from the right-click menu even when it is the top one, for a thing whose model moves under the mouse (see [Interact.with](interact.md#interactwith)).
 
 Example:
 ```luau

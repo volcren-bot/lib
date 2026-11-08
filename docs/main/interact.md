@@ -14,7 +14,7 @@ Interact.HOVER_TIMEOUT = 600
 Interact.WALK_HOVER_TIMEOUT = 100
 Interact.SPAM_MAX = 3
 ```
-How long (in milliseconds) to wait for an option to show up in the menu after hovering. While the player is walking `WALK_HOVER_TIMEOUT` is used instead: the scene slides under the mouse, so an option that isn't there soon won't come. `SPAM_MAX` is the most extra clicks `Interact.spam_click` makes.
+How long (in milliseconds) to wait for an option to show up in the menu after hovering. While the player is walking, a spot in the game world (`Interact.with`'s `scene`) gets `WALK_HOVER_TIMEOUT` instead: the scene slides under the mouse, so an option that isn't there soon won't come. `SPAM_MAX` is the most extra clicks `Interact.spam_click` makes.
 
 ## Interact.wait_option
 
@@ -60,9 +60,9 @@ end)
 
 Definition:
 ```luau
-function Interact.with(at: Target, option: string, target: Minimenu.Target?, walk_timeout_ms: (number | false)?, spam: number?): (boolean, MenuClick?)
+function Interact.with(at: Target, option: string, target: Minimenu.Target?, walk_timeout_ms: (number | false)?, spam: number?, scene: boolean?, menu: boolean?): (boolean, MenuClick?)
 ```
-Moves to a spot, picks the option and checks that the game really did what you asked. If the option is the top one it simply clicks, otherwise it opens the right-click menu and picks it. If the game did something else, you get `false`, a message and the entry it clicked, so you can try again. After a successful click that makes you walk, it waits until you arrive (`walk_timeout_ms` changes how long; `false` skips the wait, useful for options like "Follow"). When the option was the top one, `spam` is the chance of a few more clicks, see `Interact.spam_click`.
+Moves to a spot, picks the option and checks that the game really did what you asked. If the option is the top one it simply clicks, otherwise it opens the right-click menu and picks it. If the game did something else, you get `false`, a message and the entry it clicked, so you can try again. After a successful click that makes you walk, it waits until you arrive (`walk_timeout_ms` changes how long; `false` skips the wait, useful for options like "Follow"). When the option was the top one, `spam` is the chance of a few more clicks, see `Interact.spam_click`. Pass `scene` for a spot in the game world: while you walk the scene slides under the mouse, so the option gets only `WALK_HOVER_TIMEOUT` to show up instead of `HOVER_TIMEOUT`; an interface spot (an inventory slot, a button) always gets the full wait. Pass `menu` to pick the option from the right-click menu even when it is the top one: a model that moves (an NPC mid-attack) can leave the mouse between the look and the press, and a left click there does the option under it instead ("Walk here"), while an open menu stays put.
 
 Example:
 ```luau

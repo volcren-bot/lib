@@ -56,16 +56,20 @@ function Interact.with(
 	option: string,
 	target: Minimenu.Target?,
 	walk_timeout_ms: (number | false)?,
-	spam: number?
+	spam: number?,
+	scene: boolean?,
+	menu: boolean?
 ): (boolean, MenuClick?)
 	Mouse.move(at)
-	local walking = Player.destination() ~= nil
+	-- the scene slides under the mouse while walking, the interface doesn't
+	local walking = scene == true and Player.destination() ~= nil
 	local index = Interact.wait_option(option, target, if walking then Interact.WALK_HOVER_TIMEOUT else nil)
 	if index == nil then
 		return false, nil
 	end
 	local before = Minimenu.clicked()
-	if index == 1 then
+	-- `menu`: from the opened menu even when it's the top option (a moving model can leave the mouse between look and click)
+	if index == 1 and not menu then
 		Mouse.click()
 	else
 		local ok = Minimenu.select(option, target)
@@ -83,7 +87,7 @@ function Interact.with(
 			return false, clicked
 		end
 	end
-	if index == 1 then
+	if index == 1 and not menu then
 		Interact.spam_click(spam, function(): boolean
 			return Minimenu.find(option, target) == 1
 		end)

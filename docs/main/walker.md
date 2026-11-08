@@ -82,7 +82,7 @@ Definition:
 ```luau
 function Walker.click_tile(tile: Tile): boolean
 ```
-Clicks a tile on the screen so your character walks there. It first turns the camera so the tile shows in the upper half of the screen (`Camera.face`). Returns `false` with a message if the tile can't be seen (off screen or behind a panel).
+Clicks a tile on the screen so your character walks there. It first turns the camera so the tile shows in the upper half of the screen (`Camera.face`), and when the tile is still off the game view or behind the interface it zooms the camera out, halfway to a far zoom and then to it, as `Clickbox.reveal` does for a thing. The mouse follows a spot near the centre of one of the tile's two triangles with [Track](../utils/input/track.md) while it goes, since the scene slides under it while you walk; the spot itself has to be reached, as one on the tile's edge can take the tile next to it. The click goes in once the game offers "Walk here" there. It then waits up to `Walker.CLICK_CHECK_MS` (700) for the walk's destination: when the walk goes to another tile (something drawn over the tile, such as a pillar, sends a click to the ground behind it) it is logged and the tile's other triangle is clicked once more, and when that walk goes elsewhere too (the whole tile is covered from this angle) the tile is clicked on the minimap. Returns `false` with a message if the tile can't be seen (off screen or behind a panel); `true` once a walk was clicked, even if the second click still goes elsewhere.
 
 Example:
 ```luau

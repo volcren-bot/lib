@@ -21,8 +21,8 @@ local Player = require("@lib/main/player")
 local Projection = require("@lib/main/projection/projection")
 local Random = require("@lib/utils/math/random")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
+local Track = require("@lib/utils/input/track")
 local Walker = require("@lib/main/walker")
-local sleep = Host.sleep
 local game_state = Host.game_state
 
 export type Clickbox = {
@@ -130,6 +130,81 @@ local function pick_triangle(box: Clickbox, from: Point?, visible: (Point) -> bo
 	return Random.nearest_weighted(candidates, function(t)
 		return distances[t]
 	end, falloff)
+end
+
+-- The clickbox's triangles in an order that stays the same from frame to frame, for `Track`: the model's faces, or a drawn
+-- box's top and bottom.
+local function stable_triangles(box: Clickbox): { Polygon }?
+	if box.triangles then
+		return box.triangles
+	end
+	local cuboid = box.box
+	if cuboid == nil then
+		return nil
+	end
+	local out: { Polygon } = {}
+	for _, quad in ipairs({ cuboid.top, cuboid.bottom }) do
+		local c = Quad.corners(quad)
+		table.insert(out, { c[1], c[2], c[3] })
+		table.insert(out, { c[1], c[3], c[4] })
+	end
+	return out
+end
+
+-- Which of them to follow: one big enough (FOLLOW_AREA when there are such), its centre in the clickbox and visible, the ones
+-- near the mouse more likely.
+Clickbox.FOLLOW_AREA = 25
+
+local function pick_index(box: Clickbox, list: { Polygon }, from: Point?, visible: (Point) -> boolean): number?
+	local candidates: { number }, small: { number } = {}, {}
+	for i, t in ipairs(list) do
+		local area = Triangle.area(t)
+		if area >= Clickbox.MIN_TRIANGLE_AREA then
+			local center = Triangle.centroid(t)
+			if Polygon.contains(box.polygon, center) and visible(center) then
+				table.insert(if area >= Clickbox.FOLLOW_AREA then candidates else small, i)
+			end
+		end
+	end
+	if #candidates == 0 then
+		candidates = small
+	end
+	-- the bigger half: a model's small faces are mostly its thin, moving parts
+	table.sort(candidates, function(a: number, b: number): boolean
+		return Triangle.area(list[a]) > Triangle.area(list[b])
+	end)
+	for i = #candidates, math.max(1, math.ceil(#candidates / 2)) + 1, -1 do
+		candidates[i] = nil
+	end
+	if #candidates == 0 then
+		return nil
+	end
+	if from == nil then
+		return candidates[math.random(1, #candidates)]
+	end
+	local distances: { [number]: number } = {}
+	local closest, farthest = math.huge, 0
+	for _, i in ipairs(candidates) do
+		local d = Point.distance(Triangle.centroid(list[i]), from)
+		distances[i] = d
+		closest, farthest = math.min(closest, d), math.max(farthest, d)
+	end
+	local falloff = math.max((farthest - closest) * Clickbox.MOUSE_FALLOFF, 1)
+	return Random.nearest_weighted(candidates, function(i)
+		return distances[i]
+	end, falloff)
+end
+
+-- Whether a screen point can be clicked: in the game view and not under the interface.
+local function visibility(): ((Point) -> boolean)?
+	local view = Toplevel.viewport()
+	if view == nil then
+		return nil
+	end
+	local blockers = Toplevel.blockers() or {}
+	return function(p: Point): boolean
+		return Toplevel.is_visible(Point.new(math.round(p.x), math.round(p.y)), view, blockers)
+	end
 end
 
 -- `ignore_windows` only counts the side panels and chat as covering the game view, not the windows open on top of it.
@@ -334,6 +409,11 @@ function Clickbox.reveal(clickbox: Aim, tile: () -> Tile?, what: string): boolea
 		return false
 	end
 
+	-- off screen: turned to, whatever the chance `Camera.face` rolls for a thing already shown, then zoomed out if need be
+	Camera.face(at, true)
+	if on_screen(clickbox, what) then
+		return true
+	end
 	local zoom = Camera.zoom()
 	if zoom then
 		local farthest = Camera.ZOOM_MIN + Random.int(0, 40)
@@ -351,7 +431,6 @@ function Clickbox.reveal(clickbox: Aim, tile: () -> Tile?, what: string): boolea
 end
 
 Clickbox.ATTEMPTS = 5
-Clickbox.HOVER_TIMEOUT = 150
 
 -- Closes a minimenu that's over the clickbox: it would eat the hover and the click.
 local function clear_menu(clickbox: Aim)
@@ -381,20 +460,25 @@ function Clickbox.hover(clickbox: Aim, hovered: () -> boolean, what: string, til
 	end
 	clear_menu(clickbox)
 	for _ = 1, Clickbox.ATTEMPTS do
-		local target = aim(clickbox, what)
-		if target == nil then
+		-- one triangle is followed while the mouse goes (the thing moves, or the scene does while walking)
+		local box = clickbox()
+		if box and Clickbox.target(box, what) == nil and close_window_over(box, what) then
+			box = clickbox()
+		end
+		local visible = visibility()
+		local list = if box then stable_triangles(box) else nil
+		local index = if box and list and visible then pick_index(box, list, Mouse.position(), visible) else nil
+		if index == nil then
 			return false
 		end
-		Mouse.move(target)
-		local waited = 0
-		while waited <= Clickbox.HOVER_TIMEOUT do
-			if hovered() then
-				return true
-			end
-			sleep(25)
-			waited += 25
+		local ok, why = Track.hover(function(): { Polygon }?
+			local now = clickbox()
+			return if now then stable_triangles(now) else nil
+		end, index, visible, true, hovered)
+		if ok then
+			return true
 		end
-		Log.log("Clickbox", `the client didn't put {what} under the mouse`)
+		Log.log("Clickbox", `couldn't keep the mouse on {what} ({why})`)
 	end
 	return false
 end
@@ -446,7 +530,8 @@ function Clickbox.interact(
 	target: Minimenu.Target?,
 	tile: (() -> Tile?)?,
 	walk_timeout_ms: (number | false)?,
-	spam: number?
+	spam: number?,
+	menu: boolean?
 ): boolean
 	local options: { string } = if type(option) == "string" then { option } else option :: { string }
 	local handled, result = Interact.open_menu(options, target, walk_timeout_ms)
@@ -464,7 +549,7 @@ function Clickbox.interact(
 		end
 		local pick = offered(options, target) or options[1]
 		local walking = Player.destination() ~= nil
-		local done, misclicked = Interact.with(at, pick, target, walk_timeout_ms, spam)
+		local done, misclicked = Interact.with(at, pick, target, walk_timeout_ms, spam, true, menu)
 		-- while walking the thing can slide out from under the mouse before the click, so try again
 		if done or (misclicked == nil and not walking) then
 			return done

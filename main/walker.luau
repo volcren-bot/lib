@@ -20,6 +20,7 @@ local Player = require("@lib/main/player")
 local Projection = require("@lib/main/projection/projection")
 local Random = require("@lib/utils/math/random")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
+local Track = require("@lib/utils/input/track")
 type Tile = Projection.Tile
 type NavTile = Host.NavTile
 type NavPlan = Host.NavPlan
@@ -243,19 +244,46 @@ local function aim_quad(tile: Tile): Geometry.Quad?
 	return quad_ahead(tile, lead) or quad
 end
 
--- `menu` false gives up on a tile something stands on instead of picking "Walk here" from the menu.
-local function click_projected(tile: Tile, accept: ((Host.MenuEntry) -> boolean)?, menu: boolean?): boolean
+-- `menu` false gives up on a tile something stands on instead of picking "Walk here" from the menu. `half` (1 or 2) is the
+-- triangle of the tile aimed at, random when nil; the second result is the one used.
+local function click_projected(
+	tile: Tile,
+	accept: ((Host.MenuEntry) -> boolean)?,
+	menu: boolean?,
+	half: number?
+): (boolean, number)
+	local used = half or math.random(1, 2)
 	local quad = Projection.tile(tile)
 	if quad == nil then
-		return false
+		Log.log("Walker", `tile {tile.x},{tile.y} can't be projected`)
+		return false, used
 	end
 	if not quad_on_screen(quad, walk_view(), Toplevel.blockers()) then
-		return false
+		Log.log("Walker", `tile {tile.x},{tile.y} is off the game view or behind the interface`)
+		return false, used
 	end
 	-- something standing on the tile (a ladder, a mast) can own part of it: try other spots of the quad
 	local walkable = false
-	for attempt = 1, Walker.HOVER_ATTEMPTS do
-		Mouse.move(aim_quad(tile) or quad, attempt > 1)
+	local view, blockers = walk_view(), Toplevel.blockers()
+	local function visible(p: Geometry.Point): boolean
+		return Toplevel.is_visible(Geometry.Point.new(math.round(p.x), math.round(p.y)), view, blockers)
+	end
+	for _ = 1, Walker.HOVER_ATTEMPTS do
+		-- the tile is followed while the mouse goes, since the scene slides under it while walking; the spot near its centre has to
+		-- be reached, as one on its edge can take the tile next to it
+		local followed, why = Track.hover(function(): { Geometry.Polygon }?
+			local now = Projection.tile(tile)
+			if now == nil then
+				return nil
+			end
+			local c = Geometry.Quad.corners(now)
+			return { { c[1], c[2], c[3] }, { c[1], c[3], c[4] } }
+		end, used, visible)
+		-- the mouse isn't on the tile then, so the menu's "Walk here" would walk somewhere else
+		if not followed then
+			Log.log("Walker", `couldn't keep the mouse on tile {tile.x},{tile.y} ({why})`)
+			return false, used
+		end
 		for _ = 1, 4 do
 			local top = Minimenu.entries()
 			if top and top[1] and (is_walk_here(top[1]) or (accept and accept(top[1]))) then
@@ -272,21 +300,79 @@ local function click_projected(tile: Tile, accept: ((Host.MenuEntry) -> boolean)
 	if walkable then
 		Mouse.click(nil)
 	elseif menu == false or not select_walk_here() then
-		return false
+		return false, used
 	end
 	if before ~= nil then
 		local clicked = Minimenu.wait_click(before)
 		if clicked == nil then
-			return false
+			return false, used
 		end
 	end
 	clicked_tile = tile
-	return true
+	return true, used
+end
+
+-- After a tile click: how long the client gets to show the walk's destination (the server takes the click on the next tick).
+Walker.CLICK_CHECK_MS = 700
+
+-- Where the walk a click started is going: the destination once the client shows it, nil when the player is already on the
+-- tile (a short walk can end before a read sees it) or no walk shows.
+local function walk_destination(tile: Tile): Tile?
+	local deadline = Host.time() + Walker.CLICK_CHECK_MS
+	while Host.time() < deadline do
+		local dest = Player.destination()
+		if dest then
+			return dest
+		end
+		local me = Walker.position()
+		if me and me.x == tile.x and me.y == tile.y then
+			return nil
+		end
+		sleep(30)
+	end
+	return nil
+end
+
+-- Zooms the camera out (halfway to a far zoom, then to it) while the tile stays off the game view or behind the interface after
+-- turning to it, as `Clickbox.reveal` does for a thing.
+local function reveal_tile(tile: Tile)
+	local zoom = Camera.zoom()
+	if zoom == nil or Walker.on_screen(tile) then
+		return
+	end
+	local farthest = Camera.ZOOM_MIN + Random.int(0, 40)
+	for _, to in ipairs({ math.round((zoom + farthest) / 2), farthest }) do
+		if to < zoom - Camera.zoom_tolerance then
+			Camera.set_zoom(to)
+			zoom = Camera.zoom() or to
+			if Walker.on_screen(tile) then
+				return
+			end
+		end
+	end
 end
 
 function Walker.click_tile(tile: Tile): boolean
 	Camera.face(tile)
-	return click_projected(tile)
+	reveal_tile(tile)
+	local ok, half = click_projected(tile)
+	if not ok then
+		return false
+	end
+	-- something drawn over the tile (a pillar, a tree) walks the click to the ground behind it: once more on its other half
+	local dest = walk_destination(tile)
+	if dest and (dest.x ~= tile.x or dest.y ~= tile.y) then
+		Log.log("Walker", `the click walks to {dest.x},{dest.y}, not {tile.x},{tile.y}: clicking the tile's other half`)
+		if click_projected(tile, nil, nil, 3 - half) then
+			dest = walk_destination(tile)
+		end
+		-- all of it is covered from this angle: the minimap has nothing drawn over it
+		if dest and (dest.x ~= tile.x or dest.y ~= tile.y) and Walker.on_minimap(tile) then
+			Log.log("Walker", `still walking to {dest.x},{dest.y}: clicking {tile.x},{tile.y} on the minimap`)
+			Walker.click_minimap(tile)
+		end
+	end
+	return true
 end
 
 -- Starts moving the mouse over the tile and returns at once; false when it is off screen. Doesn't turn the camera or click.
@@ -396,10 +482,12 @@ end
 
 function Walker.click_minimap(tile: Tile): boolean
 	if not ensure_minimap_zoom() then
+		Log.log("Walker", "couldn't set the minimap zoom")
 		return false
 	end
 	local p = minimap_point(tile)
 	if p == nil then
+		Log.log("Walker", `tile {tile.x},{tile.y} isn't on the minimap`)
 		return false
 	end
 	Mouse.click(Geometry.Circle.new(p.x, p.y, 2))

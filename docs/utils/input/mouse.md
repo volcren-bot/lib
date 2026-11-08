@@ -23,7 +23,7 @@ For anything but a point, the mouse picks a spot inside the shape, so repeated c
 Definition:
 ```luau
 Mouse.speed = 14
-Mouse.pace = 1
+Mouse.pace = 1.5
 Mouse.wind = 5
 Mouse.gravity = 10
 Mouse.timeout = 15000
@@ -36,7 +36,7 @@ Mouse.idle_interval = 0
 Mouse.use_teleport = false
 ```
 - `speed`, `wind`, `gravity`: how fast and how wobbly the mouse moves. `speed` only shortens the part of a move's time that grows with its distance.
-- `pace`: how many times faster every move runs along the same path (`HOST_API` 12): 1.2 takes 20% less time. Biometrics set `speed`, not this; raise it for a moment where a person hurries, then put it back.
+- `pace`: how many times faster every move runs along the same path (`HOST_API` 12): 1.5, the default, takes a third less time than 1. Biometrics set `speed`, not this; raise it for a moment where a person hurries (equipment and prayer layout swaps multiply it), then put it back.
 - `timeout`: the most time (milliseconds) a single move may take.
 - `press_min`, `press_max`: how long a click is held, in milliseconds.
 - `distribution`: how a spot inside a shape is picked: `"random"` (anywhere), `"gauss"` (near the middle), `"skewed"` (towards where the mouse comes from) or `"rowp"` (weighted towards the mouse).
