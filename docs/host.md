@@ -90,7 +90,7 @@ Definition:
 ```luau
 Host.widget: (group: number, child: number) -> Widget?
 ```
-Looks up one interface element by its group and child number.
+Looks up one interface element by its group and child number. Besides its place, size and look, a widget has `item_id` and `item_quantity` (`HOST_API` 16): the item a cell shows (an inventory or bank slot; -1 for none) and how many. A bank placeholder shows quantity 0 there, while its slot in the bank's item container reads 1.
 
 Example:
 ```luau
@@ -1278,7 +1278,7 @@ Definition:
 ```luau
 Host.type_text: (text: string, hold_ms: number?) -> ()
 ```
-Types a piece of text, optionally holding each key for `hold_ms`.
+Types a piece of text, optionally holding each key for `hold_ms`. Letters, digits, space and the usual punctuation are pressed as the keys of a US keyboard (with Shift where it needs it), since the client reads key codes as a US layout does; the system's layout is only asked for other characters, and one it has no key for is an error.
 
 Example:
 ```luau

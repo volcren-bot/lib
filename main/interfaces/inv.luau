@@ -28,6 +28,8 @@ export type View = {
 	open: () -> boolean,
 	boxes: () -> { [number]: Widget }?,
 	owns: (slot: number) -> (MenuEntry) -> boolean,
+	-- corrects what the container says it holds (the bank's placeholders read 1): the slot ids whose quantity is really 0
+	empty: (() -> { [number]: boolean }?)?,
 }
 
 export type Inv = {
@@ -97,9 +99,20 @@ local function poll(check: () -> boolean, timeout_ms: number, interval_ms: numbe
 	end
 end
 
+-- Left-click options that lose the item: `click_slot` won't click a slot that offers one of these first.
+Inv.LOSES_ITEM = table.freeze({ Drop = true, Destroy = true, Release = true }) :: { [string]: boolean }
+
 function Inv.new(container: number, size: number?, view: View?): Inv
 	local function slots(): { ItemSlot }?
 		local items = item_container(container)
+		local empty = items and view and view.empty and view.empty()
+		if items and empty and next(empty) then
+			local fixed: { ItemSlot } = {}
+			for i, s in ipairs(items) do
+				fixed[i] = if empty[s.slot] then { slot = s.slot, id = s.id, quantity = 0 } else s
+			end
+			items = fixed
+		end
 		if size == nil then
 			return items
 		end
@@ -498,15 +511,6 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 		return true
 	end
 
-	local function click_slot(slot: number, button: Button?): boolean
-		local w = shown(slot)
-		if w == nil then
-			return false
-		end
-		Mouse.click(w, button)
-		return true
-	end
-
 	local function default_option(w: Widget, owns: (MenuEntry) -> boolean): string?
 		Mouse.move(w)
 		local waited = 0
@@ -524,22 +528,46 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 		end
 	end
 
+	-- A left click does what the slot's menu offers first: it is read before the click, and one that would lose the item
+	-- (Shift held with shift-click drop on, a placeholder's Release) isn't clicked. Dropping goes through `interact_slot`.
+	local function click_slot(slot: number, button: Button?): boolean
+		local w = shown(slot)
+		if w == nil then
+			return false
+		end
+		if (button == nil or button == "left") and view then
+			local option = default_option(w, view.owns(slot))
+			if option and Inv.LOSES_ITEM[option] then
+				Log.log("Inv", `click_slot: slot {slot} would "{option}": not clicked`)
+				return false
+			end
+			Mouse.click(nil, button)
+			return true
+		end
+		Mouse.click(w, button)
+		return true
+	end
+
 	local function interact_slot(slot: number, option: string?): boolean
 		local s = item(slot)
 		if s == nil then
+			Log.log("Inv", `interact_slot: slot {slot} holds nothing`)
 			return false
 		end
 		local w = shown(slot)
 		if w == nil then
+			Log.log("Inv", `interact_slot: slot {slot} isn't shown (the panel didn't open)`)
 			return false
 		end
 		local owns = (view :: View).owns(slot)
 		local wanted = option or default_option(w, owns)
 		if wanted == nil then
+			Log.log("Inv", `interact_slot: slot {slot} has no option to click`)
 			return false
 		end
 		local ok = Interact.with(w, wanted, owns, false)
 		if not ok then
+			Log.log("Inv", `interact_slot: "{wanted}" on slot {slot} didn't go through`)
 			return false
 		end
 		return true

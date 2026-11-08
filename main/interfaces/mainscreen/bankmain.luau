@@ -68,6 +68,20 @@ local function shown_slots(): { [number]: Widget }?
 	return found
 end
 
+-- The bank's placeholders by slot: their container slot reads quantity 1, their grid cell shows 0 (nil when the bank isn't open).
+local function placeholders(): { [number]: boolean }?
+	if not Toplevel.is_open(GROUP_ID) then
+		return nil
+	end
+	local found: { [number]: boolean } = {}
+	for _, k in ipairs(widget_children(GROUP_ID, GRID_CHILD) or {}) do
+		if k.item_id ~= -1 and k.item_quantity == 0 then
+			found[k.index] = true
+		end
+	end
+	return found
+end
+
 -- The inventory as the open bank shows it (its own widget, not the inventory tab's): its items are deposited by clicking them.
 local INVENTORY_CONTAINER = 93
 local INVENTORY_SIZE = 28
@@ -103,6 +117,7 @@ local items = Inv.new(CONTAINER, nil, {
 		return Toplevel.is_open(GROUP_ID)
 	end,
 	boxes = shown_slots,
+	empty = placeholders,
 	owns = function(slot: number)
 		return function(entry: Host.MenuEntry): boolean
 			return entry.id == GROUP_ID * 65536 + GRID_CHILD and entry.index == slot
@@ -857,6 +872,7 @@ function Bankmain.withdraw(
 	local before = items.count_ex(item) or 0
 	if use_quantity_buttons ~= false and wanted ~= Bankmain.ALL_BUT_ONE then
 		if not Bankmain.set_quantity(wanted) then
+			Log.log("Bankmain", `withdraw: couldn't set the quantity to {wanted}`)
 			return false
 		end
 		-- the quantity buttons are in the bank's frame, the item may not be shown yet after changing tabs
@@ -865,9 +881,11 @@ function Bankmain.withdraw(
 			slot = current
 		end
 		if not Bankmain.show_slot(slot) then
+			Log.log("Bankmain", `withdraw: couldn't show bank slot {slot}`)
 			return false
 		end
 		if not items.click_slot(slot) then
+			Log.log("Bankmain", `withdraw: couldn't click bank slot {slot}`)
 			return false
 		end
 	else
@@ -876,6 +894,7 @@ function Bankmain.withdraw(
 		end
 		local option, typed = withdraw_option(wanted)
 		if not items.interact_slot(slot, option) then
+			Log.log("Bankmain", `withdraw: couldn't pick {option} on bank slot {slot}`)
 			return false
 		end
 		if
@@ -892,6 +911,10 @@ function Bankmain.withdraw(
 		end
 		Host.sleep(POLL_MS)
 	end
+	Log.log(
+		"Bankmain",
+		`withdraw: the bank still held {items.count_ex(item) or "?"} of it after {WITHDRAW_TIMEOUT_MS} ms (had {before})`
+	)
 	return false
 end
 

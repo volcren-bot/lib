@@ -430,6 +430,9 @@ export type Widget = {
 	scroll_height: number,
 	-- the first menu option ("Close"; the port's name on a map marker), nil when it has none
 	action: string?,
+	-- the item a cell shows (-1 for none) and how many: 0 on a bank placeholder (HOST_API 16)
+	item_id: number,
+	item_quantity: number,
 }
 
 export type ItemSlot = {

@@ -8,6 +8,14 @@ local Inv = require("@lib/main/interfaces/inv")
 
 Items can be given by id (`995`), by name (`"Logs"`, not case sensitive) or as a range of doses (`"Potion (1..4)"`). Wherever a function takes `items`, you can give one of them or a list.
 
+## Constants
+
+Definition:
+```luau
+Inv.LOSES_ITEM: { [string]: boolean } -- Drop, Destroy, Release
+```
+The left-click options `click_slot` won't click.
+
 ## Inv.new
 
 Definition:
@@ -23,10 +31,11 @@ export type View = {
 	open: () -> boolean,
 	boxes: () -> { [number]: Widget }?,
 	owns: (slot: number) -> (MenuEntry) -> boolean,
+	empty: (() -> { [number]: boolean }?)?,
 }
 ```
 
-`open` brings the interface up, `boxes` reads the slot components keyed by slot number (from 0) and `owns` says which menu entries belong to a slot. The functions that use the mouse (`boxes`, `hover_slot`, `interact`...) need it and fail without it. [Inventory](gametabs/inventory.md) and [Wornitems](gametabs/wornitems.md) come with theirs.
+`open` brings the interface up, `boxes` reads the slot components keyed by slot number (from 0) and `owns` says which menu entries belong to a slot. `empty`, when given, names the slots whose quantity is really 0 though the container says otherwise; every function then reads 0 there (the bank's placeholders). The functions that use the mouse (`boxes`, `hover_slot`, `interact`...) need it and fail without it. [Inventory](gametabs/inventory.md) and [Wornitems](gametabs/wornitems.md) come with theirs.
 
 Example:
 ```luau
@@ -510,7 +519,7 @@ Definition:
 ```luau
 click_slot: (slot: number, button: Button?) -> boolean
 ```
-Opens the interface and clicks `slot`, empty or not.
+Opens the interface and clicks `slot`, empty or not. A left click first hovers the slot and reads what its menu offers first (with the view's `owns`), and doesn't click when that would lose the item: an option in `Inv.LOSES_ITEM` (`Drop` when Shift is held with shift-click drop on, `Destroy`, a bank placeholder's `Release`). False then, with a log line. Dropping goes through `interact_slot` with "Drop" (`Inventory.drop`).
 
 Example:
 ```luau
