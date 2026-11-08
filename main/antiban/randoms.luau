@@ -30,6 +30,9 @@ Randoms.GILES = 5438
 Randoms.GENIE_TIMEOUT_MS = 8000
 Randoms.GENIE_SETTLE_MS = 600
 Randoms.POLL_MS = 100
+-- After an event that gives a lamp: how long to wait for one to show or a spent one to go, and how often one is tried.
+Randoms.LAMP_WAIT_MS = 3000
+Randoms.LAMP_ATTEMPTS = 3
 
 local function own_index(): number?
 	local name = Host.game_state().player_name
@@ -70,7 +73,62 @@ function Randoms.lamp_skill(): Stats.SkillName?
 	return skill :: any
 end
 
--- Takes the lamp from the genie, then spends it on the account's lamp skill. With no skill set the lamp is kept. True once the lamp is held.
+local function wait_for(check: () -> boolean, ms: number): boolean
+	local deadline = time() + ms
+	while not check() do
+		if time() >= deadline then
+			return false
+		end
+		sleep(Randoms.POLL_MS)
+	end
+	return true
+end
+
+local function held_at(slot: number): number?
+	for _, item in ipairs(Host.item_container(Lamp.INVENTORY) or {}) do
+		if item.slot == slot then
+			return item.id
+		end
+	end
+	return nil
+end
+
+-- Spends every lamp held (one of `Lamp.NAMES`: the genie's, the exam's Book of Knowledge) on the account's lamp skill,
+-- each tried up to LAMP_ATTEMPTS times. Lamps can't be banked, so none is left behind. True when none is held.
+function Randoms.use_lamps(): boolean
+	wait_for(function(): boolean
+		return Lamp.slot() ~= nil
+	end, Randoms.LAMP_WAIT_MS)
+	local skill: Stats.SkillName? = nil
+	local failures = 0
+	while true do
+		local slot = Lamp.slot()
+		if slot == nil then
+			return true
+		end
+		skill = skill or Randoms.lamp_skill()
+		if skill == nil then
+			Log.log("Randoms", "no lamp skill set for this account: keeping the lamp")
+			return false
+		end
+		local id = held_at(slot)
+		local ok, why = Lamp.use(skill :: Stats.SkillName)
+		if ok and wait_for(function(): boolean
+			return held_at(slot) ~= id
+		end, Randoms.LAMP_WAIT_MS) then
+			Log.log("Randoms", `spent a lamp on {skill}`)
+			failures = 0
+		else
+			failures += 1
+			Log.log("Randoms", `couldn't spend the lamp on {skill}: {why or "it is still held"}`)
+			if failures >= Randoms.LAMP_ATTEMPTS then
+				return false
+			end
+		end
+	end
+end
+
+-- Takes the lamp from the genie. True once the lamp is held.
 local function handle_genie(genie: Npc): boolean
 	local before = lamps_held()
 	if not Npcs.interact(genie, Randoms.GENIE_OPTION) then
@@ -92,17 +150,6 @@ local function handle_genie(genie: Npc): boolean
 	if got_at == nil then
 		Log.log("Randoms", "the genie gave no lamp")
 		return false
-	end
-	local skill = Randoms.lamp_skill()
-	if skill == nil then
-		Log.log("Randoms", "no lamp skill set for this account: keeping the lamp")
-		return true
-	end
-	local ok, why = Lamp.use(skill, Randoms.GENIE_LAMP)
-	if ok then
-		Log.log("Randoms", `spent the genie's lamp on {skill}`)
-	else
-		Log.log("Randoms", `couldn't spend the lamp on {skill}: {why or "no reason given"}`)
 	end
 	return true
 end
@@ -130,6 +177,12 @@ Randoms.HANDLERS = {
 	[Randoms.GILES] = handle_certer,
 } :: { [number]: Handler }
 
+-- The events whose reward is a lamp, by NPC id: `handle` spends it once the event is done.
+Randoms.LAMP_EVENTS = {
+	[Randoms.GENIE] = true,
+	[SurpriseExam.DUNCE] = true,
+} :: { [number]: boolean }
+
 -- The first NPC of a known event that is interacting with you, nil when there is none.
 function Randoms.find(): Npc?
 	local me: number? = nil
@@ -149,14 +202,22 @@ function Randoms.handle(): boolean
 	-- an exam already under way (the script started in the classroom): finished first
 	if SurpriseExam.inside() then
 		Log.log("Randoms", "in the Surprise Exam's classroom")
-		return SurpriseExam.complete()
+		local done = SurpriseExam.complete()
+		if done then
+			Randoms.use_lamps()
+		end
+		return done
 	end
 	local npc = Randoms.find()
 	if npc == nil then
 		return false
 	end
 	Log.log("Randoms", `event NPC {npc.id} ({npc.name}) is interacting with us`)
-	return Randoms.HANDLERS[npc.id](npc)
+	local done = Randoms.HANDLERS[npc.id](npc)
+	if done and Randoms.LAMP_EVENTS[npc.id] then
+		Randoms.use_lamps()
+	end
+	return done
 end
 
 return Randoms
