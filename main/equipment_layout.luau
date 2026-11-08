@@ -31,6 +31,13 @@ EquipmentLayout.CONFIRM_MS = 1200
 EquipmentLayout.WEAR_ATTEMPTS = 3
 -- How many times faster the mouse moves while clicking the items of a swap (`Mouse.pace`).
 EquipmentLayout.SWAP_MOUSE_PACE = 1.2
+-- What `equip` does besides the swap: `stop` is asked while the clicks run and drops them once true (the swap fails);
+-- `after_clicks` runs once, as soon as the clicks are in, while equip waits for them to show as worn (an async hover of
+-- what comes next).
+export type EquipOptions = { stop: (() -> boolean)?, after_clicks: (() -> ())? }
+
+-- How often `equip`'s `stop` is asked while the clicks run.
+EquipmentLayout.STOP_POLL_MS = 30
 
 -- The worn items slots a layout lists, in the container's order, then the secondary ammo.
 EquipmentLayout.SLOTS = table.freeze({
@@ -278,7 +285,7 @@ local function wait_slot(slot: Slot): boolean
 end
 
 -- Queues a click on each inventory slot in the order `Inventory.pattern` gives, with no wait between them, and waits for the mouse to finish.
-local function click_all(slots: { [number]: Slot }): boolean
+local function click_all(slots: { [number]: Slot }, opts: EquipOptions): boolean
 	if not Inventory.open() then
 		return false
 	end
@@ -305,6 +312,15 @@ local function click_all(slots: { [number]: Slot }): boolean
 		Mouse.cancel()
 		return false
 	end
+	local stop = opts.stop
+	while stop and Mouse.busy() do
+		if stop() then
+			Mouse.cancel()
+			Log.log("EquipmentLayout", "equip: stopped")
+			return false
+		end
+		sleep(EquipmentLayout.STOP_POLL_MS)
+	end
 	return Mouse.wait()
 end
 
@@ -328,7 +344,7 @@ local function wait_worn(slots: { [number]: Slot })
 end
 
 -- Wears the items of the slots not in `skip`, then looks at what is worn and clicks again whatever didn't change.
-local function wear_items(layout: Layout, skip: { [number]: boolean }): boolean
+local function wear_items(layout: Layout, skip: { [number]: boolean }, opts: EquipOptions): boolean
 	for attempt = 1, EquipmentLayout.WEAR_ATTEMPTS + 1 do
 		local worn = worn_by_slot()
 		if worn == nil then
@@ -353,8 +369,14 @@ local function wear_items(layout: Layout, skip: { [number]: boolean }): boolean
 		if next(by_inventory_slot) == nil then
 			return true
 		end
-		if not click_all(by_inventory_slot) then
+		if not click_all(by_inventory_slot, opts) then
 			return false
+		end
+		-- the clicks are in: what comes next can start while they show as worn (once per swap)
+		if opts.after_clicks then
+			local after = opts.after_clicks
+			opts.after_clicks = nil
+			after()
 		end
 		wait_worn(by_inventory_slot)
 	end
@@ -362,8 +384,8 @@ local function wear_items(layout: Layout, skip: { [number]: boolean }): boolean
 end
 
 -- Wears the items of the slots not in `skip` from the inventory, then takes off what is worn where they want nothing.
-local function wear(layout: Layout, skip: { [number]: boolean }): boolean
-	if not wear_items(layout, skip) then
+local function wear(layout: Layout, skip: { [number]: boolean }, opts: EquipOptions): boolean
+	if not wear_items(layout, skip, opts) then
 		return false
 	end
 	for _, slot in ipairs(layout.slots) do
@@ -439,7 +461,8 @@ local function settle_ammo(layout: Layout): boolean
 end
 
 -- Wears each of the layout's items from the inventory, in the order `Inventory.pattern` gives, then takes off what is worn where the layout wants nothing. With a secondary ammo slot in play the ammo comes last, since filling that slot goes through the worn ammo slot. The bank must be closed (a click in the inventory would deposit). True when the layout matches afterwards.
-function EquipmentLayout.equip(layout: Layout): boolean
+function EquipmentLayout.equip(layout: Layout, options: EquipOptions?): boolean
+	local opts: EquipOptions = table.clone(options or {})
 	if EquipmentLayout.matches(layout) then
 		return true
 	end
@@ -449,15 +472,15 @@ function EquipmentLayout.equip(layout: Layout): boolean
 	end
 	local without_secondary = { [Wornitems.SECONDARY_AMMO] = true }
 	if slot_of(layout, Wornitems.SECONDARY_AMMO) == nil or secondary_holder(layout) == nil then
-		if not wear(layout, without_secondary) then
+		if not wear(layout, without_secondary, opts) then
 			return false
 		end
 		return EquipmentLayout.matches(layout) == true
 	end
 	if
-		not wear(layout, { [Wornitems.AMMO] = true, [Wornitems.SECONDARY_AMMO] = true })
+		not wear(layout, { [Wornitems.AMMO] = true, [Wornitems.SECONDARY_AMMO] = true }, opts)
 		or not settle_ammo(layout)
-		or not wear(layout, without_secondary)
+		or not wear(layout, without_secondary, opts)
 	then
 		return false
 	end

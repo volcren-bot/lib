@@ -6,7 +6,7 @@ Finding and interacting with NPCs (the non-player characters walking around): ta
 local Npcs = require("@lib/main/entities/npcs")
 ```
 
-An NPC is a table with `index`, `id`, `name`, `x`, `y` (world tile), `local_x`, `local_y` and `head_icons` (see `overhead`). Names are matched ignoring upper/lower case.
+An NPC is a table with `index`, `id`, `name`, `x`, `y` (world tile), `local_x`, `local_y` and `head_icons` (see `overhead`). Names are matched ignoring upper/lower case. An NPC that changes form with a varbit or varp has its base definition's name, which is often empty (Priestess Zul-Gwenwynig, id 2124, has none though her menu names her): find such NPCs by id.
 
 ## Constants
 

@@ -187,17 +187,18 @@ local function wait_change(before: string): boolean
 	end
 end
 
-local function press(w: Widget, key: number, key_probability: number?): boolean
+-- The second result says how: "key" or "click".
+local function press(w: Widget, key: number, key_probability: number?): (boolean, string)
 	local probability = key_probability or Biometrics.random_double(0.5)
 	if Random.chance(probability) then
 		Keyboard.key_press(key)
-		return true
+		return true, "key"
 	end
 	local function on_widget(entry: MenuEntry): boolean
 		return entry.id == w.id and (w.index < 0 or entry.index == w.index)
 	end
 	local clicked = Interact.with(w, "Continue", on_widget, false)
-	return clicked
+	return clicked, "click"
 end
 
 function ChatOptions.select(text: string, match_case: boolean?, key_probability: number?): boolean
@@ -209,14 +210,14 @@ function ChatOptions.select(text: string, match_case: boolean?, key_probability:
 	if before == nil then
 		return false
 	end
-	local pressed = press(option.widget, option.key, key_probability)
+	local pressed, how = press(option.widget, option.key, key_probability)
 	if not pressed then
-		Log.log("ChatOptions", `couldn't pick "{option.text}"`)
+		Log.log("ChatOptions", `couldn't pick "{option.text}" ({how})`)
 		return pressed
 	end
 	local moved = wait_change(before)
 	if not moved then
-		Log.log("ChatOptions", `the dialogue didn't move on after "{option.text}"`)
+		Log.log("ChatOptions", `the dialogue didn't move on after "{option.text}" ({how})`)
 		return moved
 	end
 	return true
@@ -275,14 +276,14 @@ function ChatOptions.continue_chat(key_probability: number?): boolean
 	if before == nil then
 		return false
 	end
-	local pressed = press(w, Keyboard.keys.SPACE, key_probability)
+	local pressed, how = press(w, Keyboard.keys.SPACE, key_probability)
 	if not pressed then
-		Log.log("ChatOptions", 'couldn\'t press "Click here to continue"')
+		Log.log("ChatOptions", `couldn't press "Click here to continue" ({how})`)
 		return pressed
 	end
 	local moved = wait_change(before)
 	if not moved then
-		Log.log("ChatOptions", "the dialogue didn't move on")
+		Log.log("ChatOptions", `the dialogue didn't move on ({how})`)
 		return moved
 	end
 	return true

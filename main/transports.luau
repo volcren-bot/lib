@@ -2670,14 +2670,20 @@ local function find_held(ids: { number }): (any?, number?)
 	return nil, nil
 end
 
--- The options the menu of an item shows when it is hovered.
+-- The options the menu of an item shows when it is hovered: only a menu about that item counts, since right after the move
+-- the menu can still be the one of what the mouse passed over (an anglerfish's "Eat" for a scroll).
 local function item_options(module: any, slot: number): { string }
 	local Minimenu = lib("@lib/main/interfaces/minimenu")
+	local held = module.item(slot)
+	local name = if held then string.lower(Host.item_name(held.id) or "") else ""
 	module.hover_slot(slot)
 	local waited = 0
 	while waited <= 800 do
 		local entries = Minimenu.entries()
-		if entries ~= nil and #entries > 1 then
+		local about = entries ~= nil
+			and entries[1] ~= nil
+			and (name == "" or string.find(string.lower(entries[1].target), name, 1, true) ~= nil)
+		if entries ~= nil and #entries > 1 and about then
 			local options: { string } = {}
 			for _, e in ipairs(entries) do
 				table.insert(options, e.option)
