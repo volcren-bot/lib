@@ -1,5 +1,4 @@
 --!strict
--- Talks to an NPC and goes through its dialogue with ChatOptions, then prints the lines the chat history logged.
 local NAME = "Captain Pudi"
 local FIRST = "tell me more"
 local LAST = "Goodbye"

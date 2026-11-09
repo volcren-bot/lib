@@ -153,7 +153,6 @@ local function wanted(kinds: { number }?, kind: number): boolean
 	return kinds == nil or table.find(kinds, kind) ~= nil
 end
 
--- the game's messages of these kinds, as it keeps them
 local function raw(kinds: { number }?): { ChatMessage }?
 	local all = chat_messages()
 	if all == nil then
@@ -225,8 +224,7 @@ function Chat.find_message(text: string, match_case: boolean?, kinds: { number }
 end
 
 function Chat.contains_message(text: string, match_case: boolean?, kinds: { number }?): boolean
-	local found = Chat.find_message(text, match_case, kinds)
-	return found ~= nil
+	return Chat.find_message(text, match_case, kinds) ~= nil
 end
 
 function Chat.count_new_message(text: string, match_case: boolean?): number?
@@ -362,10 +360,7 @@ end
 
 function Chat.input_has_text(): boolean
 	local typed = Chat.input_text()
-	if typed == nil then
-		return false
-	end
-	return typed ~= ""
+	return typed ~= nil and typed ~= ""
 end
 
 function Chat.iron_type(): IronType?
@@ -377,19 +372,12 @@ function Chat.iron_type(): IronType?
 end
 
 function Chat.is_transparent(): boolean
-	local value = Varbits.get(Chat.TRANSPARENCY_VARBIT)
-	if value == nil then
-		return false
-	end
-	return value == 1
+	return Varbits.get(Chat.TRANSPARENCY_VARBIT) == 1
 end
 
 function Chat.query(): string?
 	local layer = widget(Chat.GROUP, Chat.QUERY)
-	if layer == nil then
-		return nil
-	end
-	if layer.hidden then
+	if layer == nil or layer.hidden then
 		return nil
 	end
 	local text = widget(Chat.GROUP, Chat.QUERY_TEXT)
@@ -414,25 +402,14 @@ function Chat.find_query(query: string, match_case: boolean?): boolean
 end
 
 function Chat.wait_query(query: string, timeout_ms: number?, match_case: boolean?): boolean
-	local timeout = timeout_ms or QUERY_TIMEOUT_MS
-	local waited = 0
-	while true do
-		local found = Chat.find_query(query, match_case)
-		if found == nil then
-			return false
-		end
-		if found or waited >= timeout then
-			return found
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
+	return Widgets.wait_until(function()
+		return Chat.find_query(query, match_case)
+	end, timeout_ms or QUERY_TIMEOUT_MS)
 end
 
 function Chat.answer_query(query: string, answer: string, timeout_ms: number?): boolean
-	local found = Chat.wait_query(query, timeout_ms)
-	if not found then
-		return found
+	if not Chat.wait_query(query, timeout_ms) then
+		return false
 	end
 	local typed = Chat.query_answer()
 	if typed ~= answer then
@@ -449,42 +426,25 @@ end
 
 function Chat.is_open(): boolean
 	local view = varc(Chat.VIEW_VARC)
-	if view == nil then
-		return false
-	end
-	return view ~= Chat.VIEW_CLOSED
+	return view ~= nil and view ~= Chat.VIEW_CLOSED
 end
 
 local function wait_open(open: boolean): boolean
-	local waited = 0
-	while true do
-		local now = Chat.is_open()
-		if now == nil then
-			return false
-		end
-		if now == open then
-			return true
-		end
-		if waited >= TOGGLE_TIMEOUT_MS then
-			Log.log("Chat", `the chatbox didn't {if open then "open" else "close"}`)
-			return false
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
+	if Widgets.wait_until(function()
+		return Chat.is_open() == open
+	end, TOGGLE_TIMEOUT_MS) then
+		return true
 	end
+	Log.log("Chat", `the chatbox didn't {if open then "open" else "close"}`)
+	return false
 end
 
 function Chat.open(): boolean
-	local open = Chat.is_open()
-	if open == nil then
-		return false
-	end
-	if open then
+	if Chat.is_open() then
 		return true
 	end
-	local clicked = Widgets.click(Chat.GROUP, Chat.TAB_ALL)
-	if not clicked then
-		return clicked
+	if not Widgets.click(Chat.GROUP, Chat.TAB_ALL) then
+		return false
 	end
 	return wait_open(true)
 end
@@ -506,9 +466,8 @@ function Chat.close(): boolean
 		Log.log("Chat", `unknown chat view {view}`)
 		return false
 	end
-	local clicked = Widgets.click(Chat.GROUP, tab)
-	if not clicked then
-		return clicked
+	if not Widgets.click(Chat.GROUP, tab) then
+		return false
 	end
 	return wait_open(false)
 end

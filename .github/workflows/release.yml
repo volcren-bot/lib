@@ -1,9 +1,5 @@
 name: release
 
-# Publishes the lib the loader downloads for store scripts to the public `client` bucket: lib/<version>/lib-<version>.zip
-# and lib/index.json (the last 20 releases, newest first, each with the HOST_API the loader needs). The version is
-# YYYY.MM.DD-<7 character commit>, like the loader's. The HOST_API file in the repo root holds that number: bump it in the
-# same commit that makes the lib use a new host global; tools/check-host-api.sh fails the release when it was missed.
 on:
   push:
     branches: [main]
@@ -40,8 +36,6 @@ jobs:
             echo "Set the SUPABASE_URL repository variable and the SUPABASE_SERVICE_KEY secret." >&2
             exit 1
           fi
-          # A secret pasted with a trailing newline would end the request headers early and turn the rest
-          # of them into the start of the uploaded file, so only ever send the key without whitespace.
           SUPABASE_URL="$(printf %s "$SUPABASE_URL" | tr -d '[:space:]')"
           SUPABASE_SERVICE_KEY="$(printf %s "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')"
           version="$(TZ=UTC git show -s --format=%cd --date=format-local:%Y.%m.%d HEAD)-$(git rev-parse --short=7 HEAD)"
@@ -53,7 +47,7 @@ jobs:
           zip="lib-$version.zip"
           zip -qr "out/$zip" host.luau main utils -i '*.luau'
 
-          upload() { # <local file> <path in the bucket> <content type> [cache-control]
+          upload() {
             curl -sS --fail -X POST "$SUPABASE_URL/storage/v1/object/client/$2" \
               -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" -H "apikey: $SUPABASE_SERVICE_KEY" \
               -H "x-upsert: true" -H "Content-Type: $3" -H "cache-control: ${4:-max-age=31536000}" \
@@ -62,9 +56,7 @@ jobs:
           (cd out && sha256sum "$zip" > SHA256SUMS)
           upload "out/$zip" "lib/$version/$zip" application/zip
 
-          # Add this release to the index. A rerun of the same commit replaces its own entry.
           curl -sS "$SUPABASE_URL/storage/v1/object/public/client/lib/index.json" -o out/old.json --fail || echo '{"versions":[]}' > out/old.json
-          # An index that can't be parsed is replaced instead of failing the release.
           jq -e '.versions | type == "array"' out/old.json > /dev/null 2>&1 || echo '{"versions":[]}' > out/old.json
           jq --arg version "$version" --argjson host "$host_api" --arg path "lib/$version/$zip" \
              --arg sha "$(sha256sum "out/$zip" | cut -d' ' -f1)" \
@@ -73,13 +65,11 @@ jobs:
           cat out/index.json
           upload out/index.json lib/index.json application/json max-age=60
 
-          # What was just published must be the index itself, nothing else.
           sleep 2
           curl -sS --fail "$SUPABASE_URL/storage/v1/object/public/client/lib/index.json?check=$version" -o out/check.json
           jq -e --arg version "$version" '.versions[0].version == $version' out/check.json > /dev/null \
             || { echo "The published lib/index.json is not the index that was uploaded." >&2; exit 1; }
 
-      # The same zip the bucket got, for the GitHub release job below (which has no access to the Supabase key).
       - name: Keep the package for the release
         uses: actions/upload-artifact@v4
         with:
@@ -89,8 +79,6 @@ jobs:
             out/SHA256SUMS
           if-no-files-found: error
 
-  # After a successful publish: tag the commit and create a GitHub release with the same zip. Uses only the runner's `gh`
-  # and the job token, and runs apart from `publish` so the Supabase key never sits next to a write token.
   release:
     name: tag and release
     needs: publish
@@ -107,7 +95,6 @@ jobs:
           name: release-package
           path: out
 
-      # Creates the tag at this commit. A re-run of the same commit finds the release already there and leaves it alone.
       - name: Create release
         run: |
           if gh release view "$VERSION" > /dev/null 2>&1; then

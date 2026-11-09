@@ -1,6 +1,8 @@
 --!strict
 local Host = require("@lib/host")
 local widget = Host.widget
+local sleep = Host.sleep
+local time = Host.time
 type Widget = Host.Widget
 type Area = Host.Area
 local Mouse = require("@lib/utils/input/mouse")
@@ -42,7 +44,6 @@ function Widgets.click(group: number, child: number, button: Button?): boolean
 	return true
 end
 
--- Queues the click and returns at once; false if the widget isn't there.
 function Widgets.click_async(group: number, child: number, button: Button?): boolean
 	local w = widget(group, child)
 	if w == nil then
@@ -60,6 +61,45 @@ function Widgets.checkbox(w: Widget): string?
 		return nil
 	end
 	return CHECKBOX_STATES[frame % 3 + 1]
+end
+
+function Widgets.wait_until(check: () -> boolean, timeout_ms: number, interval_ms: number?): boolean
+	local interval = interval_ms or 50
+	local waited = 0
+	while true do
+		if check() then
+			return true
+		end
+		if waited >= timeout_ms then
+			return false
+		end
+		sleep(interval)
+		waited += interval
+	end
+end
+
+function Widgets.wait_for(check: () -> boolean, timeout_ms: number, poll_ms: number): boolean
+	local deadline = time() + timeout_ms
+	while true do
+		if check() then
+			return true
+		end
+		if time() >= deadline then
+			return false
+		end
+		sleep(poll_ms)
+	end
+end
+
+function Widgets.wait_within(check: () -> boolean, timeout_ms: number, poll_ms: number): boolean
+	local deadline = time() + timeout_ms
+	while time() < deadline do
+		if check() then
+			return true
+		end
+		sleep(poll_ms)
+	end
+	return false
 end
 
 return Widgets

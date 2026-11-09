@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Fails when host.luau gained a sandbox global since <base> but HOST_API did not go up; usage: tools/check-host-api.sh [base].
 set -euo pipefail
 
 cd "$(dirname -- "${BASH_SOURCE[0]}")/.."

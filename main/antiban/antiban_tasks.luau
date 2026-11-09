@@ -28,7 +28,6 @@ local sleep = Host.sleep
 
 local Tasks = {}
 
--- The skills `hover_skills` picks from, by name (see `Stats.CHILDREN`).
 Tasks.skills = {} :: { string }
 
 local CHAT_TABS: { ChatTabs.Tab } = { "game", "public", "private", "channel", "clan", "trade" }
@@ -47,7 +46,6 @@ local function pause(async: boolean?, minimum: number, maximum: number?, dir: Ra
 	end
 end
 
--- Async clicks run later, so `shown` is the tab the queued ones leave open: clicking it again would close it.
 local function open_tab(async: boolean?, tab: number, shown: number?)
 	if not async then
 		SidePanels.open(tab)
@@ -76,7 +74,6 @@ local function pick<T>(list: { T }): T
 	return list[Random.int(1, #list)]
 end
 
--- Starts a small mouse move and returns at once; the next input takes over.
 function Tasks.small_random_mouse()
 	Log.log("Antiban", "Random Mouse (Small)")
 	local here = Mouse.position()
@@ -163,7 +160,6 @@ local function rotate_camera(radians: number, async: boolean?)
 	end
 end
 
--- The tiny camera tasks queue their input and return at once; the next input takes over.
 function Tasks.tiny_camera_rotation()
 	Log.log("Antiban", "Tiny camera rotation")
 	local current = Camera.yaw_degrees()
@@ -179,39 +175,31 @@ function Tasks.small_camera_rotation(async: boolean?)
 	rotate_camera(Random.gauss(math.pi / 12, math.pi / 4) * Random.int(-1, 1), async)
 end
 
--- Brings the zoom into the range of `set_zoom_range`, to a random level in it, if it is outside.
+local function apply_range(
+	current: number?,
+	range: { min: number, max: number },
+	what: string,
+	set: (number) -> boolean
+): boolean
+	if current == nil then
+		return false
+	end
+	if current >= range.min and current <= range.max then
+		return true
+	end
+	local target = math.round(Random.mode(math.clamp(current, range.min, range.max), range.min, range.max))
+	Log.log("Antiban", `Setting the {what} to {target}`)
+	return set(target)
+end
+
 function Tasks.apply_zoom_range(): boolean
-	local current = Camera.zoom()
-	if current == nil then
-		return false
-	end
-	if current >= Antiban.zoom.min and current <= Antiban.zoom.max then
-		return true
-	end
-	local target = math.round(
-		Random.mode(math.clamp(current, Antiban.zoom.min, Antiban.zoom.max), Antiban.zoom.min, Antiban.zoom.max)
-	)
-	Log.log("Antiban", `Setting the zoom to {target}`)
-	return Camera.set_zoom(target)
+	return apply_range(Camera.zoom(), Antiban.zoom, "zoom", Camera.set_zoom)
 end
 
--- Brings the pitch into the range of `set_pitch_range`, to a random level in it, if it is outside.
 function Tasks.apply_pitch_range(): boolean
-	local current = Camera.pitch()
-	if current == nil then
-		return false
-	end
-	if current >= Antiban.pitch.min and current <= Antiban.pitch.max then
-		return true
-	end
-	local target = math.round(
-		Random.mode(math.clamp(current, Antiban.pitch.min, Antiban.pitch.max), Antiban.pitch.min, Antiban.pitch.max)
-	)
-	Log.log("Antiban", `Setting the pitch to {target}`)
-	return Camera.set_pitch(target)
+	return apply_range(Camera.pitch(), Antiban.pitch, "pitch", Camera.set_pitch)
 end
 
--- `current + change`, kept inside `min` to `max`. If that is no change at all, the other way.
 local function tiny_target(current: number, change: number, min: number, max: number, least: number): number
 	local target = math.clamp(current + change, min, max)
 	if math.abs(target - current) < least then
@@ -220,7 +208,6 @@ local function tiny_target(current: number, change: number, min: number, max: nu
 	return target
 end
 
--- One or two scroll notches up or down, inside the range of `set_zoom_range`.
 function Tasks.tiny_zoom_change()
 	local current = Camera.zoom()
 	if current == nil then
@@ -234,7 +221,6 @@ function Tasks.tiny_zoom_change()
 	Camera.set_zoom_async(target)
 end
 
--- 3 to 15% of the pitch range up or down, inside the range of `set_pitch_range`.
 function Tasks.tiny_pitch_change()
 	local current = Camera.pitch()
 	if current == nil then
@@ -252,7 +238,6 @@ end
 local TINY_TASKS = { Tasks.tiny_camera_rotation, Tasks.tiny_zoom_change, Tasks.tiny_pitch_change }
 local tiny_ready_at: { number } = {}
 
--- Runs one random tiny task that is off cooldown; false when all are cooling.
 function Tasks.random_tiny(min_cooldown: number, max_cooldown: number): boolean
 	local ready: { number } = {}
 	for i = 1, #TINY_TASKS do
@@ -274,6 +259,17 @@ function Tasks.large_camera_rotation()
 	rotate_camera(Random.gauss(math.pi / 6, 2 * math.pi) * Random.int(-1, 1))
 end
 
+local function spread_target(current: number, min: number, max: number, least: number): number?
+	local from = math.clamp(current, min, max)
+	for _ = 1, 100 do
+		local new = math.round(Random.mode(from, min, max))
+		if math.abs(from - new) > least then
+			return new
+		end
+	end
+	return nil
+end
+
 function Tasks.adjust_zoom()
 	local zmin, zmax = Antiban.zoom.min, Antiban.zoom.max
 	if math.abs(zmax - zmin) <= 15 then
@@ -287,22 +283,15 @@ function Tasks.adjust_zoom()
 		return
 	end
 
-	local zoom = math.clamp(current, zmin, zmax)
-	local new = zoom
-	local attempts = 0
-	repeat
-		attempts += 1
-		if attempts > 100 then
-			return
-		end
-		new = math.round(Random.mode(zoom, zmin, zmax))
-	until math.abs(zoom - new) > 15
+	local new = spread_target(current, zmin, zmax, 15)
+	if new == nil then
+		return
+	end
 
 	Log.log("Antiban", `Adjust zoom: {new}`)
 	Camera.set_zoom(new)
 end
 
--- Zooms the minimap to a different random level; with `async` it queues the scrolls and returns at once.
 function Tasks.adjust_minimap_zoom(async: boolean?)
 	local current = Minimap.zoom()
 	if current == nil then
@@ -489,7 +478,6 @@ function Tasks.swivel()
 	end
 end
 
--- Returns the tab it ends on.
 local function open_tab_between(async: boolean?, first: number, last: number): number
 	local shown = SidePanels.current()
 	local tab = Random.int(first, last)
@@ -527,7 +515,6 @@ function Tasks.toggle_tab(async: boolean?)
 	open_tab(async, current, last)
 end
 
--- Hovers a skill in the stats tab for a while, then half the time returns to the previous tab.
 function Tasks.hover_skills(async: boolean?)
 	if #Tasks.skills == 0 then
 		Log.log("Antiban", "hover_skills: no skills declared")
@@ -687,48 +674,37 @@ function Tasks.toggle_deposit_quantity(async: boolean?)
 	DepositBox.select_quantity(current)
 end
 
-function Tasks.hover_random_npc(async: boolean?)
-	local npcs = Npcs.find()
-	if npcs == nil or #npcs == 0 then
+local function hover_random<T>(
+	async: boolean?,
+	found: { T }?,
+	what: string,
+	hover: (T) -> boolean,
+	hover_async: (T) -> boolean
+)
+	if found == nil or #found == 0 then
 		return
 	end
-	Log.log("Antiban", "Hovering a random NPC")
+	Log.log("Antiban", `Hovering a random {what}`)
 	if async then
-		Npcs.hover_async(pick(npcs))
+		hover_async(pick(found))
 	else
-		Npcs.hover(pick(npcs))
+		hover(pick(found))
 	end
 	pause(async, 1500, 2700)
+end
+
+function Tasks.hover_random_npc(async: boolean?)
+	hover_random(async, Npcs.find(), "NPC", Npcs.hover, Npcs.hover_async)
 end
 
 function Tasks.hover_random_player(async: boolean?)
-	local players = Players.find()
-	if players == nil or #players == 0 then
-		return
-	end
-	Log.log("Antiban", "Hovering a random player")
-	if async then
-		Players.hover_async(pick(players))
-	else
-		Players.hover(pick(players))
-	end
-	pause(async, 1500, 2700)
+	hover_random(async, Players.find(), "player", Players.hover, Players.hover_async)
 end
 
 function Tasks.hover_random_ground_item(async: boolean?)
-	local items = GroundItems.find()
-	if items == nil or #items == 0 then
-		return
-	end
-	Log.log("Antiban", "Hovering a random ground item")
-	if async then
-		GroundItems.hover_async(pick(items))
-	else
-		GroundItems.hover(pick(items))
-	end
-	pause(async, 1500, 2700)
+	hover_random(async, GroundItems.find(), "ground item", GroundItems.hover, GroundItems.hover_async)
 end
--- Like `adjust_zoom` for pitch: a random pitch in range, at least a quarter of the range from the current one.
+
 function Tasks.adjust_pitch()
 	local pmin, pmax = Antiban.pitch.min, Antiban.pitch.max
 	local min_change = (pmax - pmin) / 4
@@ -743,22 +719,15 @@ function Tasks.adjust_pitch()
 		return
 	end
 
-	local pitch = math.clamp(current, pmin, pmax)
-	local new = pitch
-	local attempts = 0
-	repeat
-		attempts += 1
-		if attempts > 100 then
-			return
-		end
-		new = math.round(Random.mode(pitch, pmin, pmax))
-	until math.abs(pitch - new) > min_change
+	local new = spread_target(current, pmin, pmax, min_change)
+	if new == nil then
+		return
+	end
 
 	Log.log("Antiban", `Adjust pitch: {new}`)
 	Camera.set_pitch(new)
 end
 
--- Adjusts the zoom and the pitch, in an order that depends on the biometrics.
 function Tasks.adjust_camera()
 	if Biometrics.random_boolean(0.5) then
 		Tasks.adjust_zoom()
@@ -815,8 +784,7 @@ function Tasks.random_make_task(async: boolean?)
 		Tasks.hover_make_item(async)
 	elseif r <= 6 then
 		Tasks.hover_make_quantity(async)
-	elseif r <= 8 then
-	else
+	elseif r > 8 then
 		Tasks.toggle_make_quantity(async)
 	end
 end
@@ -827,8 +795,7 @@ function Tasks.random_chat_task(async: boolean?)
 		Tasks.random_chat_tab(async)
 	elseif r <= 17 then
 		Tasks.toggle_chat_tab(async)
-	elseif r <= 24 then
-	else
+	elseif r > 24 then
 		Tasks.random_chat_tab_state()
 	end
 end
@@ -837,13 +804,11 @@ function Tasks.random_deposit_task(async: boolean?)
 	local r = Random.int(0, 10)
 	if r <= 3 then
 		Tasks.hover_deposit_item(async)
-	elseif r <= 8 then
-	else
+	elseif r > 8 then
 		Tasks.toggle_deposit_quantity(async)
 	end
 end
 
--- Deals with a random event that is trying to interact with you, by `Randoms.handle`. Costs one read of the NPCs when there is none, so it can be due often.
 function Tasks.handle_randoms()
 	Randoms.handle()
 end
@@ -914,7 +879,6 @@ Tasks.WALKING_TASKS = {
 	RandomChatTask = Tasks.random_chat_task,
 }
 
--- `Camera.face` sometimes adjusts the zoom and pitch with this instead of raising the pitch.
 Camera.face_task = Tasks.adjust_camera
 
 return Tasks

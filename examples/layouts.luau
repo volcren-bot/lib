@@ -1,8 +1,4 @@
 --!strict
--- Asks for an equipment, an inventory and a prayer layout, which adds Equipment, Inventory and Prayer tabs to the script's page in the loader.
--- Make a layout there (Read from client, Save), pick it in Settings, then press Start: the script says what it got, and if a layout
--- isn't matched yet it goes to the bank for it, equips it and puts the inventory in order. The inventory field requires a prayer potion
--- (4 or 3 doses) and the prayer field keeps Protect from Melee for the script: the loader padlocks both.
 local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 local EquipmentLayout = require("@lib/main/equipment_layout")
 local Host = require("@lib/host")
@@ -39,7 +35,6 @@ local equipment: EquipmentLayout.Layout? = values.equipment
 local inventory: InventoryLayout.Layout? = values.inventory
 local prayers: PrayerLayout.Layout? = values.prayers
 
--- What a layout item asks for: a stack's range, the doses that count and whether the script requires it.
 local function wants(
 	item: { stackable: boolean?, min: number?, max: number?, doses: { number }?, locked: boolean? }
 ): string
@@ -117,13 +112,11 @@ if equipment_done and inventory_done then
 	return
 end
 
--- the gear first: filling the inventory deposits everything its layout doesn't list, gear waiting to be worn included
 if equipment and not equipment_done then
 	if not Bankmain.open() then
 		print("couldn't open a bank")
 		return
 	end
-	-- withdraws what is missing, closes the bank, wears it and sets the autocast spell
 	print("equipped:", EquipmentLayout.prepare(equipment))
 end
 if inventory and not inventory_done then

@@ -80,11 +80,7 @@ function Players.refresh(player: PlayerInfo): PlayerInfo?
 end
 
 function Players.model(player: PlayerInfo): NpcModel?
-	local model = player_model(player.index)
-	if model == nil then
-		return nil
-	end
-	return model
+	return (player_model(player.index))
 end
 
 function Players.clickbox(player: PlayerInfo): Clickbox?

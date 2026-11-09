@@ -1,42 +1,33 @@
 --!strict
--- The player's house: an instance whose layout each player chooses and can change, so nothing here knows a room or a tile. Furniture is found by name in the scene of this visit, on any floor.
--- The transport data calls the whole house one tile (`House.TILE`), and the planner does too: every way in arrives there and every way out leaves from there.
 local Host = require("@lib/host")
 local locs = Host.locs
-local sleep = Host.sleep
-local time = Host.time
 type Loc = Host.Loc
 local Log = require("@lib/utils/log")
 local Objects = require("@lib/main/entities/objects")
 local Player = require("@lib/main/player")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local House = {}
 
--- the cache's config index and its archive of structs
 local CONFIG_STRUCTS = { 2, 34 }
 
--- the interface modules need this one, so they are loaded when used
 local function lib(path: string): any
 	return (require :: any)(path)
 end
 
--- The data's stand-in for anywhere in the house.
 House.TILE = { x = 1858, y = 7051, plane = 0 }
--- The way out: the name of the object, its id, and the option.
 House.EXIT_PORTAL = 4525
 House.EXIT_OPTION = "Enter"
 House.STAIRS = "Staircase"
 House.CLIMB_UP = "Climb-up"
 House.CLIMB_DOWN = "Climb-down"
 House.PLANES = 4
--- How big a house can be, in tiles: a goal this close to you is inside it.
 House.SIZE = 104
 House.POLL_MS = 100
 House.STAIRS_TIMEOUT_MS = 10000
 House.LEAVE_TIMEOUT_MS = 15000
 House.TELEPORT_TIMEOUT_MS = 10000
 House.RESTORE_TIMEOUT_MS = 8000
--- Where the house is (varbit 2187), by the game's number.
 House.LOCATION_VARBIT = 2187
 House.LOCATIONS = {
 	[1] = "Rimmington",
@@ -49,7 +40,6 @@ House.LOCATIONS = {
 	[9] = "Prifddinas",
 	[13] = "Aldarin",
 } :: { [number]: string }
--- The Portal Nexus's slots in list order (`poh_nexus_tele_1` to 30), each holding a teleport's key or 0, and its left-click teleport.
 House.NEXUS_SLOT_VARBITS = {
 	6654,
 	6655,
@@ -83,20 +73,16 @@ House.NEXUS_SLOT_VARBITS = {
 	10091,
 }
 House.NEXUS_LEFT_CLICK_VARBIT = 6653
--- The cache's list of Nexus teleports (enum 1377, key to struct) and the struct param that names one.
 House.NEXUS_ENUM = 1377
 House.NEXUS_NAME_PARAM = 660
--- A teleport's other place, listed right after it once the diary that unlocks it is done: its key, and that diary's varbit.
 House.NEXUS_ALTERNATES = {
-	[1] = { key = 151, unlocked_by = 4480 }, -- Varrock: Grand Exchange, Varrock medium
-	[4] = { key = 154, unlocked_by = 4477 }, -- Camelot: Seers' Village, Kandarin hard
-	[6] = { key = 156, unlocked_by = 4460 }, -- Watchtower: Yanille, Ardougne hard
+	[1] = { key = 151, unlocked_by = 4480 },
+	[4] = { key = 154, unlocked_by = 4477 },
+	[6] = { key = 156, unlocked_by = 4460 },
 } :: { [number]: { key: number, unlocked_by: number } }
--- The jewellery box's size (`poh_jewellerybox_multi`: 0 basic, 1 fancy, 2 ornate); 0 is also what a house without a box reads.
 House.BOX_VARBIT = 2308
 export type BoxTier = "basic" | "fancy" | "ornate"
 House.BOX_TIERS = { "basic", "fancy", "ornate" } :: { BoxTier }
--- The places each size of box adds to the one below it, as the box names them.
 House.BOX_PLACES = {
 	basic = {
 		"Emir's Arena",
@@ -132,7 +118,6 @@ House.BOX_PLACES = {
 		"Al Kharid",
 	},
 } :: { [BoxTier]: { string } }
--- The places of what can be mounted on the walls.
 House.MOUNTED_PLACES = {
 	glory = { "Edgeville", "Karamja", "Draynor Village", "Al Kharid" },
 	cape = { "Myths' Guild" },
@@ -140,7 +125,6 @@ House.MOUNTED_PLACES = {
 	digsite = { "Digsite", "Fossil Island", "Lithkren" },
 } :: { [string]: { string } }
 House.POOL_OPTION = "Drink"
--- What each kind of furniture is called: part of any of these names, in any case. The Spiritual Fairy Tree is both a ring and a tree.
 House.FURNITURE = {
 	nexus = { "Portal Nexus" },
 	box = { "Jewellery Box" },
@@ -154,21 +138,20 @@ House.FURNITURE = {
 	occult_altar = { "Altar of the Occult" },
 }
 
--- What can take you somewhere from inside the house.
 export type Furniture = "nexus" | "box" | "glory" | "cape" | "talisman" | "digsite"
 
 export type NexusTeleport = {
-	-- its key in the cache's list
 	key: number,
 	name: string,
-	-- the slot it is in (1 to 30); an alternate shares its teleport's slot
 	slot: number,
-	-- the teleport whose other place it is ("Varrock" for "Grand Exchange")
 	alternate_of: string?,
 }
 
--- What the last look around a house found, by kind: the name of the piece. Nil until one has been inside this run.
 local surveyed: { [string]: string }? = nil
+
+local function floor_distance(loc: Loc, here: { x: number, y: number, plane: number }, plane: number): number
+	return Objects.distance(loc, here) + (if plane == here.plane then 0 else House.SIZE)
+end
 
 local function scene_has_exit(): boolean
 	for plane = 0, House.PLANES - 1 do
@@ -181,17 +164,14 @@ local function scene_has_exit(): boolean
 	return false
 end
 
--- Whether the player is in a house, theirs or another's.
 function House.inside(): boolean
 	return Host.in_instance() == true and scene_has_exit()
 end
 
--- Whether a tile is the data's stand-in for the house.
 function House.is_tile(tile: { x: number, y: number }): boolean
 	return tile.x == House.TILE.x and tile.y == House.TILE.y
 end
 
--- Where the house is, by the game's number (1 is Rimmington).
 function House.location(): number?
 	return Host.varbit(House.LOCATION_VARBIT)
 end
@@ -209,7 +189,6 @@ local function named(name: string?, wanted: { string }): boolean
 	return false
 end
 
--- The nearest loc whose name contains `what` (or any of a list), ignoring case, or with this id: on the player's floor if there is one, else on another.
 function House.find(what: string | number | { string }): Loc?
 	local here = Player.position()
 	if here == nil then
@@ -226,8 +205,7 @@ function House.find(what: string | number | { string }): Loc?
 	for plane = 0, House.PLANES - 1 do
 		for _, loc in ipairs(locs(plane) or {}) do
 			if loc.clickable and matches(loc) then
-				-- another floor counts as farther than anything on this one
-				local d = Objects.distance(loc, here) + (if plane == here.plane then 0 else House.SIZE)
+				local d = floor_distance(loc, here, plane)
 				if d < best_distance then
 					best, best_distance = loc, d
 				end
@@ -237,7 +215,6 @@ function House.find(what: string | number | { string }): Loc?
 	return best
 end
 
--- Goes to a floor by the nearest staircase, one flight at a time. True once on it.
 function House.go_to_floor(plane: number): boolean
 	for _ = 1, House.PLANES do
 		local here = Player.position()
@@ -256,18 +233,16 @@ function House.go_to_floor(plane: number): boolean
 		if not Objects.approach(stairs, option) then
 			return false
 		end
-		local deadline = time() + House.STAIRS_TIMEOUT_MS
-		while (Player.position() or here).plane == here.plane do
-			if time() >= deadline then
-				return false
-			end
-			sleep(House.POLL_MS)
+		local climbed = Widgets.wait_for(function(): boolean
+			return (Player.position() or here).plane ~= here.plane
+		end, House.STAIRS_TIMEOUT_MS, House.POLL_MS)
+		if not climbed then
+			return false
 		end
 	end
 	return false
 end
 
--- Finds something built and gets on its floor. The loc to click, or nil when it isn't built or can't be reached.
 function House.reach(what: string | number | { string }): Loc?
 	local loc = House.find(what)
 	if loc == nil then
@@ -286,7 +261,6 @@ function House.reach(what: string | number | { string }): Loc?
 	return House.find(what)
 end
 
--- Looks around the house the player is in and remembers what is built, for `House.seen`.
 function House.survey()
 	local found: { [string]: string } = {}
 	for plane = 0, House.PLANES - 1 do
@@ -303,7 +277,6 @@ function House.survey()
 	surveyed = found
 end
 
--- Whether this kind of furniture (a key of `House.FURNITURE`) was built at the last look around, or nil when no look has been taken this run.
 function House.seen(kind: string): boolean?
 	if surveyed == nil then
 		return nil
@@ -311,12 +284,10 @@ function House.seen(kind: string): boolean?
 	return surveyed[kind] ~= nil
 end
 
--- The name of this kind of furniture at the last look around ("Ornate pool of Rejuvenation"), nil when none was seen or no look has been taken this run.
 function House.furniture(kind: string): string?
 	return if surveyed then surveyed[kind] else nil
 end
 
--- Whether two names are the same place: word by word, where a shortened word ending in an apostrophe ("Fenken'") stands for any word it starts, and one name may be the start of the other ("Kourend" and "Kourend Castle").
 function House.same_place(a: string, b: string): boolean
 	local function words(text: string): { string }
 		local out = {}
@@ -345,17 +316,14 @@ function House.same_place(a: string, b: string): boolean
 	return true
 end
 
--- The house's town (`House.LOCATIONS`), nil when it can't be read.
 function House.location_name(): string?
 	local id = House.location()
 	return if id then House.LOCATIONS[id] else nil
 end
 
--- The names of the Nexus's teleports by key, read once from the cache.
 local nexus_names: { [number]: string }? = nil
 
 local function struct_string(bytes: string, param: number): string?
-	-- a struct is opcodes; 249 holds its params: a count, then per param a string flag, a 3-byte key and a string or an int
 	local i = 1
 	while i <= #bytes do
 		local op = string.byte(bytes, i)
@@ -414,7 +382,6 @@ local function load_nexus_names(): { [number]: string }
 	return names
 end
 
--- The Portal Nexus's teleports in its list's order, read from the variables and the cache, without opening anything: empty when it has none (or there is no Nexus).
 function House.nexus_teleports(): { NexusTeleport }
 	local names = load_nexus_names()
 	local out: { NexusTeleport } = {}
@@ -432,11 +399,11 @@ function House.nexus_teleports(): { NexusTeleport }
 	return out
 end
 
--- The Nexus teleport to `name` (`House.same_place`), nil when the Nexus doesn't have it.
 function House.nexus_teleport(name: string): NexusTeleport?
 	local all = House.nexus_teleports()
+	local wanted = string.lower(name)
 	for _, t in ipairs(all) do
-		if string.lower(t.name) == string.lower(name) then
+		if string.lower(t.name) == wanted then
 			return t
 		end
 	end
@@ -448,13 +415,11 @@ function House.nexus_teleport(name: string): NexusTeleport?
 	return nil
 end
 
--- The name of the Nexus's left-click teleport, nil when it has none.
 function House.nexus_left_click(): string?
 	local key = Host.varbit(House.NEXUS_LEFT_CLICK_VARBIT) or 0
 	return if key > 0 then load_nexus_names()[key] else nil
 end
 
--- The jewellery box's size: what the last look around saw, else the variable. Nil when neither says, as for a basic box (or none) before a visit.
 function House.box_tier(): BoxTier?
 	local seen = House.furniture("box")
 	if seen ~= nil then
@@ -471,7 +436,6 @@ function House.box_tier(): BoxTier?
 	return if value > 0 then House.BOX_TIERS[value + 1] else nil
 end
 
--- Every place a box of this size (default: the house's) offers, in its menu's order. Some may still be struck through for the account; only the box shows which.
 function House.box_places(tier: BoxTier?): { string }
 	local size = tier or House.box_tier()
 	local out: { string } = {}
@@ -498,7 +462,6 @@ local function listed(places: { string }, place: string): boolean
 	return false
 end
 
--- What in the house can take you to `place`, in the order it is tried: the Nexus and the box from what the variables say (until a visit shows them missing), the mounted pieces once a visit has shown them.
 function House.offers(place: string): { Furniture }
 	local out: { Furniture } = {}
 	if House.seen("nexus") ~= false and House.nexus_teleport(place) ~= nil then
@@ -515,8 +478,6 @@ function House.offers(place: string): { Furniture }
 	return out
 end
 
--- Starts a teleport to `place` from inside the house by one piece of furniture, going to it first; the trip itself isn't waited for.
--- False with why when it didn't start, and true third when trying again is pointless (it isn't built, or doesn't offer the place).
 function House.start_teleport(by: Furniture, place: string): (boolean, string?, boolean?)
 	if not House.inside() then
 		return false, "not in a house", false
@@ -555,7 +516,6 @@ function House.start_teleport(by: Furniture, place: string): (boolean, string?, 
 	return lib("@lib/main/interfaces/mainscreen/mounted").teleport(by, place)
 end
 
--- Teleports to `place` from inside the house by whatever offers it (`House.offers`; the nearest when several do) and waits to leave the house. False and why.
 function House.teleport(place: string): (boolean, string?)
 	local options = House.offers(place)
 	if #options == 0 then
@@ -565,9 +525,7 @@ function House.teleport(place: string): (boolean, string?)
 	table.sort(options, function(a: Furniture, b: Furniture): boolean
 		local la, lb = House.find(House.FURNITURE[a]), House.find(House.FURNITURE[b])
 		local function d(loc: Loc?): number
-			return if loc and here
-				then Objects.distance(loc, here) + (if loc.plane == here.plane then 0 else House.SIZE)
-				else math.huge
+			return if loc and here then floor_distance(loc, here, loc.plane) else math.huge
 		end
 		return d(la) < d(lb)
 	end)
@@ -575,12 +533,12 @@ function House.teleport(place: string): (boolean, string?)
 	for _, by in ipairs(options) do
 		local started, reason = House.start_teleport(by, place)
 		if started then
-			local deadline = time() + House.TELEPORT_TIMEOUT_MS
-			while House.inside() do
-				if time() >= deadline then
-					return false, `the {by} didn't take us to {place}`
-				end
-				sleep(House.POLL_MS)
+			if
+				not Widgets.wait_for(function(): boolean
+					return not House.inside()
+				end, House.TELEPORT_TIMEOUT_MS, House.POLL_MS)
+			then
+				return false, `the {by} didn't take us to {place}`
 			end
 			return true, nil
 		end
@@ -589,7 +547,6 @@ function House.teleport(place: string): (boolean, string?)
 	return false, why
 end
 
--- Drinks from the house's pool and waits for it to take (`Player.restore_with`). False and why.
 function House.restore(): (boolean, string?)
 	local pool = House.reach(House.FURNITURE.pool)
 	if pool == nil then
@@ -600,20 +557,14 @@ function House.restore(): (boolean, string?)
 	end, House.RESTORE_TIMEOUT_MS)
 end
 
--- Leaves by the portal. True once outside.
 function House.leave(): boolean
 	local portal = House.reach(House.EXIT_PORTAL)
 	if portal == nil or not Objects.approach(portal, House.EXIT_OPTION) then
 		return false
 	end
-	local deadline = time() + House.LEAVE_TIMEOUT_MS
-	while Host.in_instance() == true do
-		if time() >= deadline then
-			return false
-		end
-		sleep(House.POLL_MS)
-	end
-	return true
+	return Widgets.wait_for(function(): boolean
+		return Host.in_instance() ~= true
+	end, House.LEAVE_TIMEOUT_MS, House.POLL_MS)
 end
 
 return House

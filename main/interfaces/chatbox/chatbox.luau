@@ -26,7 +26,6 @@ function Chatbox.interfaces(): { number }?
 	end
 	local groups: { number } = {}
 	for _, s in ipairs(open) do
-		-- the level up display isn't always in the chatbox slot, so it's read wherever it is
 		if
 			(s.parent_group == Chatbox.GROUP and s.parent_child == Chatbox.MODAL)
 			or s.group == Chatbox.LEVELUP_DISPLAY

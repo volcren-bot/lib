@@ -1,9 +1,6 @@
 --!strict
--- The Altar of the Occult in a player's house, which swaps the spellbook. It offers each other book as a menu option, and "Venerate" (its left click) opens a dialogue listing them.
--- A swap is confirmed by the game's spellbook, never assumed from a click. The altar's "Remove" option takes it out of the house; nothing here can click it.
 local Host = require("@lib/host")
 local sleep = Host.sleep
-local time = Host.time
 type Loc = Host.Loc
 local Biometrics = require("@lib/main/antiban/biometrics")
 local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
@@ -13,19 +10,17 @@ local Minimenu = require("@lib/main/interfaces/minimenu")
 local Objects = require("@lib/main/entities/objects")
 local Player = require("@lib/main/player")
 local Random = require("@lib/utils/math/random")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local OccultAltar = {}
 
 OccultAltar.NAME = "Altar of the Occult"
 OccultAltar.OPTION = "Venerate"
--- How long to wait for the dialogue (the walk is part of it), for the book to change, and between looks.
 OccultAltar.DIALOGUE_TIMEOUT_MS = 8000
 OccultAltar.SWAP_TIMEOUT_MS = 8000
 OccultAltar.POLL_MS = 100
--- How long to wait after hovering the altar for its menu.
 OccultAltar.HOVER_MS = 350
 
--- Every spellbook, as `Magic.spellbook` names it.
 export type Book = "standard" | "ancient" | "lunar" | "arceuus"
 
 OccultAltar.Book = table.freeze({
@@ -40,7 +35,6 @@ OccultAltar.Book = table.freeze({
 	Arceuus: "arceuus",
 }
 
--- How the altar names each book.
 local LABELS: { [string]: string } = {
 	standard = "Standard",
 	ancient = "Ancient",
@@ -48,7 +42,6 @@ local LABELS: { [string]: string } = {
 	arceuus = "Arceuus",
 }
 
--- The nearest altar loaded, nil when there is none.
 function OccultAltar.nearest(): Loc?
 	local me = Player.position()
 	if me == nil then
@@ -57,7 +50,6 @@ function OccultAltar.nearest(): Loc?
 	return Objects.nearest(OccultAltar.NAME, me)
 end
 
--- The books the altar's menu offers now, found by hovering it: not the one in use, nor one the account hasn't unlocked. Nil when there is no altar to hover.
 function OccultAltar.books(altar: Loc?): { Book }?
 	local target = altar or OccultAltar.nearest()
 	if target == nil or not Objects.hover(target) then
@@ -76,7 +68,6 @@ function OccultAltar.books(altar: Loc?): { Book }?
 	return found
 end
 
--- Whether the altar's dialogue is open: a list of options that are all books.
 function OccultAltar.is_dialogue_open(): boolean
 	local options = ChatOptions.get()
 	if options == nil or #options == 0 then
@@ -90,7 +81,6 @@ function OccultAltar.is_dialogue_open(): boolean
 	return true
 end
 
--- Opens the dialogue with "Venerate", walking to the altar if needed, and waits for it. True also when it was open already. When it didn't work the second result says why.
 function OccultAltar.venerate(altar: Loc?): (boolean, string?)
 	if OccultAltar.is_dialogue_open() then
 		return true, nil
@@ -102,28 +92,22 @@ function OccultAltar.venerate(altar: Loc?): (boolean, string?)
 	if not Objects.approach(target, OccultAltar.OPTION) then
 		return false, `couldn't {OccultAltar.OPTION} the altar`
 	end
-	local deadline = time() + OccultAltar.DIALOGUE_TIMEOUT_MS
-	while time() < deadline do
-		if OccultAltar.is_dialogue_open() then
-			return true, nil
-		end
-		sleep(OccultAltar.POLL_MS)
+	if Widgets.wait_within(OccultAltar.is_dialogue_open, OccultAltar.DIALOGUE_TIMEOUT_MS, OccultAltar.POLL_MS) then
+		return true, nil
 	end
 	return false, "the dialogue didn't open"
 end
 
-local function wait_book(book: Book): boolean
-	local deadline = time() + OccultAltar.SWAP_TIMEOUT_MS
-	while time() < deadline do
-		if Magic.is_spellbook(book) then
-			return true
-		end
-		sleep(OccultAltar.POLL_MS)
+local function swapped(book: Book, label: string): (boolean, string?)
+	local done = Widgets.wait_within(function(): boolean
+		return Magic.is_spellbook(book)
+	end, OccultAltar.SWAP_TIMEOUT_MS, OccultAltar.POLL_MS)
+	if done then
+		return true, nil
 	end
-	return false
+	return false, `the book didn't change to {label}`
 end
 
--- Picks `book` in the open dialogue, by key or click (`key_probability`; nil is the biometric), by click if the key doesn't take, and waits for the book to change.
 function OccultAltar.choose(book: Book, key_probability: number?): (boolean, string?)
 	local label = LABELS[book]
 	if label == nil then
@@ -135,13 +119,9 @@ function OccultAltar.choose(book: Book, key_probability: number?): (boolean, str
 	if not ChatOptions.select(label, true, key_probability) and ChatOptions.find(label, true) ~= nil then
 		ChatOptions.select(label, true, 0)
 	end
-	if wait_book(book) then
-		return true, nil
-	end
-	return false, `the book didn't change to {label}`
+	return swapped(book, label)
 end
 
--- Swaps to `book` with the altar's menu option, walking to it if needed, and waits for the book to change.
 function OccultAltar.swap_by_menu(book: Book, altar: Loc?): (boolean, string?)
 	local label = LABELS[book]
 	if label == nil then
@@ -154,14 +134,9 @@ function OccultAltar.swap_by_menu(book: Book, altar: Loc?): (boolean, string?)
 	if not Objects.approach(target, label) then
 		return false, `the altar doesn't offer {label}`
 	end
-	if wait_book(book) then
-		return true, nil
-	end
-	return false, `the book didn't change to {label}`
+	return swapped(book, label)
 end
 
--- Swaps to `book`: true at once when it is in use already. A dialogue left open is answered; otherwise the menu option or the dialogue is used, as the account's biometrics favour.
--- `via` forces one way. When it didn't work the second result says why, and a book that isn't unlocked isn't offered, so that is one of the reasons.
 function OccultAltar.swap(book: Book, via: ("menu" | "dialogue")?, altar: Loc?): (boolean, string?)
 	if Magic.is_spellbook(book) then
 		return true, nil

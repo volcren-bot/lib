@@ -13,7 +13,6 @@ type Corners = Host.Corners
 type Shape = Host.Shape
 local Draw = {}
 
--- The shapes of the running `Draw.batch`, nil outside one.
 local batch: { Shape }? = nil
 
 export type Color = {
@@ -106,7 +105,6 @@ function Draw.cuboid(cuboid: { bottom: Quad, top: Quad }, color: Color?)
 	Draw.lines(segments, color)
 end
 
--- Seven segment digit layout for `Draw.text`, segments a to g.
 local SEGMENTS: { [string]: string } = {
 	["0"] = "abcdef",
 	["1"] = "bc",
@@ -122,7 +120,6 @@ local SEGMENTS: { [string]: string } = {
 	["#"] = "bcgf",
 }
 
--- Draws digits and ".-#/" as lines from (x, y), `size` pixels high; returns the x where it ends.
 function Draw.text(text: string, x: number, y: number, size: number?, color: Color?): number
 	local h = size or 16
 	local w = h * 0.5
@@ -161,7 +158,6 @@ end
 
 function Draw.clear()
 	if batch then
-		-- Everything batched so far would be wiped anyway.
 		local clear: Shape = { kind = "clear" }
 		table.clear(batch)
 		table.insert(batch, clear)

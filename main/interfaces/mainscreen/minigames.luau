@@ -1,7 +1,4 @@
 --!strict
--- The minigame teleports, a spell on a 20 minute cooldown (varp 888), in its two ways. The "Minigame Teleport" spell opens a scrolling list (group 951, `minigames` in the cache), where a cell's "Select" starts the cast.
--- The Grouping view of the side channels tab (group 76, `grouping`) picks an activity from a dropdown, and its button then reads "Teleport to" the activity. Not every activity has a data row, and the two lists name some differently, so names are compared by their letters.
--- Rat Pits asks which pit, in a dialogue, either way. Starting a cast costs nothing: the cooldown only starts when it finishes, and a walk click stops it.
 local Host = require("@lib/host")
 local menu = Host.menu
 local widget = Host.widget
@@ -17,11 +14,11 @@ local Mouse = require("@lib/utils/input/mouse")
 local Random = require("@lib/utils/math/random")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Minigames = {}
 
 Minigames.GROUP = 951
--- The scrolling part of the list, the frame that holds the close button as its child 11, the components searched for cells, and the label among a cell's children.
 Minigames.VIEW = 4
 Minigames.FRAME = 2
 Minigames.CLOSE_INDEX = 11
@@ -29,64 +26,46 @@ Minigames.LAST_COMPONENT = 40
 Minigames.LABEL_INDEX = 4
 Minigames.SPELL = "Minigame Teleport"
 Minigames.SELECT = "Select"
--- The activity that asks which pit.
 Minigames.RAT_PITS = "Rat Pits"
 
 Minigames.OPEN_TIMEOUT_MS = 3000
 Minigames.HOVER_TIMEOUT_MS = 800
 Minigames.DIALOGUE_TIMEOUT_MS = 3000
 Minigames.POLL_MS = 50
--- The menu follows the mouse a frame or so late, and would still show the cell before.
 Minigames.SETTLE_MS = 150
--- A pause (min, max in ms) after a list or the view shows, before it is used.
 Minigames.OPEN_SETTLE_MS = { 250, 500 }
--- How far a notch of the wheel scrolls, the most notches at a time, and how many scrolls to try.
 Minigames.NOTCH_PIXELS = 79
 Minigames.MAX_NOTCHES = 3
 Minigames.MAX_SCROLLS = 40
 
 export type Teleport = {
 	name: string,
-	-- where it goes, as the list says
 	location: string,
-	-- the cell: where to hover and click
 	area: Widget,
 }
 
--- Letters only, in lowercase, with or without "Minigame Teleport" after them, so that the data's "Giant's Foundry Minigame Teleport" fits the list's "Giants' Foundry".
 local function letters(text: string): string
 	local only = string.gsub(string.lower(text), "%A", "")
 	return (string.gsub(only, "minigameteleport$", ""))
 end
 
--- Whether the menu where the mouse is now would pick `option` on a left click, waiting a moment for the game to show it. `id` and `index` are what its entry must have, when given.
 local function offers(option: string, id: number?, index: number?): boolean
-	local deadline = time() + Minigames.HOVER_TIMEOUT_MS
-	while true do
+	return Widgets.wait_for(function(): boolean
 		for _, entry in ipairs(menu() or {}) do
 			if entry.option ~= "Cancel" then
-				if
-					entry.option == option
+				return entry.option == option
 					and (id == nil or entry.id == id)
 					and (index == nil or entry.index == index)
-				then
-					return true
-				end
-				break
 			end
 		end
-		if time() >= deadline then
-			return false
-		end
-		sleep(Minigames.POLL_MS)
-	end
+		return false
+	end, Minigames.HOVER_TIMEOUT_MS, Minigames.POLL_MS)
 end
 
 local function shown(w: Widget, view: Widget): boolean
 	return w.y >= view.y and w.y + w.height <= view.y + view.height
 end
 
--- Scrolls `view` until what `find` returns is fully shown, and returns it. Nil when it isn't there or the list wouldn't move.
 local function scroll_to<T>(view: () -> Widget?, find: () -> T?, area: (T) -> Widget): T?
 	local last: number? = nil
 	for _ = 1, Minigames.MAX_SCROLLS do
@@ -112,29 +91,14 @@ local function scroll_to<T>(view: () -> Widget?, find: () -> T?, area: (T) -> Wi
 	return nil
 end
 
-----------------------------------------------------------------------------------------------------
--- The spell's list
-----------------------------------------------------------------------------------------------------
-
 function Minigames.is_open(): boolean
 	return Toplevel.is_open(Minigames.GROUP)
 end
 
--- Whether the list is open, polled for up to `timeout_ms` (`OPEN_TIMEOUT_MS` by default).
 function Minigames.wait_open(timeout_ms: number?): boolean
-	local deadline = time() + (timeout_ms or Minigames.OPEN_TIMEOUT_MS)
-	while true do
-		if Minigames.is_open() then
-			return true
-		end
-		if time() >= deadline then
-			return false
-		end
-		sleep(Minigames.POLL_MS)
-	end
+	return Widgets.wait_for(Minigames.is_open, timeout_ms or Minigames.OPEN_TIMEOUT_MS, Minigames.POLL_MS)
 end
 
--- Casts the spell, which opens the list, and waits for it. True when it is open, also if it already was. When it didn't work the second result says why.
 function Minigames.open(): (boolean, string?)
 	if Minigames.is_open() then
 		return true, nil
@@ -155,7 +119,6 @@ function Minigames.open(): (boolean, string?)
 	return true, nil
 end
 
--- Every teleport in the list, top to bottom, read without hovering, including those scrolled out of view. Nil when the list isn't open.
 function Minigames.teleports(): { Teleport }?
 	if not Minigames.is_open() then
 		return nil
@@ -178,7 +141,6 @@ function Minigames.teleports(): { Teleport }?
 	return found
 end
 
--- The teleport called `name`, by its letters. Nil when the list isn't open or has none.
 function Minigames.find(name: string): Teleport?
 	local wanted = letters(name)
 	for _, t in ipairs(Minigames.teleports() or {}) do
@@ -189,7 +151,6 @@ function Minigames.find(name: string): Teleport?
 	return nil
 end
 
--- Clicks a teleport in the list, scrolling to it first, which starts the cast (or for Rat Pits asks which pit). The click only happens once the menu under the mouse offers that cell. False when it isn't in the list or the click didn't happen.
 function Minigames.select(name: string): boolean
 	local t = scroll_to(function(): Widget?
 		return widget(Minigames.GROUP, Minigames.VIEW)
@@ -212,7 +173,6 @@ function Minigames.select(name: string): boolean
 	return true
 end
 
--- The close button, nil when the list isn't open.
 function Minigames.close_button(): Widget?
 	if not Minigames.is_open() then
 		return nil
@@ -225,7 +185,6 @@ function Minigames.close_button(): Widget?
 	return nil
 end
 
--- Closes the list: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
 function Minigames.close(key_probability: number?): boolean
 	if not Minigames.is_open() then
 		return true
@@ -237,36 +196,26 @@ function Minigames.close(key_probability: number?): boolean
 	)
 end
 
-----------------------------------------------------------------------------------------------------
--- The Grouping view
-----------------------------------------------------------------------------------------------------
-
 local Grouping = {}
 Minigames.Grouping = Grouping
 
 Grouping.GROUP = 76
--- The side channels panel and its tab that shows this view.
 Grouping.PANEL = 707
 Grouping.TAB = 5
--- The dropdown, the text showing the activity, the open list and its scrolling part, and the button with its clickable child.
 Grouping.DROPDOWN = 6
 Grouping.SELECTED = 11
 Grouping.LIST = 18
 Grouping.ROWS = 22
 Grouping.BUTTON = 32
--- What the text says with no activity, and the start of the button's option.
 Grouping.NO_ACTIVITY = "Select an activity..."
 Grouping.TELEPORT = "Teleport to"
 
 export type Activity = {
 	name: string,
-	-- its place in the list
 	index: number,
-	-- the row: where to hover and click
 	area: Widget,
 }
 
--- Whether the view is showing.
 function Grouping.is_open(): boolean
 	if SidePanels.current() ~= SidePanels.SIDE_CHANNELS then
 		return false
@@ -275,7 +224,6 @@ function Grouping.is_open(): boolean
 	return w ~= nil and not w.hidden and w.width > 0
 end
 
--- Opens the side channels tab and its Grouping view. True when it is showing, also if it already was.
 function Grouping.open(): boolean
 	if Grouping.is_open() then
 		return true
@@ -303,7 +251,6 @@ function Grouping.open(): boolean
 	return false
 end
 
--- The activity chosen now, nil when none is or the view isn't showing.
 function Grouping.selected(): string?
 	if not Grouping.is_open() then
 		return nil
@@ -315,13 +262,11 @@ function Grouping.selected(): string?
 	return w.text
 end
 
--- Whether the dropdown's list is showing.
 function Grouping.list_open(): boolean
 	local w = widget(Grouping.GROUP, Grouping.LIST)
 	return w ~= nil and not w.hidden and Grouping.is_open()
 end
 
--- Every activity of the dropdown, top to bottom, including those scrolled out of view. Empty until its list has been shown once. Nil when the view isn't showing.
 function Grouping.activities(): { Activity }?
 	if not Grouping.is_open() then
 		return nil
@@ -335,7 +280,6 @@ function Grouping.activities(): { Activity }?
 	return found
 end
 
--- Chooses an activity in the dropdown, opening its list and scrolling to it. True at once when it is chosen already. False when it isn't in the list or the choice didn't take.
 function Grouping.choose(name: string): boolean
 	if not Grouping.open() then
 		return false
@@ -351,12 +295,8 @@ function Grouping.choose(name: string): boolean
 			return false
 		end
 		Mouse.click(dropdown)
-		local deadline = time() + Minigames.OPEN_TIMEOUT_MS
-		while not Grouping.list_open() do
-			if time() >= deadline then
-				return false
-			end
-			sleep(Minigames.POLL_MS)
+		if not Widgets.wait_for(Grouping.list_open, Minigames.OPEN_TIMEOUT_MS, Minigames.POLL_MS) then
+			return false
 		end
 		Random.sleep(Minigames.OPEN_SETTLE_MS[1], Minigames.OPEN_SETTLE_MS[2])
 	end
@@ -387,19 +327,18 @@ function Grouping.choose(name: string): boolean
 		return false
 	end
 	Mouse.click()
-	local deadline = time() + Minigames.OPEN_TIMEOUT_MS
-	while time() < deadline do
-		local now = Grouping.selected()
-		if now ~= nil and letters(now) == wanted then
-			return true
-		end
-		sleep(Minigames.POLL_MS)
+	if
+		Widgets.wait_within(function(): boolean
+			local now = Grouping.selected()
+			return now ~= nil and letters(now) == wanted
+		end, Minigames.OPEN_TIMEOUT_MS, Minigames.POLL_MS)
+	then
+		return true
 	end
 	Log.log("Minigames", `choosing {activity.name} didn't take`)
 	return false
 end
 
--- The clickable part of the button, nil when the view isn't showing.
 function Grouping.button(): Widget?
 	if not Grouping.is_open() then
 		return nil
@@ -412,7 +351,6 @@ function Grouping.button(): Widget?
 	return nil
 end
 
--- Chooses the activity and clicks the button, which starts the cast (or for Rat Pits asks which pit). The click only happens once the menu under the mouse offers that activity's teleport.
 function Grouping.teleport(name: string): boolean
 	if not Grouping.choose(name) then
 		return false
@@ -432,11 +370,6 @@ function Grouping.teleport(name: string): boolean
 	return true
 end
 
-----------------------------------------------------------------------------------------------------
--- Either way
-----------------------------------------------------------------------------------------------------
-
--- Answers the dialogue that asks which rat pit (`pit`: "Ardougne", "Varrock", "Keldagrim" or "Port Sarim"), by key or click, by click if the key doesn't take. False when it doesn't come or doesn't offer it.
 function Minigames.choose_pit(pit: string): boolean
 	local wanted = string.lower(pit)
 	local deadline = time() + Minigames.DIALOGUE_TIMEOUT_MS
@@ -455,8 +388,6 @@ function Minigames.choose_pit(pit: string): boolean
 	return false
 end
 
--- Starts the teleport by the spell's list ("list") or the Grouping view ("grouping"), as the account's biometrics favour unless `via` says which. `pit` answers Rat Pits. The cast itself is not waited for.
--- When it didn't work the second result says why, and a list left open is closed.
 function Minigames.teleport(name: string, pit: string?, via: ("list" | "grouping")?): (boolean, string?)
 	local way = via or (if Biometrics.random_boolean(0.5) then "list" else "grouping")
 	local started: boolean

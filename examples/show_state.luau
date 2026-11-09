@@ -1,6 +1,4 @@
 --!strict
--- Prints a snapshot of the client: position and plane, run energy and weight, the minimap and compass, the open tab and interfaces,
--- the inventory and worn items, the nearest banker and the players around. Reads only.
 local Host = require("@lib/host")
 local game_state = Host.game_state
 local players = Host.players

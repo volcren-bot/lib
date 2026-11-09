@@ -8,6 +8,7 @@ local Interact = require("@lib/main/interact")
 local Log = require("@lib/utils/log")
 local Minimenu = require("@lib/main/interfaces/minimenu")
 local Mouse = require("@lib/utils/input/mouse")
+local Widgets = require("@lib/main/interfaces/widgets")
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
 type Box = Geometry.Box
@@ -80,51 +81,27 @@ function Make.is_open(): boolean
 end
 
 function Make.wait_open(timeout_ms: number?): boolean
-	local waited = 0
-	local timeout = timeout_ms or Make.SELECT_TIMEOUT
-	while true do
-		local open = Make.is_open()
-		if open == nil then
-			return false
-		end
-		if open then
-			return true
-		end
-		if waited >= timeout then
-			Log.log("Make", "the make menu never opened")
-			return false
-		end
-		sleep(50)
-		waited += 50
+	if Widgets.wait_until(function()
+		return Make.is_open()
+	end, timeout_ms or Make.SELECT_TIMEOUT) then
+		return true
 	end
+	Log.log("Make", "the make menu never opened")
+	return false
 end
 
 function Make.wait_closed(timeout_ms: number?): boolean
-	local waited = 0
-	local timeout = timeout_ms or Make.SELECT_TIMEOUT
-	while true do
-		local open = Make.is_open()
-		if open == nil then
-			return false
-		end
-		if not open then
-			return true
-		end
-		if waited >= timeout then
-			Log.log("Make", "the make menu is still open")
-			return false
-		end
-		sleep(50)
-		waited += 50
+	if Widgets.wait_until(function()
+		return not Make.is_open()
+	end, timeout_ms or Make.SELECT_TIMEOUT) then
+		return true
 	end
+	Log.log("Make", "the make menu is still open")
+	return false
 end
 
 function Make.amounts(): { Amount }?
-	local open = Make.is_open()
-	if open == nil then
-		return nil
-	end
-	if not open then
+	if not Make.is_open() then
 		return {}
 	end
 	local amounts: { Amount } = {}
@@ -180,9 +157,8 @@ function Make.set_amount(amount: AmountArg): boolean
 	end
 	if button == nil then
 		if type(amount) == "number" and label == "X" then
-			local all = Make.set_amount("All")
-			if not all then
-				return all
+			if not Make.set_amount("All") then
+				return false
 			end
 			return Make.set_amount(amount)
 		end
@@ -196,35 +172,26 @@ function Make.set_amount(amount: AmountArg): boolean
 		if top == nil then
 			return false
 		end
-		local clicked = Interact.with(button.box, top.option, nil, false)
-		if not clicked then
-			return clicked
+		if not Interact.with(button.box, top.option, nil, false) then
+			return false
 		end
 	end
 	local expected = label
 	if type(amount) == "number" then
-		local answered = Chat.answer_query(Make.QUERY, tostring(amount))
-		if not answered then
-			return answered
+		if not Chat.answer_query(Make.QUERY, tostring(amount)) then
+			return false
 		end
 		expected = tostring(amount)
 	end
-	local waited = 0
-	while true do
-		local current = Make.amount()
-		if current == expected then
-			return true
-		end
-		if waited >= Make.SELECT_TIMEOUT then
-			Log.log("Make", `the quantity didn't change to "{expected}"`)
-			return false
-		end
-		sleep(50)
-		waited += 50
+	if Widgets.wait_until(function()
+		return Make.amount() == expected
+	end, Make.SELECT_TIMEOUT) then
+		return true
 	end
+	Log.log("Make", `the quantity didn't change to "{expected}"`)
+	return false
 end
 
--- Queues the click on an amount button and returns at once; "X" needs `set_amount`, `force` clicks even when selected.
 function Make.set_amount_async(label: string, force: boolean?): boolean
 	local amounts = Make.amounts()
 	if amounts == nil then
@@ -242,11 +209,7 @@ function Make.set_amount_async(label: string, force: boolean?): boolean
 end
 
 function Make.options(): { Option }?
-	local open = Make.is_open()
-	if open == nil then
-		return nil
-	end
-	if not open then
+	if not Make.is_open() then
 		return {}
 	end
 	local options: { Option } = {}
@@ -292,17 +255,15 @@ end
 
 function Make.make(name: string, amount: AmountArg?): boolean
 	if amount ~= nil then
-		local set = Make.set_amount(amount)
-		if not set then
-			return set
+		if not Make.set_amount(amount) then
+			return false
 		end
 	end
 	local option = Make.option(name)
 	if option == nil then
 		return false
 	end
-	local clicked = Interact.with(option.box, option.verb, option.name, false)
-	return clicked
+	return (Interact.with(option.box, option.verb, option.name, false))
 end
 
 return Make

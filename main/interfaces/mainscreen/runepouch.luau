@@ -1,49 +1,33 @@
 --!strict
--- The rune pouch (group 190), opened by "Open" on a pouch in the inventory: the pouch's runes above, kept in client variables, and the inventory below. A rune's menu moves 1, 5, a typed amount or all of it.
 local Host = require("@lib/host")
 local enum_def = Host.enum_def
-local sleep = Host.sleep
-local time = Host.time
 local varbit = Host.varbit
 local widget_children = Host.widget_children
 type Widget = Host.Widget
 local Interact = require("@lib/main/interact")
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 local Item = require("@lib/utils/item")
+type Item = Item.Item
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Runepouch = {}
 
--- A rune in the pouch and how many of it.
 export type Rune = { id: number, name: string, quantity: number }
 export type Amount = number | "All"
 
 Runepouch.GROUP = 190
--- The frame (its children hold the close button), the pouch's runes and the inventory: each has a child per slot, by index.
 Runepouch.FRAME = 1
 Runepouch.POUCH = 4
 Runepouch.INVENTORY = 7
 Runepouch.OPTION = "Open"
 Runepouch.CLOSE_OPTION = "Close"
--- The rune pouches, as the inventory names them; any of them holds the runes the varbits below describe.
 Runepouch.POUCHES = table.freeze({ "Rune pouch", "Rune pouch (l)", "Divine rune pouch", "Divine rune pouch (l)" })
--- The varbits of each pouch slot's rune (a number the enum below maps to an item id) and amount.
 Runepouch.RUNE_VARBITS = table.freeze({ 29, 1622, 1623, 14285 })
 Runepouch.AMOUNT_VARBITS = table.freeze({ 1624, 1625, 1626, 14286 })
 Runepouch.RUNES_ENUM = 982
 Runepouch.TIMEOUT_MS = 2500
 Runepouch.POLL_MS = 50
-
-local function wait_until(check: () -> boolean): boolean
-	local deadline = time() + Runepouch.TIMEOUT_MS
-	while time() < deadline do
-		if check() then
-			return true
-		end
-		sleep(Runepouch.POLL_MS)
-	end
-	return false
-end
 
 local runes_by_index: { [number]: number }? = nil
 
@@ -65,12 +49,10 @@ local function rune_ids(): { [number]: number }?
 	return by_index
 end
 
--- Whether a pouch is in the inventory.
 function Runepouch.held(): boolean
 	return Inventory.contains_any(Runepouch.POUCHES)
 end
 
--- The runes in the pouch now, from the client's variables (they keep their values whether or not a pouch is in the inventory). Nil when they can't be read.
 function Runepouch.runes(): { Rune }?
 	local by_index = rune_ids()
 	if by_index == nil then
@@ -99,8 +81,7 @@ function Runepouch.runes(): { Rune }?
 	return held
 end
 
--- How many of a rune the pouch holds, by id or name.
-function Runepouch.quantity(rune: Item.Item): number
+function Runepouch.quantity(rune: Item): number
 	for _, held in ipairs(Runepouch.runes() or {}) do
 		if held.id == rune or (type(rune) == "string" and string.lower(held.name) == string.lower(rune)) then
 			return held.quantity
@@ -113,7 +94,6 @@ function Runepouch.is_open(): boolean
 	return Toplevel.is_open(Runepouch.GROUP)
 end
 
--- Opens the interface from a pouch in the inventory. True when it is open.
 function Runepouch.open(): boolean
 	if Runepouch.is_open() then
 		return true
@@ -121,7 +101,7 @@ function Runepouch.open(): boolean
 	if not Inventory.interact(Runepouch.POUCHES, Runepouch.OPTION) then
 		return false
 	end
-	return wait_until(Runepouch.is_open)
+	return Widgets.wait_within(Runepouch.is_open, Runepouch.TIMEOUT_MS, Runepouch.POLL_MS)
 end
 
 local function close_button(): Widget?
@@ -133,14 +113,13 @@ local function close_button(): Widget?
 	return nil
 end
 
--- Closes the interface and waits for the inventory, which the interface took away and which comes back a moment later. True once it is usable again.
 function Runepouch.close(): boolean
 	if not Toplevel.close(Runepouch.GROUP, close_button) then
 		return false
 	end
-	return wait_until(function()
+	return Widgets.wait_within(function()
 		return Inventory.boxes() ~= nil
-	end)
+	end, Runepouch.TIMEOUT_MS, Runepouch.POLL_MS)
 end
 
 local function cell(component: number, index: number): Widget?
@@ -152,8 +131,7 @@ local function cell(component: number, index: number): Widget?
 	return nil
 end
 
--- The pouch slot (from 0, the cell's index) of a rune, by id or name.
-local function pouch_index(rune: Item.Item): number?
+local function pouch_index(rune: Item): number?
 	local by_index = rune_ids()
 	if by_index == nil then
 		return nil
@@ -181,11 +159,7 @@ local function option_of(verb: string, amount: Amount): string?
 	return nil
 end
 
--- With the interface open, takes a rune out to the inventory: 1, 5 or "All". True once the pouch holds less of it.
-function Runepouch.withdraw(rune: Item.Item, amount: Amount): boolean
-	local option = option_of("Withdraw", amount)
-	local index = pouch_index(rune)
-	local w = if index then cell(Runepouch.POUCH, index) else nil
+local function transfer(w: Widget?, option: string?, rune: Item, stored: boolean): boolean
 	if option == nil or w == nil then
 		return false
 	end
@@ -193,26 +167,22 @@ function Runepouch.withdraw(rune: Item.Item, amount: Amount): boolean
 	if not Interact.with(w, option, nil, false) then
 		return false
 	end
-	return wait_until(function()
-		return Runepouch.quantity(rune) < before
-	end)
+	return Widgets.wait_within(function()
+		local now = Runepouch.quantity(rune)
+		return if stored then now > before else now < before
+	end, Runepouch.TIMEOUT_MS, Runepouch.POLL_MS)
 end
 
--- With the interface open, puts a rune from the inventory in the pouch: 1, 5 or "All". True once the pouch holds more of it.
-function Runepouch.store(rune: Item.Item, amount: Amount): boolean
+function Runepouch.withdraw(rune: Item, amount: Amount): boolean
+	local option = option_of("Withdraw", amount)
+	local index = pouch_index(rune)
+	return transfer(if index then cell(Runepouch.POUCH, index) else nil, option, rune, false)
+end
+
+function Runepouch.store(rune: Item, amount: Amount): boolean
 	local option = option_of("Store", amount)
 	local index = Inventory.index_of(rune)
-	local w = if index then cell(Runepouch.INVENTORY, index) else nil
-	if option == nil or w == nil then
-		return false
-	end
-	local before = Runepouch.quantity(rune)
-	if not Interact.with(w, option, nil, false) then
-		return false
-	end
-	return wait_until(function()
-		return Runepouch.quantity(rune) > before
-	end)
+	return transfer(if index then cell(Runepouch.INVENTORY, index) else nil, option, rune, true)
 end
 
 return Runepouch

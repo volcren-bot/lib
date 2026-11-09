@@ -1,7 +1,4 @@
 --!strict
--- Draws the click orders `Inventory.pattern` makes over the inventory slots, one slot at a time: cyan lines in snake mode, magenta in spiral,
--- numbers from green (first) to red (last). Each order starts by the mouse, so move it around between orders. Only draws, never clicks.
--- With ACCOUNT_HABIT false it makes up a new habit every ORDERS_PER_HABIT orders, to show how accounts differ; true shows this account's.
 local Biometrics = require("@lib/main/antiban/biometrics")
 local Draw = require("@lib/utils/draw")
 local Host = require("@lib/host")
@@ -73,7 +70,6 @@ while Host.time() - started < RUN_MS do
 	end
 	said_closed = false
 	if not ACCOUNT_HABIT and in_habit == ORDERS_PER_HABIT then
-		-- no seed: the next hash, and so the habit, is a new random one
 		Biometrics.setup(nil)
 		habit, in_habit = habit + 1, 0
 	end

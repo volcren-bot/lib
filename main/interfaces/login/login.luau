@@ -70,9 +70,6 @@ function Login.sign_in(timeout_ms: number?): boolean
 			return false
 		end
 		local pressed = Login.login()
-		if pressed == nil then
-			return false
-		end
 		if not wait(if pressed then PRESS_MS else POLL_MS) then
 			Log.log("Login", "timed out logging in")
 			return false
@@ -84,10 +81,7 @@ function Login.sign_in(timeout_ms: number?): boolean
 	while true do
 		local state = game_state()
 		if WelcomeScreen.is_open(state) then
-			local clicked = WelcomeScreen.play()
-			if clicked == nil then
-				return false
-			end
+			WelcomeScreen.play()
 			played = true
 			if not wait(PRESS_MS) then
 				Log.log("Login", "timed out on the lobby")
@@ -107,15 +101,8 @@ function Login.sign_in(timeout_ms: number?): boolean
 
 	local survey_waited = 0
 	while survey_waited <= SURVEY_TIMEOUT_MS do
-		local open = RecommendSurvey.is_open()
-		if open == nil then
-			return false
-		end
-		if open then
-			local skipped = RecommendSurvey.skip()
-			if skipped == nil then
-				return false
-			end
+		if RecommendSurvey.is_open() then
+			RecommendSurvey.skip()
 			return true
 		end
 		if not wait(POLL_MS) then

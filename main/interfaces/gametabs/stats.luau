@@ -12,7 +12,6 @@ local Stats = {}
 
 Stats.GROUP = 320
 
--- The tab's skill boxes are children 1 to 24, column by column; "total" is the box under them.
 Stats.CHILDREN = {
 	attack = 1,
 	strength = 2,
@@ -41,7 +40,6 @@ Stats.CHILDREN = {
 	total = 25,
 } :: { [string]: number }
 
--- Every skill, as the game names it. Use these rather than typing a name: `Stats.level(Stats.Skill.Herblore)`.
 export type SkillName =
 	"Attack"
 	| "Strength"
@@ -155,37 +153,33 @@ end
 
 function Stats.level(name: string): number?
 	local skill = Stats.get(name)
-	if skill == nil then
-		return nil
-	end
-	return skill.level
+	return if skill then skill.level else nil
 end
 
 function Stats.real_level(name: string): number?
 	local skill = Stats.get(name)
-	if skill == nil then
-		return nil
-	end
-	return skill.real_level
+	return if skill then skill.real_level else nil
 end
 
 function Stats.xp(name: string): number?
 	local skill = Stats.get(name)
-	if skill == nil then
-		return nil
-	end
-	return skill.xp
+	return if skill then skill.xp else nil
 end
 
--- Opens the tab and moves the mouse over a skill's box (or "total").
-function Stats.hover(name: string): boolean
+local function skill_child(name: string): number?
 	local child = Stats.CHILDREN[string.lower(name)]
 	if child == nil then
 		Log.log("Stats", `unknown skill {name}`)
+	end
+	return child
+end
+
+function Stats.hover(name: string): boolean
+	local child = skill_child(name)
+	if child == nil then
 		return false
 	end
-	local opened = SidePanels.open(SidePanels.STATS)
-	if opened ~= true then
+	if SidePanels.open(SidePanels.STATS) ~= true then
 		return false
 	end
 	local box = widget(Stats.GROUP, child)
@@ -196,11 +190,9 @@ function Stats.hover(name: string): boolean
 	return true
 end
 
--- Queues the tab open and the move over a skill's box (or "total") and returns at once.
 function Stats.hover_async(name: string): boolean
-	local child = Stats.CHILDREN[string.lower(name)]
+	local child = skill_child(name)
 	if child == nil then
-		Log.log("Stats", `unknown skill {name}`)
 		return false
 	end
 	local box = widget(Stats.GROUP, child)

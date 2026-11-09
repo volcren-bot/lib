@@ -1,5 +1,4 @@
 --!strict
--- Opens the nearest bank and lets the injector enter the saved bank PIN if the keypad shows up (run it from the loader with a saved account).
 local NAME = "Bank booth"
 local OPTION = "Bank"
 local TIMEOUT_MS = 20000
@@ -32,7 +31,6 @@ end
 local started = time()
 local entered: string? = nil
 while time() - started < TIMEOUT_MS do
-	-- The injector asks the loader for the logged in account's PIN and clicks the digits itself; the script only sees how it went.
 	if BankpinKeypad.is_open() then
 		if entered == nil then
 			print("the PIN keypad is open")

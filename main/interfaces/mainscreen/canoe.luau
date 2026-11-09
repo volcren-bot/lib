@@ -1,7 +1,4 @@
 --!strict
--- The canoe stations of the two rivers: a station is chopped down, shaped into a canoe, floated and paddled, and which of those comes next is what its menu offers.
--- Shaping uses group 416 (`canoeing`), and paddling opens the river's map: group 952 (`canoe_map_dougne`) or 953 (`canoe_map_lum`). The canoe sinks at the end of the trip, and the station starts again.
--- A trip needs an axe, held or kept by the NPC of any station. The game shows no variable for the kept one, so `NO_AXE` comes from chopping with neither.
 local Host = require("@lib/host")
 local menu = Host.menu
 local sleep = Host.sleep
@@ -15,6 +12,7 @@ local Npcs = require("@lib/main/entities/npcs")
 local Objects = require("@lib/main/entities/objects")
 local Player = require("@lib/main/player")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Canoe = {}
 
@@ -31,17 +29,14 @@ Canoe.FLOAT = "Float"
 Canoe.PADDLE = "Paddle Canoe"
 Canoe.TRAVEL = "Travel to"
 Canoe.STORE_AXE = "Store-axe"
--- What `travel` says went wrong: no axe held or kept, or the floating canoe doesn't go that far.
 Canoe.NO_AXE = "no axe"
 Canoe.CANT_REACH = "this canoe can't reach that far"
--- How the game says a station can't be chopped: "You need an axe which you have the required Woodcutting level to use ...".
 Canoe.NO_AXE_TEXT = "you need an axe"
 
 Canoe.STATION_RANGE = 12
 Canoe.POLL_MS = 100
 Canoe.HOVER_TIMEOUT_MS = 800
 Canoe.OPEN_TIMEOUT_MS = 5000
--- How long a step may take to start (with the walk to the station) and to finish, and how long the station's state must hold still to count as finished.
 Canoe.STEP_TIMEOUT_MS = 10000
 Canoe.SETTLED_MS = 700
 Canoe.TRIP_TIMEOUT_MS = 45000
@@ -62,7 +57,6 @@ Canoe.Kind = table.freeze({
 	Waka: "Waka",
 }
 
--- Each canoe: the shaping interface's component, and the Woodcutting level it takes, which is also how far it goes: 1 to 4 stops.
 Canoe.KINDS = {
 	["Log"] = { button = 20, level = 12 },
 	["Dugout"] = { button = 18, level = 27 },
@@ -70,7 +64,6 @@ Canoe.KINDS = {
 	["Waka"] = { button = 11, level = 57 },
 } :: { [Kind]: { button: number, level: number } }
 
--- Each stop, by the data's name: its river's map, the map's component that is clicked, and where a trip lands.
 Canoe.PLACES = {
 	["Castle Wars"] = { map = Canoe.ARDOUGNE_MAP, button = 7, tile = { x = 2436, y = 3134 } },
 	["Tree Gnome Village"] = { map = Canoe.ARDOUGNE_MAP, button = 12, tile = { x = 2486, y = 3188 } },
@@ -85,7 +78,6 @@ Canoe.PLACES = {
 	["Wilderness Pond"] = { map = Canoe.LUMBRIDGE_MAP, button = 28, tile = { x = 3141, y = 3796 } },
 } :: { [string]: { map: number, button: number, tile: { x: number, y: number } } }
 
--- Each station by its object id: the varbit holding its state, and its river's map.
 Canoe.STATIONS = {
 	[12163] = { varbit = 1839, map = Canoe.LUMBRIDGE_MAP },
 	[12164] = { varbit = 1840, map = Canoe.LUMBRIDGE_MAP },
@@ -99,10 +91,8 @@ Canoe.STATIONS = {
 	[60849] = { varbit = 20255, map = Canoe.ARDOUGNE_MAP },
 } :: { [number]: { varbit: number, map: number } }
 
--- The NPCs of the stations, by id (`canoeing_*` in the cache).
 Canoe.KEEPERS = { 1323, 1324, 1325, 1326, 10370, 15601, 15602, 15603, 15604, 15605 }
 
--- The smallest canoe for a trip the data says takes this Woodcutting level.
 function Canoe.kind_for_level(level: number?): Kind
 	local best: Kind = "Waka"
 	for name, kind in Canoe.KINDS do
@@ -113,7 +103,6 @@ function Canoe.kind_for_level(level: number?): Kind
 	return best
 end
 
--- The nearest canoe station within `STATION_RANGE`.
 function Canoe.station(): Loc?
 	local here = Player.position()
 	if here == nil then
@@ -126,7 +115,6 @@ function Canoe.station(): Loc?
 	return loc
 end
 
--- What the station under the mouse offers: the option of its next step, and the stage it means.
 local function next_step(loc: Loc): (Stage?, string?)
 	if not Objects.hover(loc) then
 		return nil, nil
@@ -151,7 +139,6 @@ local function next_step(loc: Loc): (Stage?, string?)
 	return nil, nil
 end
 
--- What the nearest station needs next. It hovers the station, which has to be on the screen.
 function Canoe.stage(): Stage?
 	local loc = Canoe.station()
 	if loc == nil then
@@ -166,7 +153,6 @@ local function newest_uid(): number
 	return if last ~= nil then last.uid else 0
 end
 
--- Whether the game said there is no axe since the message `seen`.
 local function said_no_axe(seen: number): boolean
 	local all = Host.chat_messages() or {}
 	for i = #all, 1, -1 do
@@ -180,7 +166,6 @@ local function said_no_axe(seen: number): boolean
 	return false
 end
 
--- Waits for the station's state to change from `before` and hold still. False at the timeout, and at once with `NO_AXE` when the game says so.
 local function wait_state(varbit: number, before: number): (boolean, string?)
 	local seen = newest_uid()
 	local deadline = time() + Canoe.STEP_TIMEOUT_MS
@@ -200,7 +185,6 @@ local function wait_state(varbit: number, before: number): (boolean, string?)
 	return false
 end
 
--- Clicks a component of an open interface once the menu under the mouse offers `option` for it (the start of the option's text).
 local function click_button(group: number, child: number, option: string): boolean
 	local w = widget(group, child)
 	if w == nil or w.hidden then
@@ -227,14 +211,9 @@ local function close(group: number, child: number)
 end
 
 local function wait_open(group: number): boolean
-	local deadline = time() + Canoe.OPEN_TIMEOUT_MS
-	while not Toplevel.is_open(group) do
-		if time() >= deadline then
-			return false
-		end
-		sleep(Canoe.POLL_MS)
-	end
-	return true
+	return Widgets.wait_for(function(): boolean
+		return Toplevel.is_open(group)
+	end, Canoe.OPEN_TIMEOUT_MS, Canoe.POLL_MS)
 end
 
 local function chop(loc: Loc, varbit: number): (boolean, string?)
@@ -267,7 +246,6 @@ local function float(loc: Loc, varbit: number, option: string): (boolean, string
 	return false, "the canoe wasn't floated"
 end
 
--- Paddles to the place, and waits to land. The trip goes through a cutscene somewhere else, far from either end.
 local function paddle(loc: Loc, place: string): (boolean, string?)
 	local p = Canoe.PLACES[place]
 	if not Objects.approach(loc, Canoe.PADDLE) or not wait_open(p.map) then
@@ -277,23 +255,21 @@ local function paddle(loc: Loc, place: string): (boolean, string?)
 		close(p.map, Canoe.MAP_CLOSE)
 		return false, Canoe.CANT_REACH
 	end
-	local deadline = time() + Canoe.TRIP_TIMEOUT_MS
-	while time() < deadline do
-		local now = Player.position()
-		if now ~= nil and math.max(math.abs(now.x - p.tile.x), math.abs(now.y - p.tile.y)) <= Canoe.ARRIVED_NEAR then
-			return true
-		end
-		sleep(Canoe.POLL_MS * 2)
+	if
+		Widgets.wait_within(function(): boolean
+			local now = Player.position()
+			return now ~= nil and math.max(math.abs(now.x - p.tile.x), math.abs(now.y - p.tile.y)) <= Canoe.ARRIVED_NEAR
+		end, Canoe.TRIP_TIMEOUT_MS, Canoe.POLL_MS * 2)
+	then
+		return true
 	end
 	return false, "the trip didn't land"
 end
 
--- Takes a canoe from the station beside the player to the place, taking the station from wherever it stands: a canoe made earlier is used as it is, so it may be too small (`CANT_REACH`). `kind` is what to shape, the Waka by default. True once landed; else false and why.
 function Canoe.travel(place: string, kind: Kind?): (boolean, string?)
 	if Canoe.PLACES[place] == nil then
 		return false, `{place} isn't a canoe stop`
 	end
-	-- chop, shape, float, paddle: one try each
 	for _ = 1, 4 do
 		local loc = Canoe.station()
 		if loc == nil then
@@ -320,7 +296,6 @@ function Canoe.travel(place: string, kind: Kind?): (boolean, string?)
 	return false, "the station didn't get to its last step"
 end
 
--- The nearest station NPC within `STATION_RANGE`.
 function Canoe.keeper(): Npc?
 	local here = Player.position()
 	if here == nil then
@@ -348,7 +323,6 @@ function Canoe.keeper(): Npc?
 	return best
 end
 
--- Gives the held axe to the station's NPC, or gets a kept axe back: "Store-axe" does whichever is due, and the NPC says which. Any station's NPC keeps it for them all.
 function Canoe.swap_axe(): boolean
 	local npc = Canoe.keeper()
 	if npc == nil or not Npcs.approach(npc, Canoe.STORE_AXE) then
@@ -357,7 +331,6 @@ function Canoe.swap_axe(): boolean
 	local deadline = time() + Canoe.OPEN_TIMEOUT_MS
 	while time() < deadline do
 		if ChatOptions.contains_continue() then
-			-- a click: the keyboard doesn't always reach the client
 			return ChatOptions.continue_chat(0)
 		end
 		sleep(Canoe.POLL_MS)

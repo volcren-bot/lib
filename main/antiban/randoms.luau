@@ -1,6 +1,4 @@
 --!strict
--- The game's random events: NPCs that turn up beside you and try to talk to you. `handle` looks for one by its id that is interacting with you, and runs what that event needs.
--- Add an event by adding its NPC id to `HANDLERS`. Another player's event isn't yours: only `interacting_player` tells them apart.
 local Host = require("@lib/host")
 local sleep = Host.sleep
 local time = Host.time
@@ -12,25 +10,21 @@ local Log = require("@lib/utils/log")
 local Npcs = require("@lib/main/entities/npcs")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 local SurpriseExam = require("@lib/main/interfaces/mainscreen/surprise_exam")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Randoms = {}
 
--- What to do about an event's NPC; true when it was dealt with.
 export type Handler = (npc: Npc) -> boolean
 
--- The genie's NPC id, its lamp's item id, and the option that takes the lamp.
 Randoms.GENIE = 326
 Randoms.GENIE_LAMP = 2528
 Randoms.GENIE_OPTION = "Talk-to"
--- The NPC ids of those who ask the certer's quiz. Only Giles has been seen.
 Randoms.NILES = 5436
 Randoms.MILES = 5437
 Randoms.GILES = 5438
--- How long to wait for the lamp after talking, how long to keep watching for a dialogue once it is there, and between looks.
 Randoms.GENIE_TIMEOUT_MS = 8000
 Randoms.GENIE_SETTLE_MS = 600
 Randoms.POLL_MS = 100
--- After an event that gives a lamp: how long to wait for one to show or a spent one to go, and how often one is tried.
 Randoms.LAMP_WAIT_MS = 3000
 Randoms.LAMP_ATTEMPTS = 3
 
@@ -57,7 +51,6 @@ local function lamps_held(): number
 	return count
 end
 
--- The skill this account's lamps go on, chosen on the loader's Accounts page. Nil when none is set, there is no loader, or the loader can't say, which is logged.
 function Randoms.lamp_skill(): Stats.SkillName?
 	local skill, why = Host.lamp_skill()
 	if why ~= nil then
@@ -73,17 +66,6 @@ function Randoms.lamp_skill(): Stats.SkillName?
 	return skill :: any
 end
 
-local function wait_for(check: () -> boolean, ms: number): boolean
-	local deadline = time() + ms
-	while not check() do
-		if time() >= deadline then
-			return false
-		end
-		sleep(Randoms.POLL_MS)
-	end
-	return true
-end
-
 local function held_at(slot: number): number?
 	for _, item in ipairs(Host.item_container(Lamp.INVENTORY) or {}) do
 		if item.slot == slot then
@@ -93,12 +75,10 @@ local function held_at(slot: number): number?
 	return nil
 end
 
--- Spends every lamp held (one of `Lamp.NAMES`: the genie's, the exam's Book of Knowledge) on the account's lamp skill,
--- each tried up to LAMP_ATTEMPTS times. Lamps can't be banked, so none is left behind. True when none is held.
 function Randoms.use_lamps(): boolean
-	wait_for(function(): boolean
+	Widgets.wait_for(function(): boolean
 		return Lamp.slot() ~= nil
-	end, Randoms.LAMP_WAIT_MS)
+	end, Randoms.LAMP_WAIT_MS, Randoms.POLL_MS)
 	local skill: Stats.SkillName? = nil
 	local failures = 0
 	while true do
@@ -113,9 +93,12 @@ function Randoms.use_lamps(): boolean
 		end
 		local id = held_at(slot)
 		local ok, why = Lamp.use(skill :: Stats.SkillName)
-		if ok and wait_for(function(): boolean
-			return held_at(slot) ~= id
-		end, Randoms.LAMP_WAIT_MS) then
+		if
+			ok
+			and Widgets.wait_for(function(): boolean
+				return held_at(slot) ~= id
+			end, Randoms.LAMP_WAIT_MS, Randoms.POLL_MS)
+		then
 			Log.log("Randoms", `spent a lamp on {skill}`)
 			failures = 0
 		else
@@ -128,7 +111,6 @@ function Randoms.use_lamps(): boolean
 	end
 end
 
--- Takes the lamp from the genie. True once the lamp is held.
 local function handle_genie(genie: Npc): boolean
 	local before = lamps_held()
 	if not Npcs.interact(genie, Randoms.GENIE_OPTION) then
@@ -154,7 +136,6 @@ local function handle_genie(genie: Npc): boolean
 	return true
 end
 
--- Opens the certer's quiz, answers it and finishes the chat after it. True when it was answered.
 local function handle_certer(npc: Npc): boolean
 	local opened, closed_why = Certer.open(npc)
 	if not opened then
@@ -168,7 +149,6 @@ local function handle_certer(npc: Npc): boolean
 	return ok
 end
 
--- The events handled, by NPC id.
 Randoms.HANDLERS = {
 	[Randoms.GENIE] = handle_genie,
 	[SurpriseExam.DUNCE] = SurpriseExam.accept,
@@ -177,13 +157,11 @@ Randoms.HANDLERS = {
 	[Randoms.GILES] = handle_certer,
 } :: { [number]: Handler }
 
--- The events whose reward is a lamp, by NPC id: `handle` spends it once the event is done.
 Randoms.LAMP_EVENTS = {
 	[Randoms.GENIE] = true,
 	[SurpriseExam.DUNCE] = true,
 } :: { [number]: boolean }
 
--- The first NPC of a known event that is interacting with you, nil when there is none.
 function Randoms.find(): Npc?
 	local me: number? = nil
 	for _, npc in ipairs(Host.npcs() or {}) do
@@ -197,9 +175,7 @@ function Randoms.find(): Npc?
 	return nil
 end
 
--- Deals with a random event if one is trying to interact with you. True when one was dealt with.
 function Randoms.handle(): boolean
-	-- an exam already under way (the script started in the classroom): finished first
 	if SurpriseExam.inside() then
 		Log.log("Randoms", "in the Surprise Exam's classroom")
 		local done = SurpriseExam.complete()

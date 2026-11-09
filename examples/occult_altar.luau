@@ -1,5 +1,4 @@
 --!strict
--- Lists the books the Altar of the Occult offers, then swaps to the first of them. Run it in a house with the altar.
 local OccultAltar = require("@lib/main/occult_altar")
 
 local books = OccultAltar.books()

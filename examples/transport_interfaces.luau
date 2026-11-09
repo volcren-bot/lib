@@ -1,6 +1,4 @@
 --!strict
--- Lists what each transport interface offers, for the ones within reach: it tries each in turn, opens the one at the nearest
--- object or NPC, prints its destinations and closes it again. Goes nowhere; each section ends with the call that would travel.
 local Balloon = require("@lib/main/interfaces/mainscreen/balloon")
 local Canoe = require("@lib/main/interfaces/mainscreen/canoe")
 local Chartering = require("@lib/main/interfaces/mainscreen/chartering")
@@ -34,7 +32,6 @@ local sections: { Section } = {
 			for _, d in ipairs(Balloon.destinations() or {}) do
 				print(`  {d.name} ({d.log.name}, {if d.unlocked then "unlocked" else "locked"})`)
 			end
-			-- To fly, spending a log: Balloon.select(Balloon.Place.Varrock)
 			return Balloon.close(), "couldn't close the map"
 		end,
 	},
@@ -46,7 +43,6 @@ local sections: { Section } = {
 				return false, "no canoe station here"
 			end
 			print(`  next step: {Canoe.stage()}, axes from {keeper.name}`)
-			-- To paddle, making the smallest canoe for 1 stop: Canoe.travel("The Clock Tower", Canoe.Kind.Log)
 			return true
 		end,
 	},
@@ -62,7 +58,6 @@ local sections: { Section } = {
 			for index, name in pairs(Chartering.Map.names() or {}) do
 				print(`  map marker {index}: {name}`)
 			end
-			-- To sail: Chartering.select(Chartering.Port.Catherby)
 			return true
 		end,
 	},
@@ -77,7 +72,6 @@ local sections: { Section } = {
 			for _, d in ipairs(Fairyring.Log.destinations() or {}) do
 				print(`  {d.code}: {d.name}`)
 			end
-			-- To travel, by a code or part of a place's name: Fairyring.travel("aiq") or Fairyring.travel("mudskipper")
 			return Fairyring.close(), "couldn't close the dials"
 		end,
 	},
@@ -91,7 +85,6 @@ local sections: { Section } = {
 			for _, d in ipairs(Gnomeglider.destinations() or {}) do
 				print(`  {d.name}`)
 			end
-			-- To travel: Gnomeglider.select(Gnomeglider.Site.KarHewo)
 			return Gnomeglider.close(), "couldn't close the map"
 		end,
 	},
@@ -108,7 +101,6 @@ local sections: { Section } = {
 			for _, d in ipairs(Jewellerybox.destinations() or {}) do
 				print(`  {d.key}: {d.name} ({d.jewellery}, {if d.available then "available" else "unavailable"})`)
 			end
-			-- To travel: Jewellerybox.select(Jewellerybox.Place.GrandExchange)
 			return Jewellerybox.close(), "couldn't close the menu"
 		end,
 	},
@@ -121,7 +113,6 @@ local sections: { Section } = {
 			for _, d in ipairs(Minecart.destinations() or {}) do
 				print(`  {d.key}: {d.name}`)
 			end
-			-- To travel: Minecart.select(Minecart.Stop.Lovakengj)
 			return Minecart.close(), "couldn't close the list"
 		end,
 	},
@@ -135,7 +126,6 @@ local sections: { Section } = {
 			for _, t in ipairs(Minigames.teleports() or {}) do
 				print(`  {t.name}: {t.location}`)
 			end
-			-- To teleport, which starts the 20 minute cooldown once it finishes: Minigames.teleport("Castle Wars")
 			return Minigames.close(), "couldn't close the list"
 		end,
 	},
@@ -148,7 +138,6 @@ local sections: { Section } = {
 			for _, d in ipairs(Mounted.destinations() or {}) do
 				print(`  {d.name}`)
 			end
-			-- To go, from inside the house without opening it first: Mounted.teleport("talisman", "Glade")
 			return Mounted.close(), "couldn't close it"
 		end,
 	},
@@ -161,7 +150,6 @@ local sections: { Section } = {
 			for _, d in ipairs(Mushtree.destinations() or {}) do
 				print(`  {d.number}: {d.name}`)
 			end
-			-- To travel: Mushtree.select(Mushtree.Tree.VerdantValley)
 			return Mushtree.close(), "couldn't close the list"
 		end,
 	},
@@ -178,7 +166,6 @@ local sections: { Section } = {
 			for _, d in ipairs(Nexus.destinations() or {}) do
 				print(`  {d.key}: {d.name}`)
 			end
-			-- To go: Nexus.select("Barrows")
 			return Nexus.close(), "couldn't close the list"
 		end,
 	},
@@ -191,7 +178,6 @@ local sections: { Section } = {
 			for _, d in ipairs(Obelisk.destinations() or {}) do
 				print(`  {d.name}`)
 			end
-			-- To go: Obelisk.select(Obelisk.Level.Level19), then Obelisk.teleport()
 			return Obelisk.close(), "couldn't close the list"
 		end,
 	},
@@ -204,7 +190,6 @@ local sections: { Section } = {
 			for index, name in pairs(Quetzal.names() or {}) do
 				print(`  marker {index}: {name}`)
 			end
-			-- To travel: Quetzal.select(Quetzal.Site.Aldarin)
 			return Quetzal.close(), "couldn't close the map"
 		end,
 	},
@@ -218,7 +203,6 @@ local sections: { Section } = {
 			for _, s in ipairs(Scrollbook.scrolls() or {}) do
 				print(`  {s.name} x{s.count}`)
 			end
-			-- To teleport, spending a scroll: Scrollbook.select(Scrollbook.Name.Watson)
 			return Scrollbook.close(), "couldn't close the book"
 		end,
 	},
@@ -231,7 +215,6 @@ local sections: { Section } = {
 			for _, name in ipairs(Spirittree.names() or {}) do
 				print(`  {name}`)
 			end
-			-- To travel: Spirittree.select(Spirittree.Place.GrandExchange)
 			return Spirittree.close(), "couldn't close the list"
 		end,
 	},

@@ -53,7 +53,6 @@ function StatsReport.update(tracker: Tracker, skills: { Host.Skill }?, gold: num
 		for _, skill in ipairs(skills) do
 			total += skill.xp
 		end
-		-- the first read, or a total that went down, is a new starting point rather than a gain
 		local last = tracker.last_xp
 		if last ~= nil and total > last then
 			tracker.xp += total - last

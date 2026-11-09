@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Format check (StyLua) and lint (luau-analyze) for the Luau code; usage: tools/lint.sh [--fix | --types].
 set -euo pipefail
 
 cd "$(dirname -- "${BASH_SOURCE[0]}")/.."
@@ -25,7 +24,6 @@ out=$(luau-analyze "${dirs[@]}" 2>&1 || true)
 if ((types)); then
 	diagnostics=$out
 else
-	# Lint warnings only: type errors are everything the analyzer reports as TypeError.
 	diagnostics=$(grep -E '^\S+\([0-9]+,[0-9]+\): ' <<<"$out" | grep -v ': TypeError' || true)
 fi
 if [[ -n "$diagnostics" ]]; then

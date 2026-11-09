@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Keep docs in sync with the source: stub missing docs/functions, flag orphaned docs."""
 import argparse
 import difflib
 import re
@@ -23,7 +22,6 @@ def title(rel: Path) -> str:
 
 
 def parse_functions(src: str):
-    """Yield (Mod.name, verbatim signature) for each column-0 public function."""
     for m in FUNC_RE.finditer(src):
         depth, i = 1, m.end()
         while i < len(src) and depth > 0:
@@ -54,7 +52,6 @@ SECTION_START = r"^(?:## |<!-- ## )"
 
 
 def hide_section(text: str, name: str) -> str:
-    """Wrap the `## name` section in an HTML comment, so the docs stop showing it."""
     head = re.search(rf"^## {re.escape(name)}[ \t]*$", text, re.M)
     if not head:
         return text
@@ -66,7 +63,6 @@ def hide_section(text: str, name: str) -> str:
 
 
 def unhide_section(text: str, name: str, sig: str) -> str:
-    """Restore a section hidden by hide_section, updating its signature. No-op if absent."""
     m = re.search(rf"^<!-- (## {re.escape(name)}[ \t]*\n.*?)\n-->[ \t]*$", text, re.M | re.S)
     if not m:
         return text
@@ -82,7 +78,6 @@ def unhide_section(text: str, name: str, sig: str) -> str:
 
 
 def pair_renames(old: dict, new: dict):
-    """Pair removed functions with added ones: (old_name, new_name) by signature similarity."""
     removed = [n for n in old if n not in new]
     added = [n for n in new if n not in old]
     if len(removed) == 1 and len(added) == 1:
@@ -120,7 +115,6 @@ def rename_section(text: str, old: str, new: str, old_sig: str, new_sig: str) ->
 
 
 def apply_commit_renames(base: str, renamed_files: list, renamed_funcs: list, hidden_funcs: list):
-    """Follow file and function renames between `base` and HEAD into docs."""
     out = git("diff", "--relative", "--name-status", "-M", base, "HEAD", "--", ".")
     for line in out.splitlines():
         parts = line.split("\t")

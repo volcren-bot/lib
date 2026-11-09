@@ -31,7 +31,6 @@ function Position.chunk(self: Position): Chunk
 	return new_chunk(bit32.rshift(self.x, 6), bit32.rshift(self.y, 6))
 end
 
--- the game allocates instances in the map east of this x, the overworld never reaches it
 local INSTANCE_MIN_X = 6400
 
 function Position.in_instance(self: Position): boolean

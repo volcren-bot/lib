@@ -12,12 +12,10 @@ type MenuClick = Host.MenuClick
 local Interact = {}
 
 Interact.HOVER_TIMEOUT = 600
--- While walking the scene slides under the mouse, so an option that isn't there soon won't come.
 Interact.WALK_HOVER_TIMEOUT = 100
 
 Interact.SPAM_MAX = 3
 
--- With probability `chance`, a few more clicks on the same spot, each only while `still` holds and no animation has started.
 function Interact.spam_click(chance: number?, still: () -> boolean, button: Mouse.Button?)
 	if chance == nil or not Random.chance(chance) then
 		return
@@ -51,6 +49,13 @@ function Interact.wait_option(option: string, target: Minimenu.Target?, timeout_
 	end
 end
 
+local function arrive(walk_timeout_ms: (number | false)?): boolean
+	if walk_timeout_ms == false then
+		return true
+	end
+	return Player.wait_walk(if walk_timeout_ms then walk_timeout_ms else nil)
+end
+
 function Interact.with(
 	at: Target,
 	option: string,
@@ -61,14 +66,12 @@ function Interact.with(
 	menu: boolean?
 ): (boolean, MenuClick?)
 	Mouse.move(at)
-	-- the scene slides under the mouse while walking, the interface doesn't
 	local walking = scene == true and Player.destination() ~= nil
 	local index = Interact.wait_option(option, target, if walking then Interact.WALK_HOVER_TIMEOUT else nil)
 	if index == nil then
 		return false, nil
 	end
 	local before = Minimenu.clicked()
-	-- `menu`: from the opened menu even when it's the top option (a moving model can leave the mouse between look and click)
 	if index == 1 and not menu then
 		Mouse.click()
 	else
@@ -92,13 +95,9 @@ function Interact.with(
 			return Minimenu.find(option, target) == 1
 		end)
 	end
-	if walk_timeout_ms == false then
-		return true, nil
-	end
-	return Player.wait_walk(if walk_timeout_ms then walk_timeout_ms else nil), nil
+	return arrive(walk_timeout_ms), nil
 end
 
--- Handles a menu left open before an interaction: clicks a row matching `options` for `target`, else closes it.
 function Interact.open_menu(
 	options: { string },
 	target: Minimenu.Target?,
@@ -120,10 +119,7 @@ function Interact.open_menu(
 					return true, false
 				end
 			end
-			if walk_timeout_ms == false then
-				return true, true
-			end
-			return true, Player.wait_walk(if walk_timeout_ms then walk_timeout_ms else nil)
+			return true, arrive(walk_timeout_ms)
 		end
 	end
 	if not Minimenu.close() then

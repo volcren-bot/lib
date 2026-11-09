@@ -157,6 +157,26 @@ local next_tile = SafeSpot.step(grid, SafeSpot.chaser(guard), me)
 print(if next_tile then `it steps to {next_tile.x},{next_tile.y}` else "it stays")
 ```
 
+## SafeSpot.grid_for
+
+Definition:
+```luau
+function SafeSpot.grid_for(chasers: { Chaser }, center: Tile, radius: number): (Grid?, string?)
+```
+`grid_around` with the tiles the other NPCs stand on marked (`occupy`), leaving out `chasers`. `find` builds its grid with this when you don't pass one.
+
+Example:
+```luau
+local Npcs = require("@lib/main/entities/npcs")
+local SafeSpot = require("@lib/main/safespot")
+local Walker = require("@lib/main/walker")
+
+local me = assert(Walker.position())
+local guard = SafeSpot.chaser(assert(Npcs.nearest("Guard", me)))
+local grid = assert(SafeSpot.grid_for({ guard }, me, 10))
+print("guard held there:", SafeSpot.is_safe(grid, guard, me))
+```
+
 ## SafeSpot.can_step
 
 Definition:

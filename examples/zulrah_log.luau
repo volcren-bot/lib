@@ -1,6 +1,4 @@
 --!strict
--- Logs a Zulrah fight you play by hand: each change to Zulrah, the snakelings, projectiles, spot animations, objects, you and the game chat.
--- It only reads, so it never clicks, and stops after RUN_MS. Tiles print as world, then scene.
 local Host = require("@lib/host")
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
@@ -23,7 +21,6 @@ end
 
 local last: { [string]: string } = {}
 
--- logs `text` under `key` when it differs from the last time
 local function changed(key: string, kind: string, text: string)
 	if last[key] ~= text then
 		last[key] = text
@@ -94,7 +91,6 @@ local function read_npcs()
 				local sizes = Host.npc_sizes({ npc.index })
 				log("NPC_NEW", `{name} index={npc.index} id={npc.id} size={sizes and sizes[npc.index]}`)
 			end
-			-- a snakeling's walking would drown out the rest, so only Zulrah logs its tile
 			local tile = if name == "zulrah" then ` at {at(npc.x, npc.y)}` else ""
 			changed(
 				key,
@@ -154,7 +150,6 @@ end
 local locs_now: { [string]: string }? = nil
 local locs_corner = ""
 
--- only in an instance: the arena has few objects, and the clouds should be among the changes
 local function read_locs()
 	if not Host.in_instance() then
 		locs_now = nil
@@ -169,7 +164,6 @@ local function read_locs()
 	for _, loc in ipairs(list) do
 		now[`{loc.id}:{loc.x}:{loc.y}`] = `id={loc.id} name={loc.name} at {at(loc.x, loc.y)}`
 	end
-	-- a new scene changes every object, so it only sets what later reads compare with
 	if locs_now ~= nil and locs_corner == corner then
 		for key, text in pairs(now) do
 			if (locs_now :: { [string]: string })[key] == nil then
@@ -189,7 +183,6 @@ end
 
 local chat_seen: { [number]: boolean }? = nil
 
--- game messages only: `name` is empty on those, so other players' chat stays out of the log
 local function read_chat()
 	local messages = Host.chat_messages()
 	if messages == nil then

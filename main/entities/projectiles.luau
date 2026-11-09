@@ -11,7 +11,6 @@ local Players = require("@lib/main/entities/players")
 local Projection = require("@lib/main/projection/projection")
 local Projectiles = {}
 
--- the client cycle is 50 a second
 Projectiles.CYCLE_MS = 20
 
 local function matches(projectile: Projectile, what: number | { number }): boolean
@@ -38,32 +37,30 @@ function Projectiles.find(what: (number | { number })?): { Projectile }?
 	return found
 end
 
-function Projectiles.at_npc(npc: Npc, what: (number | { number })?): { Projectile }?
+local function find_where(what: (number | { number })?, keep: (Projectile) -> boolean): { Projectile }?
 	local found = Projectiles.find(what)
 	if found == nil then
 		return nil
 	end
-	local at: { Projectile } = {}
+	local kept: { Projectile } = {}
 	for _, projectile in ipairs(found) do
-		if projectile.target_npc == npc.index then
-			table.insert(at, projectile)
+		if keep(projectile) then
+			table.insert(kept, projectile)
 		end
 	end
-	return at
+	return kept
+end
+
+function Projectiles.at_npc(npc: Npc, what: (number | { number })?): { Projectile }?
+	return find_where(what, function(projectile)
+		return projectile.target_npc == npc.index
+	end)
 end
 
 function Projectiles.at_player(player: PlayerInfo, what: (number | { number })?): { Projectile }?
-	local found = Projectiles.find(what)
-	if found == nil then
-		return nil
-	end
-	local at: { Projectile } = {}
-	for _, projectile in ipairs(found) do
-		if projectile.target_player == player.index then
-			table.insert(at, projectile)
-		end
-	end
-	return at
+	return find_where(what, function(projectile)
+		return projectile.target_player == player.index
+	end)
 end
 
 function Projectiles.at_me(what: (number | { number })?): { Projectile }?
@@ -75,17 +72,9 @@ function Projectiles.at_me(what: (number | { number })?): { Projectile }?
 end
 
 function Projectiles.from_npc(npc: Npc, what: (number | { number })?): { Projectile }?
-	local found = Projectiles.find(what)
-	if found == nil then
-		return nil
-	end
-	local from: { Projectile } = {}
-	for _, projectile in ipairs(found) do
-		if projectile.source_npc == npc.index then
-			table.insert(from, projectile)
-		end
-	end
-	return from
+	return find_where(what, function(projectile)
+		return projectile.source_npc == npc.index
+	end)
 end
 
 function Projectiles.remaining_ms(projectile: Projectile): number

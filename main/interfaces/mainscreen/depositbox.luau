@@ -2,7 +2,6 @@
 local Host = require("@lib/host")
 local widget = Host.widget
 local widget_children = Host.widget_children
-local sleep = Host.sleep
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
 type Loc = Host.Loc
@@ -19,6 +18,7 @@ local Minimenu = require("@lib/main/interfaces/minimenu")
 local Objects = require("@lib/main/entities/objects")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 local Walker = require("@lib/main/walker")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local GROUP = 192
 local INVENTORY_CONTAINER = 93
@@ -67,24 +67,6 @@ export type Deposit = {
 }
 export type Entry = Item | Deposit
 
-local function poll(check: () -> boolean, timeout_ms: number): boolean
-	local waited = 0
-	while true do
-		local done = check()
-		if done == nil then
-			return false
-		end
-		if done then
-			return true
-		end
-		if waited >= timeout_ms then
-			return false
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
-end
-
 local function child(child_id: number, index: number): Widget?
 	local kids = widget_children(GROUP, child_id)
 	if kids == nil then
@@ -99,11 +81,7 @@ local function child(child_id: number, index: number): Widget?
 end
 
 local function component(child_id: number): Widget?
-	local w = widget(GROUP, child_id)
-	if w == nil then
-		return nil
-	end
-	return w
+	return widget(GROUP, child_id)
 end
 
 local function title(): string?
@@ -115,11 +93,7 @@ local function title(): string?
 end
 
 local function is_open(): boolean
-	local open = Toplevel.is_open(GROUP)
-	if open == nil then
-		return false
-	end
-	if not open then
+	if not Toplevel.is_open(GROUP) then
 		return false
 	end
 	local text = title()
@@ -127,17 +101,6 @@ local function is_open(): boolean
 		return false
 	end
 	return string.find(string.lower(text), "deposit", 1, true) ~= nil
-end
-
-local function open_check(): boolean
-	local open = is_open()
-	if open == nil then
-		return false
-	end
-	if not open then
-		return false
-	end
-	return true
 end
 
 local function slot_boxes(): { [number]: Widget }?
@@ -181,13 +144,13 @@ local function equipment_owns(slot: number): (MenuEntry) -> boolean
 end
 
 local items = Inv.new(INVENTORY_CONTAINER, INVENTORY_SIZE, {
-	open = open_check,
+	open = is_open,
 	boxes = slot_boxes,
 	owns = inventory_owns,
 })
 
 local equipment = Inv.new(EQUIPMENT_CONTAINER, EQUIPMENT_SIZE, {
-	open = open_check,
+	open = is_open,
 	boxes = equipment_boxes,
 	owns = equipment_owns,
 })
@@ -221,7 +184,7 @@ DepositBox.title = title
 DepositBox.is_open = is_open
 
 function DepositBox.wait_open(timeout_ms: number?): boolean
-	return poll(is_open, timeout_ms or OPEN_TIMEOUT_MS)
+	return Widgets.wait_until(is_open, timeout_ms or OPEN_TIMEOUT_MS, POLL_MS)
 end
 
 function DepositBox.bounds(): Box?
@@ -273,11 +236,7 @@ function DepositBox.quantity_selected(quantity: Quantity): boolean
 end
 
 function DepositBox.select_quantity(quantity: Quantity): boolean
-	local selected = DepositBox.quantity_selected(quantity)
-	if selected == nil then
-		return false
-	end
-	if selected then
+	if DepositBox.quantity_selected(quantity) then
 		return true
 	end
 	local w = component(QUANTITY_BUTTONS[quantity])
@@ -285,12 +244,11 @@ function DepositBox.select_quantity(quantity: Quantity): boolean
 		return false
 	end
 	Mouse.click(w)
-	return poll(function()
+	return Widgets.wait_until(function()
 		return DepositBox.quantity_selected(quantity)
-	end, SELECT_TIMEOUT_MS)
+	end, SELECT_TIMEOUT_MS, POLL_MS)
 end
 
--- Queues the click and returns at once; true if selected or queued, `force` clicks even when selected.
 function DepositBox.select_quantity_async(quantity: Quantity, force: boolean?): boolean
 	if not force and DepositBox.quantity_selected(quantity) then
 		return true
@@ -303,9 +261,8 @@ function DepositBox.select_quantity_async(quantity: Quantity, force: boolean?): 
 end
 
 function DepositBox.click_button(button: DepositButton): boolean
-	local open = open_check()
-	if not open then
-		return open
+	if not is_open() then
+		return false
 	end
 	local w = component(DEPOSIT_BUTTONS[button])
 	if w == nil then
@@ -343,17 +300,15 @@ end
 local function deposit_slot(slot: number, amount: number, use_quantity_buttons: boolean): boolean
 	local quantity: Quantity = DepositBox.quantity_of(amount)
 	if use_quantity_buttons then
-		local selected = DepositBox.select_quantity(quantity)
-		if not selected then
+		if not DepositBox.select_quantity(quantity) then
 			Log.log("DepositBox", `couldn't select the {quantity} deposit quantity`)
-			return selected
+			return false
 		end
 		if quantity ~= "CUSTOM" then
 			return items.click_slot(slot)
 		end
-		local hovered = items.hover_slot(slot)
-		if not hovered then
-			return hovered
+		if not items.hover_slot(slot) then
+			return false
 		end
 		local entries = Minimenu.entries()
 		if entries == nil then
@@ -367,27 +322,22 @@ local function deposit_slot(slot: number, amount: number, use_quantity_buttons: 
 		return items.interact_slot(slot, option_for(amount))
 	end
 
-	local picked = items.interact_slot(slot, "Deposit-X")
-	if not picked then
-		return picked
-	end
-	local answered = Chat.answer_query("Enter amount", tostring(amount), ENTER_AMOUNT_TIMEOUT_MS)
-	if answered == nil then
+	if not items.interact_slot(slot, "Deposit-X") then
 		return false
 	end
-	return answered
+	return Chat.answer_query("Enter amount", tostring(amount), ENTER_AMOUNT_TIMEOUT_MS) or false
 end
 
 function DepositBox.deposit(item: Item, quantity: number?, use_quantity_buttons: boolean?): boolean
 	local slots = items.indices_of(item)
-	if slots == nil then
+	if slots == nil or #slots == 0 then
 		return false
 	end
-	if #slots == 0 then
-		return false
-	end
-	local slot = slots[math.random(1, #slots)]
-	return deposit_slot(slot, quantity or DepositBox.QUANTITY_ALL, use_quantity_buttons ~= false)
+	return deposit_slot(
+		slots[math.random(1, #slots)],
+		quantity or DepositBox.QUANTITY_ALL,
+		use_quantity_buttons ~= false
+	)
 end
 
 local function as_deposit(entry: Entry): Deposit
@@ -401,8 +351,7 @@ function DepositBox.deposit_array(entries: { Entry }, use_quantity_buttons: bool
 	local all_ok = true
 	for _, entry in ipairs(entries) do
 		local deposit = as_deposit(entry)
-		local ok = DepositBox.deposit(deposit.item, deposit.quantity, use_quantity_buttons)
-		if not ok then
+		if not DepositBox.deposit(deposit.item, deposit.quantity, use_quantity_buttons) then
 			all_ok = false
 		end
 	end
@@ -419,9 +368,8 @@ function DepositBox.deposit_different(keep: Item | { Item }, use_quantity_button
 	for _, s in ipairs(all) do
 		if not Item.matches(matcher, s.id, s.name) and not done[s.id] then
 			done[s.id] = true
-			local ok = deposit_slot(s.slot, DepositBox.QUANTITY_ALL, use_quantity_buttons ~= false)
-			if not ok then
-				return ok
+			if not deposit_slot(s.slot, DepositBox.QUANTITY_ALL, use_quantity_buttons ~= false) then
+				return false
 			end
 		end
 	end
@@ -436,11 +384,7 @@ local function nearest_loc(loc: Loc?): Loc?
 	if me == nil then
 		return nil
 	end
-	local found = Objects.nearest(OBJECT_NAME, me)
-	if found == nil then
-		return nil
-	end
-	return found
+	return Objects.nearest(OBJECT_NAME, me)
 end
 
 function DepositBox.hover(loc: Loc?, walk: boolean?): boolean
@@ -459,16 +403,11 @@ function DepositBox.hover(loc: Loc?, walk: boolean?): boolean
 end
 
 function DepositBox.open(loc: Loc?, walk: boolean?): boolean
-	local open = is_open()
-	if open == nil then
-		return false
-	end
-	if open then
+	if is_open() then
 		return true
 	end
-	local cleared = Toplevel.escape_clear(CLOSE_TIMEOUT_MS)
-	if not cleared then
-		return cleared
+	if not Toplevel.escape_clear(CLOSE_TIMEOUT_MS) then
+		return false
 	end
 
 	local target = nearest_loc(loc)

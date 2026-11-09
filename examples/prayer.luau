@@ -1,5 +1,4 @@
 --!strict
--- Turns Thick Skin and Burst of Strength on, prints what is active, then turns everything off.
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
 local points, level = Prayer.points()
@@ -11,7 +10,6 @@ end
 assert(Prayer.deactivate_all(), "couldn't deactivate the prayers")
 print("any active:", Prayer.is_any_active())
 
--- Quick prayers: pick them in the setup panel, turn them on from the orb, then restore the old ones.
 local before = Prayer.quick_prayers()
 assert(Prayer.set_quick_prayers({ "Thick Skin", "Burst of Strength" }), "couldn't set the quick prayers")
 assert(Prayer.set_quick_active(true), "couldn't turn the quick prayers on")

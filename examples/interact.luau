@@ -1,6 +1,4 @@
 --!strict
--- Finds the nearest NPC called NPC_NAME and the nearest object called OBJECT_NAME, outlines each one's clickbox and uses the option on it.
--- Set either name to "" to skip it.
 local NPC_NAME = "Banker"
 local NPC_OPTION = "Talk-to"
 local OBJECT_NAME = "Bank chest"
@@ -16,7 +14,6 @@ local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
 
--- Draws the box for three seconds after the click, as one overlay update per frame.
 local function show(box: () -> Clickbox.Clickbox?)
 	for _ = 1, 30 do
 		local b = box()

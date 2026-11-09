@@ -32,11 +32,7 @@ function RecommendSurvey.is_open(): boolean
 end
 
 local function component(child: number): Widget?
-	local w = widget(RecommendSurvey.GROUP, child)
-	if w == nil then
-		return nil
-	end
-	return w
+	return (widget(RecommendSurvey.GROUP, child))
 end
 
 local function hovering(w: Widget): boolean
@@ -58,11 +54,7 @@ local function hovering(w: Widget): boolean
 end
 
 local function press(child: number): boolean
-	local open = RecommendSurvey.is_open()
-	if open == nil then
-		return false
-	end
-	if not open then
+	if not RecommendSurvey.is_open() then
 		return false
 	end
 	local w = component(child)
@@ -70,11 +62,7 @@ local function press(child: number): boolean
 		return false
 	end
 	Mouse.move(w)
-	local over = hovering(w)
-	if over == nil then
-		return false
-	end
-	if not over then
+	if not hovering(w) then
 		return false
 	end
 	Mouse.click()
@@ -82,9 +70,8 @@ local function press(child: number): boolean
 end
 
 local function answer(child: number): boolean
-	local pressed = press(child)
-	if not pressed then
-		return pressed
+	if not press(child) then
+		return false
 	end
 	local waited = 0
 	while waited < CLOSE_TIMEOUT_MS do
@@ -115,11 +102,7 @@ function RecommendSurvey.dont_ask(): boolean
 	if box == nil then
 		return false
 	end
-	local state = Widgets.checkbox(box)
-	if state == nil then
-		return false
-	end
-	return state == "ticked"
+	return Widgets.checkbox(box) == "ticked"
 end
 
 function RecommendSurvey.toggle_dont_ask(): boolean
@@ -127,16 +110,11 @@ function RecommendSurvey.toggle_dont_ask(): boolean
 end
 
 function RecommendSurvey.set_dont_ask(ticked: boolean): boolean
-	local current = RecommendSurvey.dont_ask()
-	if current == nil then
-		return false
-	end
-	if current == ticked then
+	if RecommendSurvey.dont_ask() == ticked then
 		return true
 	end
-	local pressed = RecommendSurvey.toggle_dont_ask()
-	if not pressed then
-		return pressed
+	if not RecommendSurvey.toggle_dont_ask() then
+		return false
 	end
 	local waited = 0
 	while waited < TOGGLE_TIMEOUT_MS do

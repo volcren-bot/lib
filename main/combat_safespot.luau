@@ -1,5 +1,4 @@
 --!strict
--- Tiles where a melee NPC gets stuck and can't hit you, but you can still hit it from range.
 local Host = require("@lib/host")
 local game_state = Host.game_state
 local item_container = Host.item_container
@@ -22,7 +21,6 @@ local band, bor = bit32.band, bit32.bor
 
 local CombatSafeSpot = {}
 
--- The collision flags that stop a projectile: walls (the wall flags shifted up 9 bits) and objects.
 CombatSafeSpot.FLAG = {
 	SIGHT_NORTH = 0x400,
 	SIGHT_EAST = 0x1000,
@@ -32,51 +30,35 @@ CombatSafeSpot.FLAG = {
 }
 local F = CombatSafeSpot.FLAG
 
--- the worn items container, the weapon's slot, and its attack range param
 CombatSafeSpot.WORN = 94
 CombatSafeSpot.WEAPON_SLOT = 3
 CombatSafeSpot.RANGE_PARAM = 13
--- the attack style varp, the style that adds `LONGRANGE_BONUS`, and the farthest anything attacks from
 CombatSafeSpot.STYLE_VARP = 43
 CombatSafeSpot.LONGRANGE_STYLE = 3
 CombatSafeSpot.LONGRANGE_BONUS = 2
 CombatSafeSpot.MAX_RANGE = 10
--- tiles around the NPC other NPCs are looked at for `avoid`
 CombatSafeSpot.AVOID_RADIUS = 16
--- ticks `fight` gives an attack to show before clicking again
 CombatSafeSpot.ATTACK_TICKS = 3
--- ticks `fight` waits for the NPC to come in range, and reads it may be missing before it counts as gone
 CombatSafeSpot.ENGAGE_TICKS = 15
 CombatSafeSpot.GONE_READS = 2
--- how long `fight` goes on for at most
 CombatSafeSpot.FIGHT_TIMEOUT_MS = 10 * 60 * 1000
--- walks to a new spot before `fight` gives up
 CombatSafeSpot.REPOSITIONS = 6
 
 export type CombatSpot = {
 	tile: Tile,
-	-- tiles you walk to get there
 	distance: number,
-	-- where the NPC ends up stuck with the NPCs around standing still, and once they walked off (nil when it reaches you)
 	at: Tile,
 	at_walls: Tile?,
-	-- how far you are from it once it's stuck
 	gap: number,
 	spot: SafeSpot.Spot,
 }
 
 export type CombatFindOptions = {
-	-- your attack range (default `CombatSafeSpot.weapon_range()`)
 	range: number?,
-	-- the least distance it may be stuck at (default 2: never next to you, even across a wall)
 	min_gap: number?,
-	-- other NPCs the spot must keep away from too, besides the target
 	others: { Chaser }?,
-	-- false only takes spots the walls alone hold it at (default true: NPCs in its way count too)
 	npcs_hold: boolean?,
-	-- you can hit it where it is now too, so attacking it doesn't walk you up to it
 	attack_now: boolean?,
-	-- passed on to `SafeSpot.find`: where to look, from where, how fast you walk...
 	around: Tile?,
 	radius: number?,
 	from: Tile?,
@@ -90,17 +72,18 @@ export type CombatFindOptions = {
 export type FightOptions = {
 	range: number?,
 	min_gap: number?,
-	-- names of NPCs to stay safe from as well (any case), like the other monsters of the area
 	avoid: { string }?,
-	-- see `CombatFindOptions.npcs_hold`
 	npcs_hold: boolean?,
 	radius: number?,
-	-- called every tick with the NPC and your tile; return false to stop (eat, flee...)
 	on_tick: ((npc: Chaser, me: Tile) -> boolean?)?,
 	timeout_ms: number?,
 }
 
--- Whether a projectile flies from `from` to `to`: blocked by walls and objects in the way, not by water.
+local function slope(d: number, over: number): number
+	local v = d * 65536
+	return if v < 0 then -(-v // over) else v // over
+end
+
 function CombatSafeSpot.line_of_sight(grid: Grid, from: Tile, to: Tile): boolean
 	if from.x == to.x and from.y == to.y then
 		return true
@@ -110,11 +93,6 @@ function CombatSafeSpot.line_of_sight(grid: Grid, from: Tile, to: Tile): boolean
 	local adx, ady = math.abs(dx), math.abs(dy)
 	local x_flags = bor(F.SIGHT_FULL, if dx < 0 then F.SIGHT_EAST else F.SIGHT_WEST)
 	local y_flags = bor(F.SIGHT_FULL, if dy < 0 then F.SIGHT_NORTH else F.SIGHT_SOUTH)
-	-- fixed point, 16 bits of fraction, divisions rounded towards zero
-	local function slope(d: number, over: number): number
-		local v = d * 65536
-		return if v < 0 then -(-v // over) else v // over
-	end
 	if adx > ady then
 		local x = from.x
 		local y_big = from.y * 65536 + 0x8000 - (if dy < 0 then 1 else 0)
@@ -153,7 +131,6 @@ function CombatSafeSpot.line_of_sight(grid: Grid, from: Tile, to: Tile): boolean
 	return true
 end
 
--- The NPC's tile nearest to `me`: the one distances and lines of sight are measured to.
 function CombatSafeSpot.nearest_tile(npc: Chaser, me: Tile): Tile
 	return {
 		x = math.clamp(me.x, npc.x, npc.x + npc.size - 1),
@@ -161,25 +138,21 @@ function CombatSafeSpot.nearest_tile(npc: Chaser, me: Tile): Tile
 	}
 end
 
--- How many tiles from `me` the NPC is, to its nearest tile (diagonal steps count as one).
 function CombatSafeSpot.distance(npc: Chaser, me: Tile): number
-	local t = CombatSafeSpot.nearest_tile(npc, me)
-	return math.max(math.abs(t.x - me.x), math.abs(t.y - me.y))
+	return Walker.distance(CombatSafeSpot.nearest_tile(npc, me), me)
 end
 
--- Whether you can hit the NPC from `me` with an attack range of `range`: within range, in sight, not under it.
 function CombatSafeSpot.can_attack(grid: Grid, me: Tile, npc: Chaser, range: number): boolean
 	if SafeSpot.under(npc, me) then
 		return false
 	end
 	local t = CombatSafeSpot.nearest_tile(npc, me)
-	if math.max(math.abs(t.x - me.x), math.abs(t.y - me.y)) > range then
+	if Walker.distance(t, me) > range then
 		return false
 	end
 	return CombatSafeSpot.line_of_sight(grid, me, t)
 end
 
--- Your attack range with the wielded weapon and style (1 unarmed), at most `MAX_RANGE`; nil when unreadable.
 function CombatSafeSpot.weapon_range(): number?
 	local worn = item_container(CombatSafeSpot.WORN)
 	if worn == nil then
@@ -205,7 +178,6 @@ function CombatSafeSpot.weapon_range(): number?
 	return math.min(range, CombatSafeSpot.MAX_RANGE)
 end
 
--- Tiles to fight `target` from, nearest walk first: it gets stuck there in your range and sight, `min_gap` away.
 function CombatSafeSpot.find(target: Chaser, options: CombatFindOptions?): ({ CombatSpot }?, string?)
 	local o = options or {}
 	local range = o.range or CombatSafeSpot.weapon_range()
@@ -227,17 +199,10 @@ function CombatSafeSpot.find(target: Chaser, options: CombatFindOptions?): ({ Co
 	if grid == nil then
 		local around = o.around or me :: Tile
 		local err
-		grid, err = SafeSpot.grid_around(around, radius + Walker.distance(around, me :: Tile))
+		grid, err = SafeSpot.grid_for(chasers, around, radius + Walker.distance(around, me :: Tile))
 		if grid == nil then
 			return nil, err
 		end
-		local except: { number } = {}
-		for _, c in ipairs(chasers) do
-			if c.index then
-				table.insert(except, c.index)
-			end
-		end
-		SafeSpot.occupy(grid :: Grid, except)
 	end
 	local g = grid :: Grid
 	local spots, err = SafeSpot.find(chasers, {
@@ -278,7 +243,6 @@ function CombatSafeSpot.find(target: Chaser, options: CombatFindOptions?): ({ Co
 			})
 		end
 	end
-	-- spots the walls hold first, then the nearest walk
 	table.sort(found, function(x, y)
 		if x.spot.walls_hold ~= y.spot.walls_hold then
 			return x.spot.walls_hold
@@ -302,7 +266,6 @@ local function npc_by_index(index: number): Npc?
 	return nil
 end
 
--- The NPCs called one of `names` around `center`, as chasers, leaving out `except`.
 function CombatSafeSpot.chasers(names: { string }, center: Tile, except: number?): { Chaser }
 	local wanted: { [string]: boolean } = {}
 	for _, name in ipairs(names) do
@@ -328,7 +291,6 @@ function CombatSafeSpot.chasers(names: { string }, center: Tile, except: number?
 	return out
 end
 
--- The name of another player fighting the NPC with `index` (it's their target), or nil. Leave those alone.
 function CombatSafeSpot.fought_by(index: number): string?
 	local name = game_state().player_name
 	for _, p in ipairs(players() or {}) do
@@ -339,7 +301,6 @@ function CombatSafeSpot.fought_by(index: number): string?
 	return nil
 end
 
--- The nearest NPC called `name` (any case) that no other player is fighting, from `from` (default you).
 function CombatSafeSpot.free_target(name: string, from: Tile?): Npc?
 	local origin = from or Walker.position()
 	if origin == nil then
@@ -363,18 +324,16 @@ function CombatSafeSpot.free_target(name: string, from: Tile?): Npc?
 	return best
 end
 
--- Whether you are attacking the NPC with `index`: your target, and swinging at it lately.
-local function my_target(): (number?, number)
+local function my_target(): number?
 	local name = game_state().player_name
 	for _, p in ipairs(players() or {}) do
 		if p.name == name then
-			return (if p.target_state == 0 then p.target_npc else nil), p.animation
+			return if p.target_state == 0 then p.target_npc else nil
 		end
 	end
-	return nil, -1
+	return nil
 end
 
--- Whether standing on `me` still holds: the NPC is stuck at least `min_gap` away and you can hit it.
 local function holds(grid: Grid, npc: Chaser, me: Tile, range: number, min_gap: number): boolean
 	local chase = SafeSpot.chase(grid, npc, me)
 	if chase.outcome ~= "stuck" and chase.outcome ~= "loop" then
@@ -392,7 +351,6 @@ local function walk_exact(tile: Tile)
 	end
 end
 
--- Fights the NPC with `index` from a safe spot until it's gone or `on_tick` says stop; true when it's gone, else false and why.
 function CombatSafeSpot.fight(index: number, options: FightOptions?): (boolean, string?)
 	local o = options or {}
 	local range = o.range or CombatSafeSpot.weapon_range()
@@ -451,7 +409,6 @@ function CombatSafeSpot.fight(index: number, options: FightOptions?): (boolean, 
 			end
 			if not good then
 				if on_spot then
-					-- it didn't work out here: somewhere else next time
 					exclude[`{m.x},{m.y}`] = true
 				end
 				repositions += 1
@@ -470,7 +427,6 @@ function CombatSafeSpot.fight(index: number, options: FightOptions?): (boolean, 
 				}
 				local spots, err = CombatSafeSpot.find(n, find_options)
 				if (spots == nil or spots[1] == nil) and not engaged then
-					-- nowhere to hit it from yet: a spot to wait on for it to come
 					find_options.attack_now = false
 					spots, err = CombatSafeSpot.find(n, find_options)
 				end
@@ -490,7 +446,6 @@ function CombatSafeSpot.fight(index: number, options: FightOptions?): (boolean, 
 			elseif target ~= index then
 				local tick = game_state().tick_count or 0
 				if not engaged and not CombatSafeSpot.can_attack(grid, m, n, r) then
-					-- attacking from out of range walks us up to it: wait for it to come
 					waited += 1
 					if waited > CombatSafeSpot.ENGAGE_TICKS then
 						return false, "it doesn't come in range of the spot"
@@ -500,7 +455,6 @@ function CombatSafeSpot.fight(index: number, options: FightOptions?): (boolean, 
 					if now then
 						local clicked = Npcs.interact(now, "Attack", false)
 						attacked_tick = tick
-						-- a click that missed it walks us off the spot, maybe up to it: straight back
 						local s = spot :: Tile
 						local to = game_state().destination
 						if not clicked and to and (to.x ~= s.x or to.y ~= s.y) then

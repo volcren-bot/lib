@@ -12,7 +12,6 @@ export type Matcher = {
 
 local Item = {}
 
--- an item's name never changes during a run, so each id is asked of the client once
 local known: { [number]: string } = {}
 
 function Item.name(id: number): string?

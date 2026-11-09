@@ -2,8 +2,6 @@
 local Host = require("@lib/host")
 local item_container = Host.item_container
 local item_params = Host.item_params
-local sleep = Host.sleep
-local time = Host.time
 local varp = Host.varp
 local widget = Host.widget
 type ItemSlot = Host.ItemSlot
@@ -15,6 +13,7 @@ local Boltpouch = require("@lib/main/interfaces/mainscreen/boltpouch")
 local Interact = require("@lib/main/interact")
 local Inv = require("@lib/main/interfaces/inv")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local CONTAINER = 94
 local SIZE = 14
@@ -109,7 +108,6 @@ Wornitems.HANDS = 9
 Wornitems.FEET = 10
 Wornitems.RING = 12
 Wornitems.AMMO = 13
--- Not in the container: the second ammo slot of a bolt pouch or Dizana's quiver, see `secondary_ammo`.
 Wornitems.SECONDARY_AMMO = 14
 
 local NAMES: { [number]: string } = {
@@ -176,12 +174,9 @@ end
 export type SecondaryHolder = "quiver" | "pouch"
 
 Wornitems.INVENTORY_CONTAINER = 93
--- The item param that makes an item a quiver: every Dizana's quiver and the max cape made from one.
 Wornitems.QUIVER_PARAM = 1910
--- The client variables of what the quiver holds: an item id and its amount.
 Wornitems.QUIVER_AMMO_VARP = 4142
 Wornitems.QUIVER_AMOUNT_VARP = 4141
--- The worn items tab's component of the second slot, for each holder. A pouch's left click wears it; a quiver's left click takes it out.
 Wornitems.SECONDARY_CHILD = table.freeze({ quiver = 28, pouch = 30 })
 Wornitems.SWAP_OPTION = table.freeze({ quiver = "Swap", pouch = "Wear" })
 Wornitems.QUIVER_FILL_OPTION = "Fill"
@@ -212,13 +207,11 @@ local function learn_quivers(ids: { number })
 	end
 end
 
--- Whether the item is a quiver: worn or carried, it gives the second ammo slot.
 function Wornitems.is_quiver(id: number): boolean
 	learn_quivers({ id })
 	return quiver_items[id] == true
 end
 
--- What gives the second ammo slot now, nil when nothing does. A quiver worn or in the inventory turns the pouch's slot off, as the client does; a pouch only counts in the inventory.
 function Wornitems.secondary_ammo_holder(): SecondaryHolder?
 	local ids: { number } = {}
 	local has_pouch = false
@@ -242,12 +235,10 @@ function Wornitems.secondary_ammo_holder(): SecondaryHolder?
 	return if has_pouch then "pouch" else nil
 end
 
--- Whether the holder's slot can take the item: a pouch only stores bolts from its list. A quiver isn't checked, since a layout only has what a client wore.
 function Wornitems.secondary_ammo_accepts(holder: SecondaryHolder, id: number): boolean
 	return holder == "quiver" or Boltpouch.accepts(id) ~= false
 end
 
--- What the second ammo slot holds, as the container's items are given. Nil when it is empty or nothing gives the slot: `secondary_ammo_holder` tells those apart.
 function Wornitems.secondary_ammo(): ItemSlot?
 	local holder = Wornitems.secondary_ammo_holder()
 	if holder == "quiver" then
@@ -266,6 +257,13 @@ function Wornitems.secondary_ammo(): ItemSlot?
 	return nil
 end
 
+local function press_child(w: Widget, child: number, option: string): boolean
+	local id = GROUP * 65536 + child
+	return (Interact.with(w, option, function(entry: MenuEntry): boolean
+		return entry.id == id
+	end, false))
+end
+
 local function press_secondary(holder: SecondaryHolder, option: string): boolean
 	if not Wornitems.open() then
 		return false
@@ -275,11 +273,7 @@ local function press_secondary(holder: SecondaryHolder, option: string): boolean
 	if w == nil then
 		return false
 	end
-	local id = GROUP * 65536 + child
-	local ok = Interact.with(w, option, function(entry: MenuEntry): boolean
-		return entry.id == id
-	end, false)
-	return ok
+	return press_child(w, child, option)
 end
 
 local function worn_ammo_id(): number?
@@ -291,7 +285,6 @@ local function worn_ammo_id(): number?
 	return nil
 end
 
--- Swaps the worn ammo with the second slot's, either of which may be empty: the tab's option when the slot holds something, else a quiver's "Fill" or a drag in the pouch. True once they have swapped; false when nothing gives the slot.
 function Wornitems.swap_ammo(): boolean
 	local holder = Wornitems.secondary_ammo_holder()
 	if holder == nil then
@@ -314,15 +307,10 @@ function Wornitems.swap_ammo(): boolean
 	if not pressed then
 		return false
 	end
-	local deadline = time() + Wornitems.SWAP_TIMEOUT_MS
-	while time() < deadline do
+	return Widgets.wait_within(function(): boolean
 		local now = Wornitems.secondary_ammo()
-		if (if now then now.id else nil) == main then
-			return true
-		end
-		sleep(Wornitems.POLL_MS)
-	end
-	return false
+		return (if now then now.id else nil) == main
+	end, Wornitems.SWAP_TIMEOUT_MS, Wornitems.POLL_MS)
 end
 
 local function remove_secondary_ammo(): boolean
@@ -353,11 +341,7 @@ function Wornitems.button(name: string): Widget?
 	if b == nil then
 		return nil
 	end
-	local w = widget(GROUP, b.child)
-	if w == nil then
-		return nil
-	end
-	return w
+	return (widget(GROUP, b.child))
 end
 
 function Wornitems.press(name: string): boolean
@@ -365,22 +349,14 @@ function Wornitems.press(name: string): boolean
 	if b == nil then
 		return false
 	end
-	local opened = Wornitems.open()
-	if not opened then
+	if not Wornitems.open() then
 		return false
 	end
 	local w = Wornitems.button(name)
 	if w == nil then
 		return false
 	end
-	local id = GROUP * 65536 + b.child
-	local ok = Interact.with(w, b.option, function(entry: MenuEntry): boolean
-		return entry.id == id
-	end, false)
-	if not ok then
-		return false
-	end
-	return true
+	return press_child(w, b.child, b.option)
 end
 
 return Wornitems

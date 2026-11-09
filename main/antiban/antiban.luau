@@ -69,7 +69,6 @@ Antiban.breaks = {} :: { Break }
 Antiban.sleeps = {} :: { Sleep }
 Antiban.doing_antiban = false
 
--- The raw camera range the zoom and pitch tasks stay in.
 Antiban.zoom = { min = Camera.ZOOM_MIN, max = Camera.ZOOM_MAX }
 Antiban.pitch = { min = Camera.PITCH_MIN, max = Camera.PITCH_MAX }
 
@@ -124,7 +123,6 @@ end
 local PUBLISH_MS = 30 * Antiban.SECOND
 local last_published = -PUBLISH_MS
 
--- Sends the schedule to the loader's Breaks tab, at most every `PUBLISH_MS` unless `force` is set.
 local function publish(force: boolean?, active: Host.ActiveBreak?)
 	local now = Host.time()
 	if not force and now - last_published < PUBLISH_MS then
@@ -182,43 +180,45 @@ local function first_due(interval: number, std_var: number): number
 	return running_ms() + Random.float(0, math.floor(around(interval, std_var)))
 end
 
--- Limits the zoom tasks to a percent range of the camera's range (0 farthest, 100 closest).
-function Antiban.set_zoom_range(min_percent: number, max_percent: number)
-	local span = Camera.ZOOM_MAX - Camera.ZOOM_MIN
-	Antiban.zoom.min = math.round(Camera.ZOOM_MIN + span * math.clamp(min_percent, 0, 100) / 100)
-	Antiban.zoom.max = math.round(Camera.ZOOM_MIN + span * math.clamp(max_percent, 0, 100) / 100)
+local function set_range(
+	range: { min: number, max: number },
+	low: number,
+	high: number,
+	min_percent: number,
+	max_percent: number
+)
+	local span = high - low
+	range.min = math.round(low + span * math.clamp(min_percent, 0, 100) / 100)
+	range.max = math.round(low + span * math.clamp(max_percent, 0, 100) / 100)
 end
 
--- Limits the pitch tasks to a percent range of the camera's range (0 lowest, 100 highest).
+function Antiban.set_zoom_range(min_percent: number, max_percent: number)
+	set_range(Antiban.zoom, Camera.ZOOM_MIN, Camera.ZOOM_MAX, min_percent, max_percent)
+end
+
 function Antiban.set_pitch_range(min_percent: number, max_percent: number)
-	local span = Camera.PITCH_MAX - Camera.PITCH_MIN
-	Antiban.pitch.min = math.round(Camera.PITCH_MIN + span * math.clamp(min_percent, 0, 100) / 100)
-	Antiban.pitch.max = math.round(Camera.PITCH_MIN + span * math.clamp(max_percent, 0, 100) / 100)
+	set_range(Antiban.pitch, Camera.PITCH_MIN, Camera.PITCH_MAX, min_percent, max_percent)
+end
+
+local function new_task(method: (async: boolean?) -> (), interval: number, randomness: number?, async: boolean?): Task
+	local std_var = randomness or 0.2
+	return {
+		method = method,
+		async = async,
+		interval = interval,
+		std_var = std_var,
+		next = first_due(interval, std_var),
+	}
 end
 
 function Antiban.add_task(method: (async: boolean?) -> (), interval: number, randomness: number?, async: boolean?)
-	local std_var = randomness or 0.2
-	table.insert(Antiban.tasks, {
-		method = method,
-		async = async,
-		interval = interval,
-		std_var = std_var,
-		next = first_due(interval, std_var),
-	})
+	table.insert(Antiban.tasks, new_task(method, interval, randomness, async))
 end
 
 function Antiban.add_walk_task(method: (async: boolean?) -> (), interval: number, randomness: number?, async: boolean?)
-	local std_var = randomness or 0.2
-	table.insert(Antiban.walk_tasks, {
-		method = method,
-		async = async,
-		interval = interval,
-		std_var = std_var,
-		next = first_due(interval, std_var),
-	})
+	table.insert(Antiban.walk_tasks, new_task(method, interval, randomness, async))
 end
 
--- Tasks that queue input and return at once, run by `do_async_tasks` for `scope`: "game", "outside" or "any".
 function Antiban.add_async_task(method: (async: boolean?) -> (), interval: number, randomness: number?, scope: Scope?)
 	local std_var = randomness or 0.2
 	table.insert(Antiban.async_tasks, {
@@ -230,7 +230,6 @@ function Antiban.add_async_task(method: (async: boolean?) -> (), interval: numbe
 	})
 end
 
--- Pushes every task's due time back by `ms`; breaks and sleeps are untouched.
 function Antiban.delay_tasks(ms: number)
 	for _, list in { Antiban.tasks, Antiban.walk_tasks, Antiban.async_tasks } do
 		for _, task in list do
@@ -248,7 +247,6 @@ local function round2(value: number): number
 	return math.floor(value * 100 + 0.5) / 100
 end
 
--- Auto logout chance of a break, by its length: short ones almost never log out, long ones often do.
 local function auto_break_logout(length: number): number
 	for _, step in BREAK_LOGOUT_BASE do
 		if length <= step[1] * Antiban.MINUTE then
@@ -266,7 +264,6 @@ local function sleep_key(cfg: Host.SleepConfig): string
 	return `{cfg.time}|{cfg.length}|{cfg.randomness}|{cfg.logout_chance}`
 end
 
--- Skips the next occurrence of the breaks and sleeps the user pressed "Skip next" on, and returns true if anything was skipped.
 function Antiban.apply_skips(): boolean
 	local skipped = false
 	for _, skip in Host.antiban_skips() do
@@ -275,7 +272,6 @@ function Antiban.apply_skips(): boolean
 			else Antiban.sleeps[skip.index + 1]
 		if task ~= nil then
 			skipped = true
-			-- at least once, and until it is in the future, so skipping a break that is due really clears it
 			repeat
 				if skip.kind == "break" then
 					task.next += around((task :: Break).interval, task.std_var)
@@ -294,7 +290,6 @@ end
 
 local config_version = -1
 
--- Plans the breaks and sleeps from the loader's config if it changed, keeping due times of unchanged ones; returns true if anything changed.
 function Antiban.sync_config(): boolean
 	local skipped = Antiban.apply_skips()
 	local config = Host.antiban_config()
@@ -366,20 +361,21 @@ function Antiban.lose_focus(): boolean
 	return true
 end
 
-local function run_task(task: Task, start: (Task) -> (), finish: (Task) -> ())
-	start(task)
-	task.method(task.async)
-	task.next = running_ms() + math.floor(around(task.interval, task.std_var))
-	finish(task)
-end
-
 local function do_tasks(list: { Task }): boolean
 	local ran = false
 	for _, task in list do
 		if running_ms() >= task.next then
 			ran = true
 			paused(function()
-				run_task(task, Antiban.on_start_task or function() end, Antiban.on_finish_task or function() end)
+				local start, finish = Antiban.on_start_task, Antiban.on_finish_task
+				if start then
+					start(task)
+				end
+				task.method(task.async)
+				task.next = running_ms() + math.floor(around(task.interval, task.std_var))
+				if finish then
+					finish(task)
+				end
 			end)
 		end
 	end
@@ -394,7 +390,6 @@ function Antiban.do_walk_task(): boolean
 	return do_tasks(Antiban.walk_tasks)
 end
 
--- Queues the first due async task of `scope` (or "any"), unless input is still queued; never blocks or pauses the clock.
 function Antiban.do_async_tasks(scope: "game" | "outside"): boolean
 	if Mouse.busy() then
 		return false
@@ -410,10 +405,23 @@ function Antiban.do_async_tasks(scope: "game" | "outside"): boolean
 	return false
 end
 
+local function countdown_of(task: Break | Sleep): Countdown
+	return { finish = Host.time() + math.floor(math.abs(Random.gauss(task.length, task.length * task.std_var))) }
+end
+
+local function maybe_logout(chance: number)
+	if Random.chance(chance) then
+		Log.log("Antiban", "Logging out.")
+		local ok = Logout.logout()
+		if not ok then
+			Log.log("Antiban", `Logout failed`)
+		end
+	end
+end
+
 function Antiban.take_break(task: Break)
 	paused(function()
-		local countdown: Countdown =
-			{ finish = Host.time() + math.floor(math.abs(Random.gauss(task.length, task.length * task.std_var))) }
+		local countdown = countdown_of(task)
 		Log.log("Antiban", `Taking a break for {format_ms(countdown.finish - Host.time())}`)
 		publish(true, { kind = "break", remaining = countdown.finish - Host.time() })
 
@@ -421,13 +429,7 @@ function Antiban.take_break(task: Break)
 			Antiban.on_start_break(task)
 		end
 
-		if Random.chance(task.logout_chance) then
-			Log.log("Antiban", "Logging out.")
-			local ok = Logout.logout()
-			if not ok then
-				Log.log("Antiban", `Logout failed`)
-			end
-		end
+		maybe_logout(task.logout_chance)
 
 		if Biometrics.random_boolean(0.5) then
 			Antiban.lose_focus()
@@ -459,8 +461,7 @@ end
 
 function Antiban.take_sleep(task: Sleep)
 	paused(function()
-		local countdown: Countdown =
-			{ finish = Host.time() + math.floor(math.abs(Random.gauss(task.length, task.length * task.std_var))) }
+		local countdown = countdown_of(task)
 		Log.log("Antiban", `Sleeping for {format_ms(countdown.finish - Host.time())}`)
 		publish(true, { kind = "sleep", remaining = countdown.finish - Host.time() })
 
@@ -468,13 +469,7 @@ function Antiban.take_sleep(task: Sleep)
 			Antiban.on_start_sleep(task)
 		end
 
-		if Random.chance(task.logout_chance) then
-			Log.log("Antiban", "Logging out.")
-			local ok = Logout.logout()
-			if not ok then
-				Log.log("Antiban", `Logout failed`)
-			end
-		end
+		maybe_logout(task.logout_chance)
 
 		if Random.chance(0.7) then
 			Antiban.lose_focus()
@@ -529,7 +524,6 @@ function Antiban.do_sleep(): boolean
 	return taken
 end
 
--- Whether a break or a sleep is due, so the next `do_antiban` would take it.
 function Antiban.break_due(): boolean
 	Antiban.sync_config()
 	publish()
@@ -544,46 +538,43 @@ function Antiban.break_due(): boolean
 	return false
 end
 
-function Antiban.do_antiban(check_tasks: boolean?, check_breaks: boolean?, check_sleeps: boolean?): boolean
+local function exclusive(run: () -> boolean): boolean
 	if Antiban.doing_antiban then
 		return false
 	end
 	Antiban.doing_antiban = true
 	local here = pause_clock()
-
-	local done = false
-	if check_tasks ~= false and Antiban.do_task() then
-		done = true
-	end
-	if check_breaks ~= false and Antiban.do_break() then
-		done = true
-	end
-	if check_sleeps ~= false and Antiban.do_sleep() then
-		done = true
-	end
-
-	if not logged_in() then
-		local ok = Login.sign_in()
-		if not ok then
-			Log.log("Antiban", `Log in failed`)
-		end
-	end
-
+	local done = run()
 	Antiban.doing_antiban = false
 	resume_clock(here)
 	return done
 end
 
+function Antiban.do_antiban(check_tasks: boolean?, check_breaks: boolean?, check_sleeps: boolean?): boolean
+	return exclusive(function()
+		local done = false
+		if check_tasks ~= false and Antiban.do_task() then
+			done = true
+		end
+		if check_breaks ~= false and Antiban.do_break() then
+			done = true
+		end
+		if check_sleeps ~= false and Antiban.do_sleep() then
+			done = true
+		end
+
+		if not logged_in() then
+			local ok = Login.sign_in()
+			if not ok then
+				Log.log("Antiban", `Log in failed`)
+			end
+		end
+		return done
+	end)
+end
+
 function Antiban.do_walking_antiban(): boolean
-	if Antiban.doing_antiban then
-		return false
-	end
-	Antiban.doing_antiban = true
-	local here = pause_clock()
-	local done = Antiban.do_walk_task()
-	Antiban.doing_antiban = false
-	resume_clock(here)
-	return done
+	return exclusive(Antiban.do_walk_task)
 end
 
 function Antiban.time_until_break(task: Break): string
@@ -624,7 +615,6 @@ function Antiban.simulate_breaks(botting_days: number?)
 		task.next += around(task.interval, task.std_var)
 	end
 
-	inactive /= days
 	active /= days
 	Log.log("Antiban", `Running for {format_ms(active)} per day, on average.`)
 end

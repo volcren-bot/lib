@@ -1,13 +1,9 @@
 --!strict
--- Walks from wherever you are to a chosen place: one of the destinations below, or a tile you type in. The walker takes the best
--- transport toward it first (a teleport, a ship, a lever pull where one saves time), then plans the rest on foot through doors, stairs,
--- ladders, caves and agility shortcuts. Needs a logged-in client, and the loader for the transport data (a bare `injector run` only walks).
 local Host = require("@lib/host")
 local Log = require("@lib/utils/log")
 local Player = require("@lib/main/player")
 local Walker = require("@lib/main/walker")
 
--- The underground is the same map as the surface, 6,400 tiles north, on plane 0.
 local DESTINATIONS: { [string]: { x: number, y: number, plane: number, near: number } } = {
 	["Edgeville bank"] = { x = 3097, y = 3496, plane = 0, near = 3 },
 	["Barbarian Assault lobby"] = { x = 2531, y = 3577, plane = 0, near = 2 },

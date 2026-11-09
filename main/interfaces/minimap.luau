@@ -18,6 +18,7 @@ local Log = require("@lib/utils/log")
 local Mouse = require("@lib/utils/input/mouse")
 local Player = require("@lib/main/player")
 local Random = require("@lib/utils/math/random")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Minimap = {}
 
@@ -26,7 +27,6 @@ local TURN = 16384
 Minimap.ZOOM_MIN = 2
 Minimap.ZOOM_MAX = 8
 
--- The run orb's button, its option and how long a toggle may take to show.
 Minimap.RUN_GROUP = 160
 Minimap.RUN_CHILD = 28
 Minimap.RUN_OPTION = "Toggle Run"
@@ -83,11 +83,11 @@ function Minimap.widget(state: ClientState?): Widget?
 	if child == nil then
 		return nil
 	end
-	local w = widget(root :: number, child)
-	if w == nil then
-		return nil
-	end
-	return w
+	return (widget(root :: number, child))
+end
+
+local function zoom_area(w: Widget)
+	return Circle.new(w.x + w.width // 2, w.y + w.height // 2, w.width * 0.3)
 end
 
 local function units(canvas: number, scale: number): number
@@ -132,7 +132,6 @@ function Minimap.tile_to_point(tile: Tile): Point?
 	return Minimap.fine_to_point((tile.x - base.x) * Projection.TILE + half, (tile.y - base.y) * Projection.TILE + half)
 end
 
--- Queues single scroll notches, one per level, towards `zoom` over the minimap and returns at once; open loop.
 function Minimap.set_zoom_async(zoom: number): boolean
 	local target = math.clamp(math.round(zoom), Minimap.ZOOM_MIN, Minimap.ZOOM_MAX)
 	local state, _, minimap = logged_in()
@@ -146,7 +145,7 @@ function Minimap.set_zoom_async(zoom: number): boolean
 	if w == nil then
 		return false
 	end
-	local area = Circle.new(w.x + w.width // 2, w.y + w.height // 2, w.width * 0.3)
+	local area = zoom_area(w)
 	local here = Mouse.position()
 	local over = if here == nil or not Circle.contains(area, here) then area else nil
 	local down = minimap.zoom > target
@@ -172,8 +171,7 @@ function Minimap.set_zoom(zoom: number): boolean
 	if w == nil then
 		return false
 	end
-	local center = Point.new(w.x + w.width // 2, w.y + w.height // 2)
-	local area = Circle.new(center.x, center.y, w.width * 0.3)
+	local area = zoom_area(w)
 	local here = Mouse.position()
 	if here == nil or not Circle.contains(area, here) then
 		Mouse.move(area)
@@ -217,12 +215,12 @@ function Minimap.set_run(enabled: boolean): boolean
 	Interact.with(w, Minimap.RUN_OPTION, function(entry: Host.MenuEntry): boolean
 		return entry.id == id
 	end, false)
-	local deadline = Host.time() + Minimap.RUN_TIMEOUT_MS
-	while Host.time() < deadline do
-		if Player.is_running() == enabled then
-			return true
-		end
-		Host.sleep(50)
+	if
+		Widgets.wait_within(function(): boolean
+			return Player.is_running() == enabled
+		end, Minimap.RUN_TIMEOUT_MS, 50)
+	then
+		return true
 	end
 	Log.log("Minimap", `run didn't turn {if enabled then "on" else "off"}`)
 	return false

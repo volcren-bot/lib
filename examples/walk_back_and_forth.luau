@@ -1,5 +1,4 @@
 --!strict
--- Walks back and forth between two tiles on any planes, through the doors, ladders and staircases on the way.
 local Host = require("@lib/host")
 local form = Host.form
 local time = Host.time
@@ -38,7 +37,6 @@ local points = {
 }
 local near = values.near :: number
 
--- start with the point farther from where you are
 local me = assert(Walker.here())
 local function away(p: Host.NavTile): number
 	return Walker.distance(me, p) + if p.plane ~= me.plane then 1000 else 0

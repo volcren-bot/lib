@@ -22,6 +22,7 @@ local Mouse = require("@lib/utils/input/mouse")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 local Varbits = require("@lib/main/varbits")
+local Widgets = require("@lib/main/interfaces/widgets")
 type Point = Geometry.Point
 
 local Magic = {}
@@ -146,10 +147,7 @@ end
 
 function Magic.is_spellbook(book: string): boolean
 	local current = Magic.spellbook()
-	if current == nil then
-		return false
-	end
-	return current == string.lower(book)
+	return current ~= nil and current == string.lower(book)
 end
 
 function Magic.spells(book: string?): { Spell }?
@@ -253,11 +251,7 @@ function Magic.widget(spell: SpellRef): Widget?
 	if s == nil then
 		return nil
 	end
-	local w = widget(Magic.GROUP, s.child)
-	if w == nil then
-		return nil
-	end
-	return w
+	return (widget(Magic.GROUP, s.child))
 end
 
 function Magic.can_cast(spell: SpellRef): boolean
@@ -266,30 +260,12 @@ function Magic.can_cast(spell: SpellRef): boolean
 		return false
 	end
 	local w = Magic.widget(s)
-	if w == nil then
-		return false
-	end
-	if w.sprite == -1 then
+	if w == nil or w.sprite == -1 then
 		return false
 	end
 	return w.sprite == s.castable[1] or w.sprite == s.castable[2]
 end
 
-local function wait_until(check: () -> boolean, timeout_ms: number): boolean
-	local waited = 0
-	while true do
-		if check() then
-			return true
-		end
-		if waited >= timeout_ms then
-			return false
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
-end
-
--- the component when it is drawn
 local function shown(child: number): Widget?
 	local w = widget(Magic.GROUP, child)
 	return if w ~= nil and not w.hidden then w else nil
@@ -325,19 +301,11 @@ end
 
 local function press(s: Spell, w: Widget, option: string?): boolean
 	local wanted = option or default_option(w, s)
-	local ok = Interact.with(w, wanted, on(s), false)
-	if not ok then
-		return false
-	end
-	return true
+	return (Interact.with(w, wanted, on(s), false))
 end
 
 function Magic.is_filtering(): boolean
-	local off = Varbits.get(Magic.FILTERING_OFF_VARBIT)
-	if off == nil then
-		return false
-	end
-	return off == 0
+	return Varbits.get(Magic.FILTERING_OFF_VARBIT) == 0
 end
 
 function Magic.is_filter_on(filter: string): boolean
@@ -346,27 +314,16 @@ function Magic.is_filter_on(filter: string): boolean
 		Log.log("Magic", `unknown spell filter "{filter}"`)
 		return false
 	end
-	local value = Varbits.get(f.varbit)
-	if value == nil then
-		return false
-	end
-	return value == 1
+	return Varbits.get(f.varbit) == 1
 end
 
 function Magic.is_filters_open(): boolean
 	local panel = widget(Magic.GROUP, Magic.FILTERS_PANEL)
-	if panel == nil then
-		return false
-	end
-	return not panel.hidden
+	return panel ~= nil and not panel.hidden
 end
 
 local function toggle_filters(open: boolean): boolean
-	local current = Magic.is_filters_open()
-	if current == nil then
-		return false
-	end
-	if current == open then
+	if Magic.is_filters_open() == open then
 		return true
 	end
 	local tab = widget(Magic.GROUP, 0)
@@ -374,9 +331,7 @@ local function toggle_filters(open: boolean): boolean
 		return false
 	end
 	local at = Mouse.position()
-	if
-		at == nil or not (at.x >= tab.x and at.y >= tab.y and at.x < tab.x + tab.width and at.y < tab.y + tab.height)
-	then
+	if at == nil or not Widgets.contains(tab, at.x, at.y) then
 		Mouse.move(tab)
 		sleep(100)
 	end
@@ -385,7 +340,7 @@ local function toggle_filters(open: boolean): boolean
 		return false
 	end
 	Mouse.click(button)
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return Magic.is_filters_open() == open
 	end, FILTER_TIMEOUT_MS) then
 		return true
@@ -395,15 +350,7 @@ local function toggle_filters(open: boolean): boolean
 end
 
 function Magic.open_filters(): boolean
-	local opened = Magic.open()
-	if not opened then
-		return false
-	end
-	local filtering = Magic.is_filtering()
-	if filtering == nil then
-		return false
-	end
-	if not filtering then
+	if not Magic.open() or not Magic.is_filtering() then
 		return false
 	end
 	return toggle_filters(true)
@@ -419,16 +366,11 @@ function Magic.set_filter(filter: string, hide: boolean): boolean
 		Log.log("Magic", `unknown spell filter "{filter}"`)
 		return false
 	end
-	local on = Magic.is_filter_on(filter)
-	if on == nil then
-		return false
-	end
-	if on == hide then
+	if Magic.is_filter_on(filter) == hide then
 		return true
 	end
-	local opened = Magic.open_filters()
-	if not opened then
-		return opened
+	if not Magic.open_filters() then
+		return false
 	end
 	local rows = widget_children(Magic.GROUP, Magic.FILTERS_ROWS)
 	if rows == nil then
@@ -437,9 +379,9 @@ function Magic.set_filter(filter: string, hide: boolean): boolean
 	local row: Widget? = nil
 	for _, label in ipairs(rows) do
 		if label.text and string.find(label.text, f.text, 1, true) then
-			local cx, cy = label.x + label.width // 2, label.y + label.height // 2
+			local cx, cy = Widgets.center(label)
 			for _, r in ipairs(rows) do
-				if r.kind == 3 and cx >= r.x and cy >= r.y and cx < r.x + r.width and cy < r.y + r.height then
+				if r.kind == 3 and Widgets.contains(r, cx, cy) then
 					row = r
 				end
 			end
@@ -455,7 +397,7 @@ function Magic.set_filter(filter: string, hide: boolean): boolean
 	if not ok then
 		return false
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return Magic.is_filter_on(filter) == hide
 	end, FILTER_TIMEOUT_MS) then
 		return true
@@ -465,11 +407,7 @@ function Magic.set_filter(filter: string, hide: boolean): boolean
 end
 
 function Magic.set_filtering(on: boolean): boolean
-	local current = Magic.is_filtering()
-	if current == nil then
-		return false
-	end
-	if current == on then
+	if Magic.is_filtering() == on then
 		return true
 	end
 	local stone = SidePanels.button(SidePanels.MAGIC_SPELLBOOK)
@@ -480,7 +418,7 @@ function Magic.set_filtering(on: boolean): boolean
 	if not ok then
 		return false
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return Magic.is_filtering() == on
 	end, FILTER_TIMEOUT_MS) then
 		return true
@@ -490,11 +428,7 @@ function Magic.set_filtering(on: boolean): boolean
 end
 
 local function unfilter(s: Spell): boolean
-	local filtering = Magic.is_filtering()
-	if filtering == nil then
-		return false
-	end
-	if not filtering then
+	if not Magic.is_filtering() then
 		return false
 	end
 	local stages: { { string } } = { {}, {} }
@@ -513,35 +447,29 @@ local function unfilter(s: Spell): boolean
 		local changed = false
 		for _, filter in ipairs(stage) do
 			if Magic.is_filter_on(filter) then
-				local ok = Magic.set_filter(filter, false)
-				if not ok then
-					return ok
+				if not Magic.set_filter(filter, false) then
+					return false
 				end
 				changed = true
 			end
 		end
 		if changed then
-			local closed = Magic.close_filters()
-			if not closed then
-				return closed
+			if not Magic.close_filters() then
+				return false
 			end
-			if wait_until(function()
+			if Widgets.wait_until(function()
 				return visible(s.child)
 			end, FILTER_TIMEOUT_MS) then
 				return true
 			end
 		end
 	end
-	local ok = Magic.set_filtering(false)
-	if not ok then
-		return ok
+	if not Magic.set_filtering(false) then
+		return false
 	end
-	if wait_until(function()
+	return Widgets.wait_until(function()
 		return visible(s.child)
-	end, FILTER_TIMEOUT_MS) then
-		return true
-	end
-	return false
+	end, FILTER_TIMEOUT_MS)
 end
 
 function Magic.find(spell: SpellRef): Widget?
@@ -549,12 +477,7 @@ function Magic.find(spell: SpellRef): Widget?
 	if s == nil then
 		return nil
 	end
-	local opened = Magic.open()
-	if not opened then
-		return nil
-	end
-	local closed = Magic.close_filters()
-	if not closed then
+	if not Magic.open() or not Magic.close_filters() then
 		return nil
 	end
 	local w = shown(s.child)
@@ -574,11 +497,10 @@ function Magic.find(spell: SpellRef): Widget?
 			if found == nil then
 				return nil
 			end
-			local ok = press(button, found, nil)
-			if not ok then
+			if not press(button, found, nil) then
 				return nil
 			end
-			wait_until(function()
+			Widgets.wait_until(function()
 				return visible(s.child) or visible(back.child) == wants_menu
 			end, SHOW_TIMEOUT_MS)
 			local now = shown(s.child)
@@ -587,19 +509,14 @@ function Magic.find(spell: SpellRef): Widget?
 			end
 		end
 	end
-	local shown = unfilter(s)
-	if not shown then
+	if not unfilter(s) then
 		return nil
 	end
 	return widget(Magic.GROUP, s.child)
 end
 
 function Magic.contains(spell: SpellRef): boolean
-	local w = Magic.find(spell)
-	if w == nil then
-		return false
-	end
-	return true
+	return Magic.find(spell) ~= nil
 end
 
 function Magic.info_box(): Widget?
@@ -616,16 +533,11 @@ function Magic.info_box(): Widget?
 end
 
 function Magic.is_info_open(): boolean
-	local box = Magic.info_box()
-	return box ~= nil
+	return Magic.info_box() ~= nil
 end
 
 function Magic.close_info(spell: SpellRef?): boolean
-	local open = Magic.is_info_open()
-	if open == nil then
-		return false
-	end
-	if not open then
+	if not Magic.is_info_open() then
 		return true
 	end
 	if spell then
@@ -662,7 +574,7 @@ function Magic.close_info(spell: SpellRef?): boolean
 			Mouse.move(best)
 		end
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return Magic.is_info_open() == false
 	end, INFO_TIMEOUT_MS) then
 		return true
@@ -693,8 +605,7 @@ function Magic.selected_spell(): Spell?
 end
 
 function Magic.has_selected(): boolean
-	local current = selected_widget()
-	return current ~= nil
+	return selected_widget() ~= nil
 end
 
 function Magic.is_selected(spell: SpellRef): boolean
@@ -721,11 +632,10 @@ function Magic.deselect(): boolean
 	if at == nil then
 		return false
 	end
-	local ok = Interact.with(at, "Cancel", nil, false)
-	if not ok then
+	if not Interact.with(at, "Cancel", nil, false) then
 		return false
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return selected_widget() == nil
 	end, DESELECT_TIMEOUT_MS) then
 		return true
@@ -788,46 +698,33 @@ function Magic.cast(spell: SpellRef, option: string?): boolean
 	if current and current.id == s.id then
 		return true
 	end
-	local castable = Magic.can_cast(s)
-	if castable == nil then
+	if not Magic.can_cast(s) then
 		return false
 	end
-	if not castable then
+	if current and not Magic.deselect() then
 		return false
 	end
-	if current then
-		local ok = Magic.deselect()
-		if not ok then
-			return false
-		end
-	end
-	local ok = Magic.interact(s, option or "Cast")
-	if not ok then
+	if not Magic.interact(s, option or "Cast") then
 		return false
 	end
 	return Magic.was_cast(s)
 end
 
--- Thralls (Arceuus): the kinds, by the word their spells end in.
 export type Thrall = "Zombie" | "Skeleton" | "Ghost"
 Magic.Thrall = table.freeze({
 	MELEE = "Zombie" :: Thrall,
 	RANGED = "Skeleton" :: Thrall,
 	MAGIC = "Ghost" :: Thrall,
 })
--- the tiers from the highest down
 Magic.THRALL_TIERS = table.freeze({ "Greater", "Superior", "Lesser" })
 Magic.THRALL_ACTIVE_VARBIT = 12413
 Magic.THRALL_COOLDOWN_VARBIT = 12290
--- how long a cast gets to show as a summoned thrall, and how long after it the thrall rises: its time runs from then
 Magic.THRALL_CONFIRM_MS = 1800
 Magic.THRALL_RISE_MS = 3000
 
--- when the thrall summoned in this run rises and when it goes away, by `Host.time`
 local thrall_rises_at: number? = nil
 local thrall_expires_at: number? = nil
 
--- How long a thrall summoned now lasts: a tick per current Magic level, twice that with the Master combat achievement rewards claimed.
 function Magic.thrall_duration_ms(): number?
 	local level = Stats.level("Magic")
 	if level == nil then
@@ -840,28 +737,28 @@ function Magic.thrall_duration_ms(): number?
 	return ms
 end
 
-local function last_game_message_uid(): number
+local function last_game_message()
 	local messages = Chat.messages({ Chat.MessageType.GAME }) or {}
-	local last = messages[#messages]
+	return messages[#messages]
+end
+
+local function last_game_message_uid(): number
+	local last = last_game_message()
 	return if last then last.uid else -1
 end
 
--- The newest game message after the one with uid `seen`, nil for none.
 local function game_message_since(seen: number): string?
-	local messages = Chat.messages({ Chat.MessageType.GAME }) or {}
-	local last = messages[#messages]
+	local last = last_game_message()
 	if last and last.uid ~= seen then
 		return last.text
 	end
 	return nil
 end
 
--- Whether a resurrection spell was cast too recently to cast another (10 seconds).
 function Magic.thrall_on_cooldown(): boolean
 	return (Varbits.get(Magic.THRALL_COOLDOWN_VARBIT) or 0) ~= 0
 end
 
--- Summons the highest tier of the thrall you can cast now (level, runes, the Book of the Dead), replacing one that is out.
 function Magic.summon_thrall(thrall: Thrall): boolean
 	if not Magic.is_spellbook("arceuus") then
 		Log.log("Magic", "summon_thrall: thralls need the Arceuus spellbook")
@@ -880,8 +777,7 @@ function Magic.summon_thrall(thrall: Thrall): boolean
 				Log.log("Magic", `summon_thrall: couldn't cast {name}`)
 				return false
 			end
-			if not wait_until(Magic.thrall_on_cooldown, Magic.THRALL_CONFIRM_MS) then
-				-- the game says why, like "You can't resurrect a thrall here."
+			if not Widgets.wait_until(Magic.thrall_on_cooldown, Magic.THRALL_CONFIRM_MS) then
 				local reason = game_message_since(seen)
 				Log.log("Magic", `summon_thrall: {name} didn't summon{if reason then `: {reason}` else ""}`)
 				return false
@@ -895,19 +791,15 @@ function Magic.summon_thrall(thrall: Thrall): boolean
 	return false
 end
 
--- Whether a thrall is out (risen and not gone yet), as the game says.
 function Magic.thrall_active(): boolean
 	return Varbits.get(Magic.THRALL_ACTIVE_VARBIT) == 1
 end
 
--- How long the thrall summoned in this run has left: 0 once it is gone (its time ran out, it was dismissed or it went away
--- early), nil when none was summoned in this run.
 function Magic.thrall_remaining_ms(): number?
 	local expires, rises = thrall_expires_at, thrall_rises_at
 	if expires == nil or rises == nil then
 		return nil
 	end
-	-- still rising: not out yet, but on its way
 	if not Magic.thrall_active() and time() > rises + Magic.THRALL_CONFIRM_MS then
 		return 0
 	end

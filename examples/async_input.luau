@@ -1,6 +1,4 @@
 --!strict
--- Checks the async input against a live client, logged in with the viewport free of interfaces: mouse moves and cancel, keys and the
--- middle button with the camera as the witness, and the async twins of the interface helpers with the antiban tasks. Prints ok or FAIL per check.
 local Camera = require("@lib/main/camera")
 local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 local Geometry = require("@lib/utils/math/geometry")
@@ -20,7 +18,6 @@ end
 
 local conn = Host.connection()
 
--- Mouse: async moves, cancel, blocking moves taking over, menu reads, queued moves.
 local function mouse_checks()
 	print("-- mouse")
 	local far = Point.new(math.floor(conn.width * 0.8), math.floor(conn.height * 0.3))
@@ -46,7 +43,7 @@ local function mouse_checks()
 	Mouse.move_async(far)
 	Host.sleep(60)
 	Mouse.cancel()
-	Host.sleep(100) -- the client still processes the moves posted before the cancel
+	Host.sleep(100)
 	local stopped = Mouse.position()
 	Host.sleep(300)
 	local later = Mouse.position()
@@ -90,7 +87,6 @@ local function mouse_checks()
 	Mouse.teleport(near)
 end
 
--- Keys, the middle button and the wheel, with the camera as the witness.
 local function camera_checks()
 	print("-- keys, middle button and wheel")
 	local function yaw(): number
@@ -143,7 +139,7 @@ local function camera_checks()
 	before = settle_yaw()
 	Keyboard.key_down_async(keys.LEFT)
 	Host.sleep(300)
-	Mouse.move(spot, true) -- blocking input cancels, which releases LEFT
+	Mouse.move(spot, true)
 	local stopped = settle_yaw()
 	Host.sleep(300)
 	check("blocking input released the held key", settle_yaw() == stopped and turned(before) > 5)
@@ -179,7 +175,6 @@ local function camera_checks()
 	Camera.set_angles(start_yaw, start_pitch)
 end
 
--- The async twins of the interface helpers, and the antiban tasks that restore what they touched.
 local function interface_checks()
 	print("-- interface twins and antiban tasks")
 	local function settle()

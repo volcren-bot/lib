@@ -1,6 +1,4 @@
 --!strict
--- Prints each projectile and each spot animation once as it appears, and marks the projectiles in flight (red) and the spot
--- animations' tiles (magenta) on screen, for SECONDS.
 local SECONDS = 30
 
 local Draw = require("@lib/utils/draw")
@@ -12,7 +10,6 @@ local SpotAnims = require("@lib/main/entities/spot_anims")
 local seen: { [string]: boolean } = {}
 local start = Host.time()
 while Host.time() - start < SECONDS * 1000 do
-	-- every mark of this pass in one overlay update
 	Draw.batch(function()
 		Draw.clear()
 		for _, p in ipairs(Projectiles.find() or {}) do

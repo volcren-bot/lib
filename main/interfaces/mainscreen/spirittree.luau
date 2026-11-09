@@ -1,12 +1,7 @@
 --!strict
--- The spirit tree network (group 187, the game's generic `menu` list, titled "Spirit Tree Locations"): a list of places, each a row reading `<col=735a28>K</col>: Name`, then a "Cancel" row.
--- Places you haven't unlocked are drawn grey (`<col=5f5f5f>Name</col>`) but still offer "Continue", so the colour is the only way to tell them apart.
--- A row is chosen by clicking it or by pressing its key (1 to 9, then A, B, ...). The trees are the "Spirit tree" objects, used with "Travel", and the Spiritual Fairy Tree of a house, used with "Tree".
 local Host = require("@lib/host")
 local widget = Host.widget
 local widget_children = Host.widget_children
-local sleep = Host.sleep
-local time = Host.time
 type Widget = Host.Widget
 type Loc = Host.Loc
 local Biometrics = require("@lib/main/antiban/biometrics")
@@ -18,36 +13,30 @@ local Objects = require("@lib/main/entities/objects")
 local Random = require("@lib/utils/math/random")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 local Walker = require("@lib/main/walker")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Spirittree = {}
 
 Spirittree.GROUP = 187
--- The component whose children are the title (index 1), and the one whose children are the rows.
 Spirittree.TITLE = 0
 Spirittree.TITLE_INDEX = 1
 Spirittree.TITLE_TEXT = "Spirit Tree Locations"
 Spirittree.LIST = 3
 Spirittree.CLOSE = 4
--- The colour tag the game puts around a place you haven't unlocked, and the text of the last row.
 Spirittree.LOCKED_COLOUR = "5f5f5f"
 Spirittree.CANCEL = "Cancel"
--- The tree objects and the option that opens the list.
 Spirittree.OBJECT = "Spirit tree"
 Spirittree.OPTION = "Travel"
 Spirittree.SPIRITUAL = "Spiritual Fairy Tree"
 Spirittree.SPIRITUAL_OPTION = "Tree"
 
--- The chance a biometric is rolled around for choosing a place with its key rather than a click.
 Spirittree.KEY_CHANCE = 0.5
 
 Spirittree.OPEN_TIMEOUT_MS = 3000
 Spirittree.CONFIRM_TIMEOUT_MS = 4000
 Spirittree.POLL_MS = 50
--- A pause (min, max in ms) after `open` finds the list, before it returns: a key pressed in the first moments after the list appears is ignored by the game.
 Spirittree.SETTLE_MS = { 250, 500 }
 
--- Every place of the network, as the list names it. Use these rather than typing a name: `Spirittree.select(Spirittree.Place.GnomeStronghold)`.
--- `YourHouse` is named after where your house is (Rimmington here); with the house elsewhere the list reads differently, and `find` still matches it loosely by "Your house".
 export type Place =
 	"Tree Gnome Village"
 	| "Gnome Stronghold"
@@ -97,16 +86,12 @@ Spirittree.Place = table.freeze({
 }
 
 export type Destination = {
-	-- the key before the name ("1", "A"), which is also the key that picks it
 	key: string,
 	name: string,
-	-- false for a place you haven't unlocked
 	available: boolean,
-	-- the row: where to click
 	row: Widget,
 }
 
--- The list is open when the group is and its title says so: the group is shared with other lists.
 function Spirittree.is_open(): boolean
 	if not Toplevel.is_open(Spirittree.GROUP) then
 		return false
@@ -119,21 +104,10 @@ function Spirittree.is_open(): boolean
 	return false
 end
 
--- Whether the list is open, polled for up to `timeout_ms` (3 seconds by default).
 function Spirittree.wait_open(timeout_ms: number?): boolean
-	local deadline = time() + (timeout_ms or Spirittree.OPEN_TIMEOUT_MS)
-	while true do
-		if Spirittree.is_open() then
-			return true
-		end
-		if time() >= deadline then
-			return false
-		end
-		sleep(Spirittree.POLL_MS)
-	end
+	return Widgets.wait_for(Spirittree.is_open, timeout_ms or Spirittree.OPEN_TIMEOUT_MS, Spirittree.POLL_MS)
 end
 
--- "<col=735a28>7</col>: <col=5f5f5f>Port Sarim</col>" is the key "7", the name "Port Sarim", and a place not unlocked.
 local function split(text: string): (string?, string?, boolean)
 	local locked = string.find(text, "<col=" .. Spirittree.LOCKED_COLOUR .. ">", 1, true) ~= nil
 	local plain = string.gsub(text, "<[^>]*>", "")
@@ -141,7 +115,6 @@ local function split(text: string): (string?, string?, boolean)
 	return key, name, locked
 end
 
--- The places in the list, top to bottom (the Cancel row is not one). Nil when it isn't open.
 function Spirittree.destinations(): { Destination }?
 	if not Spirittree.is_open() then
 		return nil
@@ -165,7 +138,6 @@ function Spirittree.destinations(): { Destination }?
 	return found
 end
 
--- The names of the places, with `available_only` only those you have unlocked.
 function Spirittree.names(available_only: boolean?): { string }?
 	local all = Spirittree.destinations()
 	if all == nil then
@@ -180,7 +152,6 @@ function Spirittree.names(available_only: boolean?): { string }?
 	return names
 end
 
--- The place called `name`, ignoring case: an exact name, else one name containing the other ("Grand" in "Grand Exchange") if only one fits. The key is never matched.
 function Spirittree.find(name: string): Destination?
 	local all = Spirittree.destinations()
 	if all == nil then
@@ -201,7 +172,6 @@ function Spirittree.find(name: string): Destination?
 	return if loose_count == 1 then loose else nil
 end
 
--- The key code of a destination's key (digits and capital letters are their own codes).
 function Spirittree.key_code(d: Destination): number?
 	local code = string.byte(string.upper(d.key))
 	if code ~= nil and ((code >= 48 and code <= 57) or (code >= 65 and code <= 90)) then
@@ -210,21 +180,12 @@ function Spirittree.key_code(d: Destination): number?
 	return nil
 end
 
-local function gone(timeout_ms: number): boolean
-	local deadline = time() + timeout_ms
-	while true do
-		if not Spirittree.is_open() then
-			return true
-		end
-		if time() >= deadline then
-			return false
-		end
-		sleep(Spirittree.POLL_MS)
-	end
+local function gone(): boolean
+	return Widgets.wait_for(function()
+		return not Spirittree.is_open()
+	end, Spirittree.CONFIRM_TIMEOUT_MS, Spirittree.POLL_MS)
 end
 
--- Chooses a place by name and returns how it was done: "key" (its key; chance `key_probability`, nil or 0 is a biometric around KEY_CHANCE) or "click" on its row.
--- A key that leaves the list open for CONFIRM_TIMEOUT_MS is followed by the click. Nil when no place has that name, it isn't unlocked, or nothing worked. The trip is not waited for.
 function Spirittree.select(place: Place, key_probability: number?): string?
 	local name: string = place
 	local d = Spirittree.find(name)
@@ -241,7 +202,7 @@ function Spirittree.select(place: Place, key_probability: number?): string?
 	local code = Spirittree.key_code(d)
 	if code ~= nil and Random.chance(probability) then
 		Keyboard.key_press(code)
-		if gone(Spirittree.CONFIRM_TIMEOUT_MS) then
+		if gone() then
 			return "key"
 		end
 		Log.log("Spirittree", `key {d.key} to {d.name} left the list open`)
@@ -254,14 +215,13 @@ function Spirittree.select(place: Place, key_probability: number?): string?
 		end
 	end
 	Mouse.click(d.row)
-	if gone(Spirittree.CONFIRM_TIMEOUT_MS) then
+	if gone() then
 		return "click"
 	end
 	Log.log("Spirittree", `clicking {d.name} left the list open`)
 	return nil
 end
 
--- The close button, nil when the list isn't open.
 function Spirittree.close_button(): Widget?
 	local w = widget(Spirittree.GROUP, Spirittree.CLOSE)
 	if w == nil or w.hidden or not Spirittree.is_open() then
@@ -270,7 +230,6 @@ function Spirittree.close_button(): Widget?
 	return w
 end
 
--- Closes the list: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
 function Spirittree.close(key_probability: number?): boolean
 	if not Spirittree.is_open() then
 		return true
@@ -282,7 +241,6 @@ function Spirittree.close(key_probability: number?): boolean
 	)
 end
 
--- The nearest spirit tree among the objects loaded, by straight distance, with the plane you are on first. Nil when none is loaded.
 function Spirittree.nearest(): Loc?
 	local me = Walker.position()
 	if me == nil then
@@ -301,7 +259,6 @@ function Spirittree.nearest(): Loc?
 	return best
 end
 
--- Opens the list from the nearest spirit tree (or `tree`), walking closer first unless `walk` is false, and waits for it; true when it is open (also if it already was).
 function Spirittree.open(tree: Loc?, walk: boolean?): boolean
 	if Spirittree.is_open() then
 		return true
@@ -322,7 +279,6 @@ function Spirittree.open(tree: Loc?, walk: boolean?): boolean
 		picked = Objects.interact(target, option)
 	end
 	if not picked then
-		-- the menu was open on something else, or the click missed: take the option if what's hovered is a spirit tree
 		local uptext = Minimenu.uptext()
 		if uptext == nil or not string.find(string.lower(uptext), "spirit", 1, true) then
 			return false

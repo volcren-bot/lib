@@ -1,7 +1,4 @@
 --!strict
--- The gnome glider map (group 138, `gliders` in the cache): a map of the seven landing places, each a model with its name beside it, opened by the "Glider" option of any glider pilot.
--- The pilots are different NPCs by landing place, so the option is all that identifies one. A place is chosen by clicking its model; the game offers the place's name as the menu option there.
--- Quests gate the places; one you can't use may look or behave differently. That is not known here, because it was only seen on an account with all of them done.
 local Host = require("@lib/host")
 local menu = Host.menu
 local widget = Host.widget
@@ -17,31 +14,26 @@ local Npcs = require("@lib/main/entities/npcs")
 local Random = require("@lib/utils/math/random")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 local Walker = require("@lib/main/walker")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Gnomeglider = {}
 
 Gnomeglider.GROUP = 138
--- The components searched for places (each place's model carries its name as its first menu option), and the close button.
 Gnomeglider.LAST_COMPONENT = 40
 Gnomeglider.CLOSE = 26
--- The option of the pilots that opens the map.
 Gnomeglider.OPTION = "Glider"
 
 Gnomeglider.OPEN_TIMEOUT_MS = 3000
 Gnomeglider.HOVER_TIMEOUT_MS = 800
 Gnomeglider.CONFIRM_TIMEOUT_MS = 4000
 Gnomeglider.POLL_MS = 50
--- The menu follows the mouse a frame or so late, and would still show the place before.
 Gnomeglider.SETTLE_MS = 150
--- A pause (min, max in ms) after `open` finds the map, before it returns.
 Gnomeglider.OPEN_SETTLE_MS = { 250, 500 }
 
--- Finding the pilot: how far from you to look, how many NPCs to ask at most, and how long to wait after hovering one for its menu.
 Gnomeglider.PILOT_RANGE = 12
 Gnomeglider.PILOT_ASK_LIMIT = 8
 Gnomeglider.PILOT_HOVER_MS = 350
 
--- Every landing place, as the game names it. Use these rather than typing a name: `Gnomeglider.select(Gnomeglider.Site.KarHewo)`.
 export type Site =
 	"Ta Quir Priw"
 	| "Sindarpos"
@@ -71,7 +63,6 @@ Gnomeglider.Site = table.freeze({
 
 export type Destination = {
 	name: string,
-	-- the model: where to hover and click
 	area: Widget,
 }
 
@@ -79,21 +70,10 @@ function Gnomeglider.is_open(): boolean
 	return Toplevel.is_open(Gnomeglider.GROUP)
 end
 
--- Whether the map is open, polled for up to `timeout_ms` (3 seconds by default).
 function Gnomeglider.wait_open(timeout_ms: number?): boolean
-	local deadline = time() + (timeout_ms or Gnomeglider.OPEN_TIMEOUT_MS)
-	while true do
-		if Gnomeglider.is_open() then
-			return true
-		end
-		if time() >= deadline then
-			return false
-		end
-		sleep(Gnomeglider.POLL_MS)
-	end
+	return Widgets.wait_for(Gnomeglider.is_open, timeout_ms or Gnomeglider.OPEN_TIMEOUT_MS, Gnomeglider.POLL_MS)
 end
 
--- The places on the map, top to bottom. The game keeps each name as its model's first menu option, which the widget reads (`action`), so nothing is hovered. Nil when the map isn't open.
 function Gnomeglider.destinations(): { Destination }?
 	if not Gnomeglider.is_open() then
 		return nil
@@ -123,7 +103,6 @@ function Gnomeglider.names(): { string }?
 	return names
 end
 
--- The place called `name`, ignoring case: an exact name, else one name containing the other ("Undri" would fit two, so it fits none) if only one place fits.
 function Gnomeglider.find(name: string): Destination?
 	local all = Gnomeglider.destinations()
 	if all == nil then
@@ -144,7 +123,6 @@ function Gnomeglider.find(name: string): Destination?
 	return if loose_count == 1 then loose else nil
 end
 
--- The place named by the menu where the mouse is now, waiting a moment for the game to offer it.
 local function menu_name(): string?
 	local deadline = time() + Gnomeglider.HOVER_TIMEOUT_MS
 	while true do
@@ -160,21 +138,12 @@ local function menu_name(): string?
 	end
 end
 
-local function gone(timeout_ms: number): boolean
-	local deadline = time() + timeout_ms
-	while true do
-		if not Gnomeglider.is_open() then
-			return true
-		end
-		if time() >= deadline then
-			return false
-		end
-		sleep(Gnomeglider.POLL_MS)
-	end
+local function gone(): boolean
+	return Widgets.wait_for(function()
+		return not Gnomeglider.is_open()
+	end, Gnomeglider.CONFIRM_TIMEOUT_MS, Gnomeglider.POLL_MS)
 end
 
--- Clicks the place's model, which sends the glider, and waits for the map to go. False when no place has that name, the click wasn't on that place, or the map stayed open.
--- The click only happens once the menu under the mouse offers the place that was asked for (the models overlap), so a wrong spot costs nothing. The flight is not waited for.
 function Gnomeglider.select(site: Site): boolean
 	local d = Gnomeglider.find(site)
 	if d == nil then
@@ -187,14 +156,13 @@ function Gnomeglider.select(site: Site): boolean
 		return false
 	end
 	Mouse.click()
-	if gone(Gnomeglider.CONFIRM_TIMEOUT_MS) then
+	if gone() then
 		return true
 	end
 	Log.log("Gnomeglider", `clicking {d.name} left the map open`)
 	return false
 end
 
--- The close button, nil when the map isn't open.
 function Gnomeglider.close_button(): Widget?
 	local w = widget(Gnomeglider.GROUP, Gnomeglider.CLOSE)
 	if w == nil or w.hidden or not Gnomeglider.is_open() then
@@ -203,7 +171,6 @@ function Gnomeglider.close_button(): Widget?
 	return w
 end
 
--- Closes the map: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
 function Gnomeglider.close(key_probability: number?): boolean
 	if not Gnomeglider.is_open() then
 		return true
@@ -215,8 +182,6 @@ function Gnomeglider.close(key_probability: number?): boolean
 	)
 end
 
--- The NPC near `near` (you by default; within `range` tiles, `PILOT_RANGE` by default) that offers "Glider", found by asking: each one, nearest first, is hovered and its menu read.
--- The pilots are different NPCs by landing place and their names come through empty, so the option is all that identifies one. Nil when there is none.
 function Gnomeglider.find_pilot(near: Tile?, range: number?): Npc?
 	local at = near or Walker.position()
 	if at == nil then
@@ -249,8 +214,6 @@ function Gnomeglider.find_pilot(near: Tile?, range: number?): Npc?
 	return nil
 end
 
--- Opens the map from the nearest pilot (or `npc`), walking closer first unless `walk` is false, and waits for it; true when it is open (also if it already was).
--- When it didn't work the second result says why.
 function Gnomeglider.open(npc: Npc?, walk: boolean?): (boolean, string?)
 	if Gnomeglider.is_open() then
 		return true, nil
@@ -270,11 +233,11 @@ function Gnomeglider.open(npc: Npc?, walk: boolean?): (boolean, string?)
 		picked = Npcs.interact(target, Gnomeglider.OPTION)
 	end
 	if not picked then
-		-- the menu was open on something else, or the click missed: take the option if the menu offers it
 		local offered = false
 		for _, entry in ipairs(Minimenu.entries() or {}) do
 			if entry.option == Gnomeglider.OPTION then
 				offered = true
+				break
 			end
 		end
 		if not offered or not Minimenu.select(Gnomeglider.OPTION) then

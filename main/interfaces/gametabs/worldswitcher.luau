@@ -7,7 +7,6 @@ local world_select = Host.world_select
 local menu = Host.menu
 local chat_messages = Host.chat_messages
 local varp = Host.varp
-local sleep = Host.sleep
 local time = Host.time
 local mouse_down = Host.mouse_down
 local mouse_up = Host.mouse_up
@@ -24,6 +23,7 @@ local Random = require("@lib/utils/math/random")
 local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
+local Widgets = require("@lib/main/interfaces/widgets")
 local Box = Geometry.Box
 type Box = Geometry.Box
 
@@ -53,7 +53,6 @@ local WorldSwitcher = {
 
 WorldSwitcher.cooldown_ms = 7000
 
--- worlds the game refused to let us into (a warning or "Please choose a different world."): kept until the script ends, always skipped
 local blocked: { [number]: boolean } = {}
 
 function WorldSwitcher.is_blocked(world: number): boolean
@@ -76,10 +75,8 @@ local function block(world: number, why: string)
 	end
 end
 
--- world type flags the client itself reads from the world list (PvP, bounty, high risk, deadman, ...)
 WorldSwitcher.UNSAFE_TYPES = LoginWorldSwitcher.DANGEROUS
 
--- activities that are PvP but carry no type flag (lowercase, matched as substrings)
 WorldSwitcher.UNSAFE_ACTIVITIES = { "pvp", "wilderness", "clan wars", "last man standing", "lms" }
 
 export type Row = {
@@ -106,25 +103,11 @@ local MAX_SCROLLS = 60
 local ready_at = 0
 
 local function wait_until(condition: () -> boolean, timeout_ms: number): boolean
-	local waited = 0
-	while true do
-		if condition() then
-			return true
-		end
-		if waited >= timeout_ms then
-			return false
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
+	return Widgets.wait_until(condition, timeout_ms, POLL_MS)
 end
 
 local function component(child: number): Widget?
-	local w = widget(WorldSwitcher.GROUP, child)
-	if w == nil then
-		return nil
-	end
-	return w
+	return (widget(WorldSwitcher.GROUP, child))
 end
 
 function WorldSwitcher.is_open(): boolean
@@ -148,7 +131,6 @@ local function box_of(w: Widget): Box
 	return Box.new(w.x, w.y, w.x + w.width - 1, w.y + w.height - 1)
 end
 
--- the total level a skill total world asks for (its activity reads like "1500 skill total")
 local function required_total(types: number, activity: string?): number?
 	if bit32.band(types, LoginWorldSwitcher.SKILL_TOTAL) == 0 or activity == nil then
 		return nil
@@ -157,7 +139,6 @@ local function required_total(types: number, activity: string?): number?
 	return if number then tonumber(number) else nil
 end
 
--- whether your total level lets you into a world; unknown levels don't. `total` gives the level without a read, or reads it once
 local function meets_total(types: number, activity: string?, total: (() -> number?)?): boolean
 	local required = required_total(types, activity)
 	if required == nil then
@@ -167,7 +148,6 @@ local function meets_total(types: number, activity: string?, total: (() -> numbe
 	return have ~= nil and have >= required
 end
 
--- reads the total level on the first call and keeps it
 local function total_once(): () -> number?
 	local read, total = false, nil :: number?
 	return function()
@@ -194,9 +174,7 @@ local function is_safe(types: number, activity: string?): boolean
 	return true
 end
 
--- the type flags of every world, by number
--- drops the dangerous worlds from a list of world numbers
-local function only_safe(worlds: { number }): { number }
+local function world_info(): { [number]: { types: number, activity: string } }
 	local info: { [number]: { types: number, activity: string } } = {}
 	local select = world_select()
 	if select ~= nil then
@@ -204,6 +182,11 @@ local function only_safe(worlds: { number }): { number }
 			info[w.id] = w
 		end
 	end
+	return info
+end
+
+local function only_safe(worlds: { number }): { number }
+	local info = world_info()
 	local result: { number } = {}
 	for _, world in worlds do
 		local w = info[world]
@@ -215,8 +198,7 @@ local function only_safe(worlds: { number }): { number }
 end
 
 local function list_rows(): { Row }?
-	local open = WorldSwitcher.is_open()
-	if not open then
+	if not WorldSwitcher.is_open() then
 		return nil
 	end
 	local list = component(WorldSwitcher.LIST)
@@ -258,7 +240,6 @@ local function list_rows(): { Row }?
 			end)
 			local number, players, activity = line[1], line[2], line[3]
 			local colour = if number then number.text_color else WorldSwitcher.FREE
-			-- the world you are on is drawn grey like an unavailable one, so its colour says nothing
 			local here = row.index == current
 			table.insert(result, {
 				world = row.index,
@@ -324,10 +305,7 @@ end
 
 function WorldSwitcher.is_loading(): boolean
 	local rows = list_rows()
-	if rows == nil then
-		return false
-	end
-	return #rows == 0
+	return rows ~= nil and #rows == 0
 end
 
 function WorldSwitcher.wait_loading(timeout_ms: number?): boolean
@@ -337,12 +315,10 @@ function WorldSwitcher.wait_loading(timeout_ms: number?): boolean
 end
 
 function WorldSwitcher.open(wait_load: boolean?): boolean
-	local opened = SidePanels.open(SidePanels.LOGOUT)
-	if not opened then
-		return opened
+	if not SidePanels.open(SidePanels.LOGOUT) then
+		return false
 	end
-	local open = WorldSwitcher.is_open()
-	if not open then
+	if not WorldSwitcher.is_open() then
 		local button = widget(Logout.GROUP, Logout.WORLD_SWITCHER)
 		if button == nil then
 			return false
@@ -375,8 +351,7 @@ function WorldSwitcher.open(wait_load: boolean?): boolean
 end
 
 function WorldSwitcher.close(): boolean
-	local open = WorldSwitcher.is_open()
-	if not open then
+	if not WorldSwitcher.is_open() then
 		return true
 	end
 	local close = component(WorldSwitcher.CLOSE)
@@ -416,16 +391,11 @@ function WorldSwitcher.buttons(): Buttons?
 end
 
 function WorldSwitcher.is_sorted(): boolean
-	local order = varp(WorldSwitcher.SORT_VARP)
-	if order == nil then
-		return false
-	end
-	return order == 0
+	return varp(WorldSwitcher.SORT_VARP) == 0
 end
 
 function WorldSwitcher.sort(): boolean
-	local open = WorldSwitcher.is_open()
-	if not open then
+	if not WorldSwitcher.is_open() then
 		return false
 	end
 	for _ = 1, 2 do
@@ -442,10 +412,7 @@ function WorldSwitcher.sort(): boolean
 			return varp(WorldSwitcher.SORT_VARP) ~= before
 		end, SORT_TIMEOUT_MS)
 	end
-	if WorldSwitcher.is_sorted() then
-		return true
-	end
-	return false
+	return WorldSwitcher.is_sorted()
 end
 
 function WorldSwitcher.cooldown(): number
@@ -507,7 +474,6 @@ local CONFIRM_TIMEOUT_MS = 1800
 local DISMISS_TIMEOUT_MS = 1200
 local REFUSED = "Please choose a different world."
 
--- the newest chat message's uid, to tell the messages a click causes from older ones
 local function last_uid(): number
 	local newest = 0
 	for _, m in chat_messages() or {} do
@@ -518,7 +484,6 @@ local function last_uid(): number
 	return newest
 end
 
--- the "World N is a ... world!" confirmation the world list shows before some worlds, and the world it names
 local function warning(): (Widget?, number?)
 	local text = widget(WorldSwitcher.CONFIRM_GROUP, WorldSwitcher.CONFIRM_TEXT)
 	if text == nil or text.hidden or text.text == nil then
@@ -540,7 +505,6 @@ local function refused(since: number): boolean
 	return false
 end
 
--- closes the warning with escape or its Cancel button (a biometric picks which first, the button is the fallback)
 local function dismiss_warning(): boolean
 	local function gone(): boolean
 		return wait_until(function()
@@ -570,7 +534,6 @@ local function dismiss_warning(): boolean
 	return gone()
 end
 
--- blocks the world when the game turned the hop down, with a warning (cancelled) or a chat message; true when it did
 local function check_refusal(world: number, since: number): boolean
 	local text, named = warning()
 	if text ~= nil then
@@ -619,7 +582,6 @@ end
 
 local HOP_ATTEMPTS = 3
 
--- one go at hopping: "ok", "refused" (the game said no, the world is blocked now), "moving" (the hop started but we didn't arrive), "unavailable" or "failed" (worth another try)
 local function hop(world: number, fail_cooldown: boolean): string
 	local row = scroll_to(world)
 	if row == nil then
@@ -650,7 +612,6 @@ local function hop(world: number, fail_cooldown: boolean): string
 	return if WorldSwitcher.current() == world then "ok" else "failed"
 end
 
--- whether your total level lets you into a world (worlds that aren't in the world list pass)
 local function can_join(world: number): boolean
 	local select = world_select()
 	if select ~= nil then
@@ -683,11 +644,9 @@ function WorldSwitcher.switch(world: number): boolean
 		return false
 	end
 	for attempt = 1, HOP_ATTEMPTS do
-		local opened = WorldSwitcher.open()
-		if not opened then
-			return opened
+		if not WorldSwitcher.open() then
+			return false
 		end
-		-- a list in world order scrolls predictably; if sorting fails the world is still found by scrolling
 		if not WorldSwitcher.sort() then
 			Log.log("WorldSwitcher", "couldn't sort the world list by world number")
 		end
@@ -728,13 +687,7 @@ local function pick(
 		worlds = allowed
 	end
 	local reachable: { number } = {}
-	local select = world_select()
-	local info: { [number]: { types: number, activity: string } } = {}
-	if select ~= nil then
-		for _, w in select.worlds do
-			info[w.id] = w
-		end
-	end
+	local info = world_info()
 	local total = total_once()
 	for _, world in worlds do
 		local w = info[world]

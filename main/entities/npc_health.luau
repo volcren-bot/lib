@@ -1,29 +1,33 @@
 --!strict
 local Host = require("@lib/host")
 
--- Tracks how hurt an NPC is: `target` reads your target's exact hitpoints, `update` adds up hitsplats for the others.
 local NpcHealth = {}
 
--- the hitsplat types that carry damage: a hit, and a block (which shows 0)
 NpcHealth.HIT = 16
 NpcHealth.BLOCK = 12
 
--- the target display: its interface, the child with the NPC's name and the one with "hitpoints / maximum"
 NpcHealth.GROUP = 303
 NpcHealth.NAME_CHILD = 9
 NpcHealth.HP_CHILD = 21
 
 type Track = {
 	damage: number,
-	-- its maximum hitpoints when the target display showed them
 	max: number?,
-	-- the hits already added, by slot and cycle
 	counted: { [string]: boolean },
 }
 
 local tracks: { [number]: Track } = {}
 
--- Adds the new hits on the NPCs with `indices` and forgets the rest; call at least once a tick.
+local function track_of(index: number): Track
+	local track = tracks[index]
+	if track == nil then
+		local fresh: Track = { damage = 0, max = nil, counted = {} }
+		track = fresh
+		tracks[index] = track
+	end
+	return track
+end
+
 function NpcHealth.update(indices: { number })
 	local present: { [number]: boolean } = {}
 	for _, index in ipairs(indices) do
@@ -36,12 +40,7 @@ function NpcHealth.update(indices: { number })
 	end
 	local splats = Host.npc_hitsplats(indices) or {}
 	for _, index in ipairs(indices) do
-		local track = tracks[index]
-		if track == nil then
-			local fresh: Track = { damage = 0, max = nil, counted = {} }
-			track = fresh
-			tracks[index] = track
-		end
+		local track = track_of(index)
 		for _, splat in ipairs(splats[index] or {}) do
 			local key = `{splat.slot}:{splat.cycle}`
 			if not track.counted[key] then
@@ -54,7 +53,6 @@ function NpcHealth.update(indices: { number })
 	end
 end
 
--- The name, hitpoints and maximum hitpoints the target display shows, or nil when it shows none.
 function NpcHealth.target(): (string?, number?, number?)
 	local name = Host.widget(NpcHealth.GROUP, NpcHealth.NAME_CHILD)
 	local health = Host.widget(NpcHealth.GROUP, NpcHealth.HP_CHILD)
@@ -68,41 +66,30 @@ function NpcHealth.target(): (string?, number?, number?)
 	return name.text, tonumber(current), tonumber(max)
 end
 
--- Takes `hp` of `max_hp` as the truth for the NPC with `index`, correcting the damage seen before.
 function NpcHealth.set(index: number, hp: number, max_hp: number)
-	local track = tracks[index]
-	if track == nil then
-		local fresh: Track = { damage = 0, max = nil, counted = {} }
-		track = fresh
-		tracks[index] = track
-	end
+	local track = track_of(index)
 	track.damage = max_hp - hp
 	track.max = max_hp
 end
 
--- The maximum hitpoints the target display showed for the NPC, nil when it never did.
 function NpcHealth.max_hp(index: number): number?
 	local track = tracks[index]
 	return if track then track.max else nil
 end
 
--- The damage seen on the NPC so far, 0 for one not seen.
 function NpcHealth.damage(index: number): number
 	local track = tracks[index]
 	return if track then track.damage else 0
 end
 
--- The hitpoints left of an NPC with `max_hp` hitpoints, at least 0.
 function NpcHealth.remaining(index: number, max_hp: number): number
 	return math.max(0, max_hp - NpcHealth.damage(index))
 end
 
--- How much of its hitpoints an NPC with `max_hp` has left, from 1 (unhurt) to 0.
 function NpcHealth.fraction(index: number, max_hp: number): number
 	return NpcHealth.remaining(index, max_hp) / max_hp
 end
 
--- Forgets everything seen (a new fight).
 function NpcHealth.reset()
 	tracks = {}
 end

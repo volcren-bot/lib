@@ -1,10 +1,7 @@
 --!strict
--- Kills the nearest NAME nobody else is fighting from a safe spot with a ranged weapon, KILLS times.
 local NAME = "Lesser demon"
 local KILLS = 3
--- other monsters around to keep out of reach of too ({} for none)
 local AVOID = { "Lesser demon", "Black demon" }
--- eat one of these (best first) when the hitpoints fall to EAT_AT; stop at STOP_AT
 local FOOD = { "Shark", "Cake", "2/3 cake", "Slice of cake" }
 local EAT_AT, STOP_AT = 60, 30
 
@@ -46,7 +43,6 @@ for kill = 1, KILLS do
 		print(`no {NAME} free around`)
 		break
 	end
-	-- walks to a spot it's in range from, attacks it, and keeps it stuck while we shoot
 	local killed, why = CombatSafeSpot.fight(target.index, { avoid = AVOID, on_tick = on_tick })
 	if not killed then
 		print(`stopped: {why}`)

@@ -29,7 +29,10 @@ type NavLoc = Host.NavLoc
 
 local Walker = {}
 
--- logs what the walk does and how long it takes
+local function lazy(path: string): any
+	return (require :: any)(path)
+end
+
 Walker.DEBUG = false
 
 local function debug(text: string)
@@ -56,27 +59,19 @@ function Walker.relative(dx: number, dy: number): Tile?
 end
 
 function Walker.path(to: Tile, from: Tile?): { Tile }?
-	local start = from
+	local start = from or Walker.position()
 	if start == nil then
-		local me = Walker.position()
-		if me == nil then
-			return nil
-		end
-		start = me
+		return nil
 	end
-	return find_path(start :: Tile, to)
+	return find_path(start, to)
 end
 
 function Walker.route(to: Tile, from: Tile?): Host.SceneRoute?
-	local start = from
+	local start = from or Walker.position()
 	if start == nil then
-		local me = Walker.position()
-		if me == nil then
-			return nil
-		end
-		start = me
+		return nil
 	end
-	return scene_route(start :: Tile, to)
+	return scene_route(start, to)
 end
 
 local clicked_tile: Tile? = nil
@@ -97,7 +92,15 @@ end
 Walker.WALK_MS_PER_TILE = 600
 Walker.RUN_MS_PER_TILE = 300
 
--- How far (fine units, x and y) the player will have moved `ms` from now along the route; zero when not walking.
+local function ms_per_tile(): number
+	return if Player.is_running() then Walker.RUN_MS_PER_TILE else Walker.WALK_MS_PER_TILE
+end
+
+local function tile_centre(t: Tile, base_x: number, base_y: number): (number, number)
+	return (t.x - base_x) * Projection.TILE + Projection.TILE / 2,
+		(t.y - base_y) * Projection.TILE + Projection.TILE / 2
+end
+
 function Walker.ahead(ms: number): Host.FinePoint?
 	local state = game_state()
 	local p = state.position
@@ -106,7 +109,6 @@ function Walker.ahead(ms: number): Host.FinePoint?
 	end
 	local flag: Tile? = state.destination
 	if flag == nil then
-		-- the destination clears on the server's last step: the player still has its path to finish
 		local server = Host.server_tile()
 		flag = if server and server.steps > 0 then { x = server.x, y = server.y } else nil
 	end
@@ -117,25 +119,18 @@ function Walker.ahead(ms: number): Host.FinePoint?
 	local tiles = if route and #route.tiles > 0 then route.tiles else { flag }
 	local base_x = p.x - p.local_x // Projection.TILE
 	local base_y = p.y - p.local_y // Projection.TILE
-	local function centre(t: Tile): (number, number)
-		return (t.x - base_x) * Projection.TILE + Projection.TILE / 2,
-			(t.y - base_y) * Projection.TILE + Projection.TILE / 2
-	end
-
 	local x, y = p.local_x, p.local_y
 	local first = 1
-	-- The route starts on the tile the player is drawn on, whose centre is behind them once past it.
 	if #tiles >= 2 then
-		local ax, ay = centre(tiles[1])
-		local bx, by = centre(tiles[2])
+		local ax, ay = tile_centre(tiles[1], base_x, base_y)
+		local bx, by = tile_centre(tiles[2], base_x, base_y)
 		if (ax - x) * (bx - ax) + (ay - y) * (by - ay) < 0 then
 			first = 2
 		end
 	end
-	local per_tile = if Player.is_running() then Walker.RUN_MS_PER_TILE else Walker.WALK_MS_PER_TILE
-	local budget = ms * Projection.TILE / per_tile
+	local budget = ms * Projection.TILE / ms_per_tile()
 	for i = first, #tiles do
-		local tx, ty = centre(tiles[i])
+		local tx, ty = tile_centre(tiles[i], base_x, base_y)
 		local step = math.max(math.abs(tx - x), math.abs(ty - y))
 		if step >= budget then
 			local f = budget / step
@@ -156,10 +151,8 @@ local function quad_on_screen(quad: Geometry.Quad, view: Geometry.Box?, blockers
 	return visible
 end
 
--- the share of the game view's width and height, on each side, that walking doesn't click in
 Walker.SCREEN_PADDING = 0.10
 
--- The game view less SCREEN_PADDING all round: tiles walking clicks must be inside it.
 local function walk_view(): Geometry.Box?
 	local view = Toplevel.viewport()
 	if view == nil then
@@ -170,21 +163,23 @@ local function walk_view(): Geometry.Box?
 	return Geometry.Box.new(view.x1 + px, view.y1 + py, view.x2 - px, view.y2 - py)
 end
 
+local function quad_walkable(quad): boolean
+	return quad_on_screen(quad, walk_view(), Toplevel.blockers())
+end
+
 function Walker.on_screen(tile: Tile): boolean
 	local quad = Projection.tile(tile)
-	return quad ~= nil and quad_on_screen(quad, walk_view(), Toplevel.blockers())
+	return quad ~= nil and quad_walkable(quad)
 end
 
 Walker.HOVER_ATTEMPTS = 2
 Walker.SCREEN_FALLBACKS = 2
--- "Walk here" further down the menu than this many lines isn't worth the trip: the minimap is used
 Walker.WALK_HERE_MAX_ROW = 14
 
 local function is_walk_here(entry: Host.MenuEntry): boolean
 	return string.find(string.lower(entry.option), "^walk here") ~= nil
 end
 
--- Right-clicks at the mouse and picks the first "Walk here" unless too far down; whether it was picked.
 local function select_walk_here(): boolean
 	local at = Mouse.position()
 	if at == nil then
@@ -211,10 +206,8 @@ local function select_walk_here(): boolean
 	return true
 end
 
--- how long after the mouse gets there the click lands, for aiming ahead while walking
 Walker.CLICK_LEAD_MS = 80
 
--- The quad of `tile` where the camera, which follows the player, will show it `lead_ms` from now.
 local function quad_ahead(tile: Tile, lead_ms: number): Geometry.Quad?
 	local shift = Walker.ahead(lead_ms)
 	local base = Projection.base()
@@ -234,7 +227,6 @@ local function quad_ahead(tile: Tile, lead_ms: number): Geometry.Quad?
 	return Geometry.Quad.new(corners[1], corners[2], corners[3], corners[4])
 end
 
--- Where to aim for `tile`: while walking the scene slides under the mouse, so where it will be once the mouse is there.
 local function aim_quad(tile: Tile): Geometry.Quad?
 	local quad = Projection.tile(tile)
 	if quad == nil or not Player.in_transit() then
@@ -244,8 +236,6 @@ local function aim_quad(tile: Tile): Geometry.Quad?
 	return quad_ahead(tile, lead) or quad
 end
 
--- `menu` false gives up on a tile something stands on instead of picking "Walk here" from the menu. `half` (1 or 2) is the
--- triangle of the tile aimed at, random when nil; the second result is the one used.
 local function click_projected(
 	tile: Tile,
 	accept: ((Host.MenuEntry) -> boolean)?,
@@ -258,19 +248,16 @@ local function click_projected(
 		Log.log("Walker", `tile {tile.x},{tile.y} can't be projected`)
 		return false, used
 	end
-	if not quad_on_screen(quad, walk_view(), Toplevel.blockers()) then
+	if not quad_walkable(quad) then
 		Log.log("Walker", `tile {tile.x},{tile.y} is off the game view or behind the interface`)
 		return false, used
 	end
-	-- something standing on the tile (a ladder, a mast) can own part of it: try other spots of the quad
 	local walkable = false
 	local view, blockers = walk_view(), Toplevel.blockers()
 	local function visible(p: Geometry.Point): boolean
 		return Toplevel.is_visible(Geometry.Point.new(math.round(p.x), math.round(p.y)), view, blockers)
 	end
 	for _ = 1, Walker.HOVER_ATTEMPTS do
-		-- the tile is followed while the mouse goes, since the scene slides under it while walking; the spot near its centre has to
-		-- be reached, as one on its edge can take the tile next to it
 		local followed, why = Track.hover(function(): { Geometry.Polygon }?
 			local now = Projection.tile(tile)
 			if now == nil then
@@ -279,7 +266,6 @@ local function click_projected(
 			local c = Geometry.Quad.corners(now)
 			return { { c[1], c[2], c[3] }, { c[1], c[3], c[4] } }
 		end, used, visible)
-		-- the mouse isn't on the tile then, so the menu's "Walk here" would walk somewhere else
 		if not followed then
 			Log.log("Walker", `couldn't keep the mouse on tile {tile.x},{tile.y} ({why})`)
 			return false, used
@@ -312,11 +298,8 @@ local function click_projected(
 	return true, used
 end
 
--- After a tile click: how long the client gets to show the walk's destination (the server takes the click on the next tick).
 Walker.CLICK_CHECK_MS = 700
 
--- Where the walk a click started is going: the destination once the client shows it, nil when the player is already on the
--- tile (a short walk can end before a read sees it) or no walk shows.
 local function walk_destination(tile: Tile): Tile?
 	local deadline = Host.time() + Walker.CLICK_CHECK_MS
 	while Host.time() < deadline do
@@ -333,8 +316,6 @@ local function walk_destination(tile: Tile): Tile?
 	return nil
 end
 
--- Zooms the camera out (halfway to a far zoom, then to it) while the tile stays off the game view or behind the interface after
--- turning to it, as `Clickbox.reveal` does for a thing.
 local function reveal_tile(tile: Tile)
 	local zoom = Camera.zoom()
 	if zoom == nil or Walker.on_screen(tile) then
@@ -359,14 +340,12 @@ function Walker.click_tile(tile: Tile): boolean
 	if not ok then
 		return false
 	end
-	-- something drawn over the tile (a pillar, a tree) walks the click to the ground behind it: once more on its other half
 	local dest = walk_destination(tile)
 	if dest and (dest.x ~= tile.x or dest.y ~= tile.y) then
 		Log.log("Walker", `the click walks to {dest.x},{dest.y}, not {tile.x},{tile.y}: clicking the tile's other half`)
 		if click_projected(tile, nil, nil, 3 - half) then
 			dest = walk_destination(tile)
 		end
-		-- all of it is covered from this angle: the minimap has nothing drawn over it
 		if dest and (dest.x ~= tile.x or dest.y ~= tile.y) and Walker.on_minimap(tile) then
 			Log.log("Walker", `still walking to {dest.x},{dest.y}: clicking {tile.x},{tile.y} on the minimap`)
 			Walker.click_minimap(tile)
@@ -375,11 +354,9 @@ function Walker.click_tile(tile: Tile): boolean
 	return true
 end
 
--- Starts moving the mouse over the tile and returns at once; false when it is off screen. Doesn't turn the camera or click.
--- `at` is the tile the player will stand on when it is time to click: the tile is aimed at as the screen will show it then.
 function Walker.hover_tile_async(tile: Tile, at: Tile?): boolean
 	local quad = if at then Projection.tile(tile, nil, at) else aim_quad(tile)
-	if quad == nil or not quad_on_screen(quad, walk_view(), Toplevel.blockers()) then
+	if quad == nil or not quad_walkable(quad) then
 		return false
 	end
 	Mouse.move_async(quad)
@@ -404,11 +381,7 @@ function Walker.wait_arrival(tile: Tile, timeout_ms: number?): boolean
 end
 
 function Walker.walk_tile(tile: Tile, timeout_ms: number?): boolean
-	local clicked = Walker.click_tile(tile)
-	if not clicked then
-		return clicked
-	end
-	return Walker.wait_arrival(tile, timeout_ms)
+	return Walker.click_tile(tile) and Walker.wait_arrival(tile, timeout_ms)
 end
 
 function Walker.distance(a: Tile, b: Tile): number
@@ -417,28 +390,21 @@ end
 
 Walker.MINIMAP_REACH = 0.8
 Walker.MINIMAP_CHANCE = 0.05
--- the least minimap zoom a minimap walk clicks at, and how often a lower one is raised to a random higher level instead
 Walker.MINIMAP_ZOOM_MIN = 4
 Walker.MINIMAP_ZOOM_HIGHER_CHANCE = 0.25
--- how often a walk clicks short of the farthest tile it can, and by up to how many route tiles
 Walker.SHORTER_CHANCE = 0.2
 Walker.SHORTER_MAX = 4
--- the projection and the minimap lag behind a scene that just loaded
 Walker.SCENE_SETTLE_MS = 400
--- Game screen clicks set no destination from about 35 tiles away; the minimap is limited by its radius.
 Walker.SCREEN_REACH = 30
 
--- The game loads a scene this many tiles across, so a click past it walks nowhere and the walk keeps this many tiles clear of its edge.
 Walker.SCENE_TILES = 104
 Walker.SCENE_MARGIN = 2
 
--- Whether `t` is in the loaded scene whose corner tile is `base`, clear of its edge.
 local function in_scene(t: Tile, base: Tile): boolean
 	local x, y, last = t.x - base.x, t.y - base.y, Walker.SCENE_TILES - 1 - Walker.SCENE_MARGIN
 	return x >= Walker.SCENE_MARGIN and y >= Walker.SCENE_MARGIN and x <= last and y <= last
 end
 
--- The tile of the scene the game has loaded at its corner, which changes when it loads another one.
 local function scene_base(): string
 	local p = game_state().position
 	if p == nil then
@@ -464,7 +430,6 @@ function Walker.on_minimap(tile: Tile): boolean
 	return minimap_point(tile) ~= nil
 end
 
--- Raises a minimap zoom below the minimum to it, or sometimes to a higher level; a zoom at or above it stays.
 local function ensure_minimap_zoom(): boolean
 	local zoom = Minimap.zoom()
 	if zoom == nil then
@@ -512,14 +477,11 @@ local function line(a: Tile, b: Tile): { Tile }
 	return tiles
 end
 
--- The camera is turned to show as much of the route ahead as it can: the tiles weighed, the yaws tried, and the gain a turn must show.
 Walker.STEER_TILES = 32
 Walker.STEER_OFFSETS = { -60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60 }
 Walker.STEER_GAIN = 4
--- a turn goes to a random yaw among those that show this close to the most
 Walker.STEER_SLACK = 1
 
--- How far along `tiles` the camera shows with the player at `at`, for each yaw tried and as it is: the yaws with their farthest index, and the current one's.
 local function route_view(
 	tiles: { NavTile },
 	from: number,
@@ -533,9 +495,7 @@ local function route_view(
 		return {}, none
 	end
 	local base_x, base_y = p.x - p.local_x // Projection.TILE, p.y - p.local_y // Projection.TILE
-	-- the camera's focus once over `at`
-	local fx = (at.x - base_x) * Projection.TILE + Projection.TILE / 2
-	local fy = (at.y - base_y) * Projection.TILE + Projection.TILE / 2
+	local fx, fy = tile_centre(at, base_x, base_y)
 	local shift = { x = math.round(fx - camera.focal_x), y = math.round(fy - camera.focal_y) }
 	local wanted: { number } = {}
 	local mx, my = 0, 0
@@ -549,8 +509,9 @@ local function route_view(
 			break
 		end
 		table.insert(wanted, i)
-		mx += (t.x - base_x) * Projection.TILE + Projection.TILE / 2 - fx
-		my += (t.y - base_y) * Projection.TILE + Projection.TILE / 2 - fy
+		local cx, cy = tile_centre(t, base_x, base_y)
+		mx += cx - fx
+		my += cy - fy
 	end
 	if #wanted == 0 then
 		return {}, none
@@ -561,14 +522,12 @@ local function route_view(
 	for _, offset in ipairs(Walker.STEER_OFFSETS) do
 		table.insert(turns, (bearing + offset - facing + 180) % 360 - 180)
 	end
-	-- turning the camera by `turn` shows a tile where it now shows the tile turned the other way round its focus
 	local points: { Host.FinePoint } = {}
 	for _, turn in ipairs(turns) do
 		local c, s = math.cos(math.rad(turn)), math.sin(math.rad(turn))
 		for _, i in ipairs(wanted) do
-			local t = tiles[i]
-			local dx = (t.x - base_x) * Projection.TILE + Projection.TILE / 2 - fx
-			local dy = (t.y - base_y) * Projection.TILE + Projection.TILE / 2 - fy
+			local cx, cy = tile_centre(tiles[i], base_x, base_y)
+			local dx, dy = cx - fx, cy - fy
 			table.insert(points, { x = math.round(fx + dx * c - dy * s), y = math.round(fy + dx * s + dy * c), z = 0 })
 		end
 	end
@@ -597,10 +556,8 @@ local function route_view(
 	return views, current
 end
 
--- The route shows best from high up: below PITCH_MAX by more than this, a turn raises the camera again.
 Walker.LOW_PITCH = 400
 
--- Turns the camera to show more of `tiles` when a yaw shows at least `gain` tiles more, and raises a low camera; returns whether it turned.
 local function steer(tiles: { NavTile }, from: number, to: number, at: NavTile, gain: number, async: boolean?): boolean
 	if not Camera.face_enabled then
 		return false
@@ -620,7 +577,6 @@ local function steer(tiles: { NavTile }, from: number, to: number, at: NavTile, 
 		end
 		return false
 	end
-	-- a yaw near the best on both sides still shows the route as the player moves on: one of those if there are any
 	local good = function(i: number): boolean
 		return views[i] ~= nil and views[i].shown >= best - Walker.STEER_SLACK
 	end
@@ -646,9 +602,7 @@ local function steer(tiles: { NavTile }, from: number, to: number, at: NavTile, 
 	return if async then Camera.set_yaw_degrees_async(degrees) else Camera.set_yaw_degrees(degrees)
 end
 
--- how often the camera is checked against the route while running to the flag
 Walker.STEER_CHECK_MS = 1200
--- The chance, timing and decay of a tiny camera or mouse move while waiting for the flag, rolled again a short while later at FIDGET_CHANCE_DROP less.
 Walker.FIDGET_CHANCE = 0.75
 Walker.FIDGET_CHANCE_DROP = 0.15
 Walker.FIDGET_DELAY_MIN_MS = 300
@@ -656,11 +610,9 @@ Walker.FIDGET_DELAY_MAX_MS = 2000
 Walker.FIDGET_NEXT_MIN_MS = 100
 Walker.FIDGET_NEXT_MAX_MS = 200
 Walker.FIDGET_MIN_LEFT_MS = 1500
--- Tiny pitch moves stay within this much of PITCH_MAX, and zoom moves go this many scroll notches from the walk's zoom, weighted.
 Walker.FIDGET_PITCH = 250
 Walker.FIDGET_ZOOM_NOTCHES = { 1, 2, 4, 2, 1 }
 
--- The zoom tiny zoom moves stay round, kept from walk to walk, and the zoom the last one went to; any other zoom found becomes the new one.
 local zoom_home: number? = nil
 local zoom_left: number? = nil
 
@@ -675,15 +627,12 @@ local function home_zoom(): number?
 	return zoom_home
 end
 
--- Queues one tiny yaw, pitch, zoom or mouse move and returns at once; the next click takes over, and zoom moves stay near `zoom`.
 local function fidget(zoom: number?)
-	-- required here, untyped: the antiban tasks need the walker
-	local Tasks = (require :: any)("./antiban/antiban_tasks")
+	local Tasks = lazy("./antiban/antiban_tasks")
 	local roll = math.random(1, 4)
 	if roll == 1 then
 		Tasks.tiny_camera_rotation()
 	elseif roll == 2 then
-		-- not the antiban's: from the top of the range that only goes down, and the walk needs a high camera
 		local pitch = Camera.pitch()
 		local target = Random.int(Camera.PITCH_MAX - Walker.FIDGET_PITCH, Camera.PITCH_MAX)
 		if pitch and math.abs(target - pitch) > Camera.tolerance then
@@ -691,7 +640,6 @@ local function fidget(zoom: number?)
 			Camera.set_pitch_async(target)
 		end
 	elseif roll == 3 then
-		-- not the antiban's either: notches round the walk's zoom, so many of them don't add up to a different zoom
 		local current = Camera.zoom()
 		if current and zoom then
 			local change = (Random.weighted_index(Walker.FIDGET_ZOOM_NOTCHES) or 1)
@@ -712,7 +660,6 @@ local function fidget(zoom: number?)
 	end
 end
 
--- The tile `index` steps before `at` (within `from`) that is shown, or `at` when none is.
 local function shorter(tiles: { NavTile }, from: number, at: number, shown: (NavTile) -> boolean): number
 	for i = math.max(from, at - math.random(1, Walker.SHORTER_MAX)), at - 1 do
 		if shown(tiles[i]) then
@@ -731,7 +678,6 @@ local function farthest_shown(tiles: { NavTile }, from: number, to: number, show
 	return nil
 end
 
--- Where you are, with your plane.
 function Walker.here(): NavTile?
 	local p = game_state().position
 	if p == nil or p.plane == nil then
@@ -740,7 +686,6 @@ function Walker.here(): NavTile?
 	return { x = p.x, y = p.y, plane = p.plane :: number }
 end
 
--- Plans a walk from you to `to` on `plane` (yours by default), through doors and over ladders and staircases: `Host.nav_plan`.
 function Walker.plan(to: Tile, plane: number?, options: Host.NavOptions?): NavPlan?
 	local here = Walker.here()
 	if here == nil then
@@ -753,8 +698,6 @@ function Walker.plan(to: Tile, plane: number?, options: Host.NavOptions?): NavPl
 	return plan
 end
 
--- how long a walk may take unless `timeout_ms` says, at least: a long one gets a walk's worth of time per tile planned
--- How long a plan waits for a scene that is loading.
 Walker.SCENE_LOAD_MS = 10000
 Walker.SCENE_LOAD_POLL_MS = 100
 Walker.TIMEOUT_MS = 90000
@@ -763,53 +706,34 @@ export type WalkOptions = {
 	near: number?,
 	timeout_ms: number?,
 	on_step: ((Tile) -> boolean?)?,
-	-- walk the straight line to `to`, on your plane, without planning
 	straight: boolean?,
-	-- take a different way each walk (default true)
 	randomize: boolean?,
 	before_click: ((target: Tile, here: Tile) -> boolean?)?,
-	-- a menu entry besides "Walk here" that may sit on the tile: what we walk up to use
 	accept: ((entry: Host.MenuEntry) -> boolean)?,
-	-- the plane `to` is on (default yours): the ladders and staircases on the way take you there
 	plane: number?,
-	-- open the closed doors on the way (default true); false walks round them
 	doors: boolean?,
-	-- climb ladders and staircases (default true); false stays on your plane
 	climbs: boolean?,
-	-- take agility shortcuts (default true, `Transports.SHORTCUTS`) that the real Agility level allows and that save `Transports.SHORTCUT_MIN_SAVING_TILES`; false walks round them
 	shortcuts: boolean?,
-	-- more for `Host.nav_plan`: door and climb options, locs to avoid, costs
 	nav: Host.NavOptions?,
-	-- teleport spells toward `to` when that saves enough time (default true); false always walks. A table sets `min_saving_ticks` and `exclude` (spell names never to use)
 	transports: (boolean | { exclude: { [string]: boolean }?, min_saving_ticks: number? })?,
 }
 
--- the farthest a door or ladder on the way is clicked from, and how often the walk looks for it on screen
 Walker.ACTION_RANGE = 16
 Walker.ACTION_CHECK_MS = 150
--- where the underground (dungeons) starts: the same map, 100 map squares north
 Walker.UNDERGROUND = 6400
--- clicks on a door or ladder that didn't do anything before the walk plans without it
 Walker.ACTION_ATTEMPTS = 3
--- a shortcut (a climb that keeps the plane) has worked when we are this close to the tile it lands on
 Walker.SHORTCUT_LANDED_NEAR = 1
--- a click on one has failed when the player stands still this long without it working, or after the timeout
 Walker.ACTION_IDLE_MS = 1800
 Walker.ACTION_TIMEOUT_MS = 15000
--- while a door is being opened: how often the walk plans again to see that it is open
 Walker.DOOR_CHECK_MS = 200
--- a door that just opened and shows shut again isn't clicked for this long: a gate walks you through and shuts
 Walker.DOOR_REOPEN_MS = 3000
--- what the game says of a door opened or closed too often; the walk goes round it
 Walker.DOOR_STUCK = "seems to be stuck"
 
--- The uid of the newest chat message, so what the game says after a click can be told from what it said before.
 local function last_chat(): number
 	local all = Host.chat_messages()
 	return if all and #all > 0 then all[#all].uid else -1
 end
 
--- Whether the game said a door is stuck after the message with uid `since`.
 local function door_stuck(since: number): boolean
 	for _, m in ipairs(Host.chat_messages() or {}) do
 		if m.uid > since and string.find(string.lower(m.text), Walker.DOOR_STUCK, 1, true) then
@@ -818,29 +742,19 @@ local function door_stuck(since: number): boolean
 	end
 	return false
 end
--- planning again: when this many tiles off the plan, and this often anyway (doors other players open and close)
 Walker.OFF_PATH = 3
 Walker.REPLAN_MS = 6000
--- the next click goes in when the walk to the last one has between these many ms left
 Walker.CLICK_AHEAD_MIN_MS = 600
 Walker.CLICK_AHEAD_MAX_MS = 1500
--- how far (tiles) the flag may be off the plan and still be on it: planning again needn't go through the tile clicked
 Walker.FLAG_NEAR = 2
--- walk clicks in a row that didn't move the player before the walk gives up (it plans again every other one)
 Walker.STUCK_CLICKS = 6
--- how long after a walk click the next one waits for the flag to show
 Walker.CLICK_GRACE_MS = 300
--- the player counts as still moving this long after it last moved; while it moves, tiles this close aren't clicked
 Walker.SETTLE_MS = 250
 Walker.SETTLE_TILES = 2
--- the farthest tile the minimap is looked at for (it shows fewer)
 Walker.MINIMAP_TILES = 20
 
--- After a plane change the walk pauses a random time in this range (ms) before its next click.
 Walker.CLIMB_PAUSE_MIN_MS = 0
 Walker.CLIMB_PAUSE_MAX_MS = 900
-
--- after a climb the camera glides to the new floor's height: what is aimed at before it stops moves under the mouse
 
 Walker.CAMERA_SETTLE_MS = 600
 
@@ -858,7 +772,6 @@ local function camera_settle()
 	debug(`camera settled in {math.floor(time() - began)} ms`)
 end
 
--- The same door or the other half of it: double door halves stand side by side along their wall (`along`) and open together.
 local function same_door(a: NavLoc, b: NavLoc, along: Tile?): boolean
 	local dx, dy = b.x - a.x, b.y - a.y
 	return a.plane == b.plane
@@ -867,7 +780,6 @@ local function same_door(a: NavLoc, b: NavLoc, along: Tile?): boolean
 		and (along == nil or dx * along.y - dy * along.x == 0)
 end
 
--- The way the wall a door stands in runs, from its rotation or square to the step through it; nil when neither says.
 local function wall_along(loc: Host.Loc, across: Tile): Tile?
 	if loc.shape == 0 and loc.rotation then
 		return if (loc.rotation :: number) % 2 == 0 then { x = 0, y = 1 } else { x = 1, y = 0 }
@@ -884,7 +796,6 @@ local function loc_key(l: NavLoc): string
 	return `{l.id}@{l.x},{l.y},{l.plane}`
 end
 
--- The loaded loc a plan's action uses.
 local function live_loc(target: NavLoc): Host.Loc?
 	for _, loc in ipairs(locs(target.plane) or {}) do
 		if loc.id == target.id and loc.x == target.x and loc.y == target.y then
@@ -894,37 +805,30 @@ local function live_loc(target: NavLoc): Host.Loc?
 	return nil
 end
 
--- What a walk is doing with a door or a ladder it clicked.
 type Using = {
 	action: NavAction,
-	-- the way the door's wall runs (`wall_along`)
 	along: Tile?,
-	-- the newest chat message before the click
 	chat: number,
 	clicked_at: number,
 	from: NavTile,
 	still_since: number?,
 	checked_at: number,
-	-- for a climb that keeps the plane and the world (an agility shortcut): the tile it lands on, which is how we know it worked
 	landing: NavTile?,
 }
 
 local function walk_plan(to: Tile, opts: WalkOptions): boolean
-	-- required here, untyped: objects and clickboxes need the walker
-	local Objects = (require :: any)("./entities/objects")
-	local Clickbox = (require :: any)("./clickbox")
+	local Objects = lazy("./entities/objects")
+	local Clickbox = lazy("./clickbox")
 	local start = Walker.here()
 	if start == nil then
 		return false
 	end
 	local near = opts.near or 2
 	local goal: NavTile = { x = to.x, y = to.y, plane = opts.plane or start.plane }
-	-- the default grows with the plan: a walk's worth of time for every tile still planned
 	local timeout = opts.timeout_ms or Walker.TIMEOUT_MS
 	local randomize = opts.randomize ~= false and not opts.straight
 	local nav: Host.NavOptions = if opts.nav then table.clone(opts.nav) else {}
 	nav.near = near
-	-- one seed per walk: planning again keeps the same noise
 	nav.seed = if randomize then math.random(1, 1000000000) else nil
 	if opts.doors == false then
 		nav.door_options = {}
@@ -932,9 +836,8 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 	if opts.climbs == false then
 		nav.climbs = false
 	else
-		local Transports = (require :: any)("./transports")
+		local Transports = lazy("./transports")
 		if nav.allow_climbs == nil then
-			-- the climbs and shortcuts that ask for a quest, a level, an item: the planner may use those the player has what they ask for
 			nav.allow_climbs = Transports.allowed_climbs({ shortcuts = opts.shortcuts })
 		end
 		if nav.shortcut_saving == nil then
@@ -948,34 +851,28 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 	local plan: NavPlan? = nil
 	local planned_at, planned_base = 0, ""
 	local progress = 1
-	-- the plan's next door or ladder, and the loaded loc it is (looked up once per plan)
 	local action: NavAction? = nil
 	local action_loc: Host.Loc? = nil
 	local looked_at = 0
 	local using: Using? = nil
-	-- the door that opened last and when: a gate can shut again before it walks you through
 	local opened: Using? = nil
 	local opened_at = 0
 	local clicked_at: NavTile? = nil
 	local clicked_tile_at: Tile = start
 	local clicked_ms = 0
-	-- when the player was last seen moving (its tile or its spot in it changed)
 	local moved_ms: number? = nil
 	local last_spot = ""
 	local still_clicks = 0
 	local ahead_ms = math.random(Walker.CLICK_AHEAD_MIN_MS, Walker.CLICK_AHEAD_MAX_MS)
-	-- when the camera was last turned to the route (or checked), and when the wait for the flag has its tiny move
 	local steered_at = 0
 	local fidget_at: number? = nil
 	local fidget_chance = 0
 	local zoom = home_zoom()
 	local started = time()
-	-- no click before this: the pause after a plane change
 	local resume_at = 0
 
 	local function make_plan(drawn: NavTile): boolean
 		local began = time()
-		-- from where the server has you: ahead of where you are drawn while you move, past a door that shut behind you
 		local server = server_tile()
 		local here = if server and (server.plane == nil or server.plane == drawn.plane)
 			then { x = server.x, y = server.y, plane = drawn.plane }
@@ -988,7 +885,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			plan = { tiles = tiles, actions = {}, reached = true, goal = goal }
 		else
 			local made, err = nav_plan(here, goal, nav)
-			-- crossing into a new part of the map stops the game logged-in state for a moment
 			local deadline = time() + Walker.SCENE_LOAD_MS
 			while made == nil and err == "not logged in" and time() < deadline do
 				sleep(Walker.SCENE_LOAD_POLL_MS)
@@ -1001,7 +897,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			end
 		end
 		local made = time()
-		-- a plan only earns more time if the player has moved since the last: standing still, replanning would never time out
 		local earned = planned_at == 0 or (moved_ms ~= nil and moved_ms > planned_at)
 		planned_at, planned_base, progress = made, scene_base(), 1
 		if opts.timeout_ms == nil and earned then
@@ -1017,7 +912,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		return true
 	end
 
-	-- the end of the stretch walked before the next door or ladder
 	local function stretch_end(p: NavPlan): number
 		return if action then action.at else #p.tiles
 	end
@@ -1032,12 +926,10 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		using, plan = nil, nil
 	end
 
-	-- whether the door or ladder in use did its thing, failed, or is still being walked to
 	local function check_using(here: NavTile)
 		local u = using :: Using
 		local now = time()
 		if u.action.kind == "climb" then
-			-- a plane up or down, or into or out of the underground (the same plane, 100 map squares north); for a shortcut that stays where it is, being on the landing tile
 			local landed = u.landing ~= nil
 				and here.plane == (u.landing :: NavTile).plane
 				and Walker.distance(here, u.landing :: NavTile) <= Walker.SHORTCUT_LANDED_NEAR
@@ -1057,16 +949,13 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		elseif now - u.checked_at >= Walker.DOOR_CHECK_MS then
 			u.checked_at = now
 			if door_stuck(u.chat) then
-				-- it won't open for a while: no use trying again
 				failures[loc_key(u.action.loc)] = Walker.ACTION_ATTEMPTS - 1
 				failed(u.action, "is stuck")
 				return
 			end
-			-- open (or through it): the plan doesn't use it any more, and is the next one
 			if make_plan(here) then
 				local next_action = (plan :: NavPlan).actions[1]
 				local server = movement()
-				-- some (a toll gate) walk you through and shut behind you: let the server finish moving you first
 				local led = server ~= nil and server.moving and Player.destination() == nil
 				if (next_action == nil or not same_door(next_action.loc, u.action.loc, u.along)) and not led then
 					debug(`door open {math.floor(now - u.clicked_at)} ms after the click`)
@@ -1080,7 +969,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			or here.x ~= u.from.x
 			or here.y ~= u.from.y
 			or (server ~= nil and server.moving)
-			-- a grapple stands still for seconds while it plays
 			or (Player.animation() or -1) ~= -1
 		u.from = { x = here.x, y = here.y, plane = u.from.plane }
 		if moving then
@@ -1095,7 +983,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		end
 	end
 
-	-- `seen` when it is on screen already: then the camera isn't turned to it first
 	local function use(here: NavTile, a: NavAction, loc: Host.Loc, seen: boolean): boolean
 		if opts.before_click and opts.before_click({ x = loc.x, y = loc.y }, here) == false then
 			return false
@@ -1103,7 +990,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		local began = time()
 		local chat = last_chat()
 		local way = (plan :: NavPlan).tiles
-		local wear_for_climb = (require :: any)("./transports").wear_for_climb
+		local wear_for_climb = lazy("./transports").wear_for_climb
 		if a.kind == "climb" and not wear_for_climb(way[a.at], way[math.min(a.at + 1, #way)], a.loc.option) then
 			return false
 		end
@@ -1115,7 +1002,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		local tiles = (plan :: NavPlan).tiles
 		local before, after = tiles[a.at], tiles[math.min(a.at + 1, #tiles)]
 		local along = wall_along(loc, { x = after.x - before.x, y = after.y - before.y })
-		-- a climb that stays on the plane and in the world is a shortcut: it worked when we stand where it lands
 		local stays = a.kind == "climb"
 			and after.plane == before.plane
 			and (after.y >= Walker.UNDERGROUND) == (before.y >= Walker.UNDERGROUND)
@@ -1131,7 +1017,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		return true
 	end
 
-	-- the door or ladder ahead can be clicked from here: close enough and on screen
 	local function in_view(here: NavTile, loc: Host.Loc): boolean
 		if Objects.distance(loc, here) > Walker.ACTION_RANGE then
 			return false
@@ -1176,7 +1061,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 
 		local pause = math.floor(resume_at - time())
 		if using == nil and plan ~= nil and pause > 0 then
-			-- planned already: the rest of the pause after a plane change
 			debug(`pausing {pause} ms after the plane change`)
 			sleep(pause)
 		end
@@ -1185,7 +1069,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		if using == nil and current then
 			local p: NavPlan = current
 			local last = stretch_end(p)
-			-- how far along the plan we are
 			local best = math.huge
 			for i = progress, last do
 				local t = p.tiles[i]
@@ -1204,7 +1087,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 					and time() - opened_at < Walker.DOOR_REOPEN_MS
 					and same_door(a.loc, (opened :: Using).action.loc, (opened :: Using).along)
 				if reopening then
-					-- the door just opened and shows shut: the game is walking you through it, or will
 					if time() - looked_at >= Walker.ACTION_CHECK_MS then
 						looked_at = time()
 						debug("waiting for the door that just opened")
@@ -1216,13 +1098,11 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 						if use(here, a, loc, seen) then
 							still_clicks = 0
 						elseif at_stretch_end then
-							-- next to it and it still can't be clicked
 							failed(a, "couldn't be clicked")
 						end
 					end
 				end
 			elseif action then
-				-- the plan's door or ladder isn't loaded (yet: it can be past the scene, in the cache): walk on, and look again
 				if time() - looked_at >= Walker.ACTION_CHECK_MS then
 					looked_at = time()
 					action_loc = live_loc((action :: NavAction).loc)
@@ -1235,7 +1115,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			local p: NavPlan = walking
 			local last = stretch_end(p)
 			local flag = Player.destination()
-			-- the index of the flag on the plan, or the nearest to it when re-planning from where we are
 			local flag_at: number? = nil
 			if flag then
 				local nearest = Walker.FLAG_NEAR + 1
@@ -1249,13 +1128,12 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 					end
 				end
 			end
-			-- the game takes the flag away when the server is there, which moves the player ahead of where it is drawn
 			local server = server_tile()
 			local lead = if server and server.plane == here.plane then Walker.distance(here, server :: Tile) else 0
-			local ms_per_tile = if Player.is_running() then Walker.RUN_MS_PER_TILE else Walker.WALK_MS_PER_TILE
+			local per_tile = ms_per_tile()
 			local left = if flag_at
-				then math.max(0, flag_at - progress - lead) * ms_per_tile
-				elseif flag then math.max(0, Walker.distance(here, flag :: Tile) - lead) * ms_per_tile
+				then math.max(0, flag_at - progress - lead) * per_tile
+				elseif flag then math.max(0, Walker.distance(here, flag :: Tile) - lead) * per_tile
 				else 0
 			local moving = moved_ms ~= nil and time() - moved_ms < Walker.SETTLE_MS
 			local arriving = flag == nil
@@ -1265,7 +1143,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			local need = (flag == nil and not arriving and time() - clicked_ms >= Walker.CLICK_GRACE_MS)
 				or (flag ~= nil and left <= ahead_ms and flag_at ~= last)
 			if need and flag == nil and clicked_at and clicked_at.x == here.x and clicked_at.y == here.y then
-				-- the last click didn't move us
 				still_clicks += 1
 				if still_clicks >= Walker.STUCK_CLICKS then
 					Log.log("Walker", `couldn't get closer to {to.x}, {to.y} than {Walker.distance(here, to)} tiles`)
@@ -1277,7 +1154,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 				end
 			end
 			if need and plan and last <= progress and flag == nil and Walker.distance(here, p.tiles[last]) == 0 then
-				-- at the end of the plan: done planning toward a far goal, or no closer to get
 				if p.goal.x ~= goal.x or p.goal.y ~= goal.y or p.goal.plane ~= goal.plane then
 					plan = nil
 				elseif action == nil then
@@ -1287,7 +1163,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 				need = false
 			end
 			if not need and flag and not Mouse.busy() then
-				-- running to the flag: now and then a tiny camera or mouse move, and back to the route's view if the camera turned away
 				local now = time()
 				if fidget_at and now >= (fidget_at :: number) and left - ahead_ms >= Walker.FIDGET_MIN_LEFT_MS then
 					local made = Biometrics.random_boolean(fidget_chance)
@@ -1306,7 +1181,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 					and now - steered_at >= Walker.STEER_CHECK_MS
 					and left - ahead_ms >= Walker.FIDGET_MIN_LEFT_MS
 				then
-					-- queued, so a turn never holds up the next click
 					steered_at = now
 					steer(p.tiles, (flag_at :: number) + 1, last, p.tiles[flag_at :: number], Walker.STEER_GAIN, true)
 				end
@@ -1314,9 +1188,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			if need and plan then
 				local from = math.max(progress + 1, (flag_at or 0) + 1)
 				local view, blockers = walk_view(), Toplevel.blockers()
-				-- which tiles ahead are on screen, projected in one go
 				local shown_at: { [number]: boolean } = {}
-				-- which tiles ahead would be on screen if no window were open on top of the game view
 				local shown_without_windows: { [number]: boolean } = {}
 				local function look()
 					shown_at, shown_without_windows = {}, {}
@@ -1368,13 +1240,11 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 						and in_scene(t, base :: Tile)
 						and Walker.on_minimap(t)
 				end
-				-- the minimap is the rare alternative, and the way when nothing ahead is on screen
 				local want_map = Biometrics.random_boolean(Walker.MINIMAP_CHANCE)
 				local function pick(): (number?, number?)
 					look()
 					local screen = farthest_shown(p.tiles, from, last, clickable)
 					if screen == nil and Toplevel.has_interface() then
-						-- a window open on top of the game view is what hides the route: closed rather than walking round it by the minimap
 						local hidden = false
 						for i = from, last do
 							hidden = hidden or (shown_without_windows[i] == true and not shown_at[i])
@@ -1396,17 +1266,14 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 				end
 				local began = time()
 				if flag == nil then
-					-- standing: first turn to see the route, a human's look before setting off
 					steered_at = time()
 					steer(p.tiles, from, last, here, Walker.STEER_GAIN)
 				end
 				local on_screen, map = pick()
 				local shown = on_screen or map
 				if shown and moving and Walker.distance(p.tiles[shown :: number], here) <= Walker.SETTLE_TILES then
-					-- so close the scene still slides under it: let the player stop first
 					shown = nil
 				elseif shown == nil and not steer(p.tiles, from, last, here, 1) then
-					-- nothing ahead is shown and no turn shows more of it: turn to the next tile
 					Camera.face(p.tiles[math.min(progress + 4, last)], true)
 				end
 				if shown then
@@ -1415,14 +1282,12 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 						Log.log("Walker", "stopped")
 						return false
 					end
-					-- the plan's index of the tile clicked
 					local clicked: number? = nil
 					local use_map = map ~= nil and (on_screen == nil or want_map)
 					if use_map and Walker.click_minimap(p.tiles[map :: number]) then
 						clicked = map
 					end
 					if clicked == nil and on_screen then
-						-- something stands on the tile: try the ones before it, then "Walk here" from the menu
 						local tried = on_screen :: number
 						for attempt = 1, Walker.SCREEN_FALLBACKS + 1 do
 							local nearer = farthest_shown(p.tiles, from, tried - 1, clickable)
@@ -1456,7 +1321,6 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 						fidget_chance = Walker.FIDGET_CHANCE
 						fidget_at = time() + Random.int(Walker.FIDGET_DELAY_MIN_MS, Walker.FIDGET_DELAY_MAX_MS)
 						if (clicked :: number) < last then
-							-- while running there, turn to show the route past it (gain 1 after a minimap click: off screen only because the camera points elsewhere)
 							local gain = if on_screen == nil then 1 else Walker.STEER_GAIN
 							steer(p.tiles, (clicked :: number) + 1, last, p.tiles[clicked :: number], gain)
 						else
@@ -1470,16 +1334,11 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 	end
 end
 
--- Walks to `to` (on `opts.plane`), planning with `Host.nav_plan` and opening doors and climbing as it goes. First it takes a teleport spell, a charter ship or a gate toward `to` when
--- that is the way (`opts.transports`): the route is planned over landmasses, so a goal across the water is reached through a ship, with a spell to the nearest port if that is quicker.
--- Each transport is one hop, planned again from where it ends, up to `Walker.TRANSPORT_HOPS` of them. A transport that fails all its attempts is left out for a while, and the walk
--- starts over from where it stands: the whole route is planned again, as a new walk, so another way is taken. After `Walker.TRANSPORT_FAILURES` of those it walks the rest.
 function Walker.walk(to: Tile, options: WalkOptions?): boolean
 	local opts = options or {}
 	if opts.transports == false or opts.straight then
 		return walk_plan(to, opts)
 	end
-	-- the goal's plane is decided now: a transport can land on another
 	if opts.plane == nil then
 		local start = Walker.here()
 		if start ~= nil then
@@ -1487,9 +1346,7 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 			opts.plane = start.plane
 		end
 	end
-	-- required here, untyped: the spellbook needs the walker
-	local Transports = (require :: any)("./transports")
-	-- agility shortcuts join landmasses for the route unless this walk turned them off
+	local Transports = lazy("./transports")
 	local choices: { [string]: any } = if type(opts.transports) == "table" then table.clone(opts.transports) else {}
 	choices.shortcuts = opts.shortcuts
 	local hops, failures = 0, 0
@@ -1511,7 +1368,6 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 			break
 		end
 	end
-	-- no transport left to take: the rest is on foot, so there has to be a way
 	local here = Walker.here()
 	if here ~= nil then
 		local goal = { x = to.x, y = to.y, plane = opts.plane or here.plane }
@@ -1524,9 +1380,7 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 	return walk_plan(to, opts)
 end
 
--- How many transports (spells or ships) a walk takes at most, one after the other, before it walks the rest.
 Walker.TRANSPORT_HOPS = 6
--- How many transports may fail all their attempts in one walk before it stops looking for another way and walks the rest.
 Walker.TRANSPORT_FAILURES = 4
 
 return Walker

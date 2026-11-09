@@ -13,6 +13,7 @@ local Interact = require("@lib/main/interact")
 local Keyboard = require("@lib/utils/input/keyboard")
 local Log = require("@lib/utils/log")
 local Random = require("@lib/utils/math/random")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local ChatOptions = {}
 
@@ -43,11 +44,7 @@ local CONTINUE_UNTIL_MS = 10000
 local LEVEL_UP_MS = 8000
 
 local function texts(): ({ Widget }?, Widget?)
-	local open = Chatbox.is_open(ChatOptions.GROUP)
-	if open == nil then
-		return nil, nil
-	end
-	if not open then
+	if not Chatbox.is_open(ChatOptions.GROUP) then
 		return {}, nil
 	end
 	local kids = widget_children(ChatOptions.GROUP, ChatOptions.OPTIONS)
@@ -125,27 +122,11 @@ function ChatOptions.index_of(text: string, match_case: boolean?): number?
 end
 
 function ChatOptions.contains(text: string, match_case: boolean?): boolean
-	local option = ChatOptions.find(text, match_case)
-	return option ~= nil
-end
-
-local function wait(check: () -> boolean, timeout_ms: number): boolean
-	local waited = 0
-	while true do
-		local done = check()
-		if done == nil then
-			return false
-		end
-		if done or waited >= timeout_ms then
-			return done
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
+	return ChatOptions.find(text, match_case) ~= nil
 end
 
 function ChatOptions.wait_option(text: string, match_case: boolean?, timeout_ms: number?): boolean
-	return wait(function()
+	return Widgets.wait_until(function()
 		return ChatOptions.contains(text, match_case)
 	end, timeout_ms or WAIT_MS)
 end
@@ -187,7 +168,6 @@ local function wait_change(before: string): boolean
 	end
 end
 
--- The second result says how: "key" or "click".
 local function press(w: Widget, key: number, key_probability: number?): (boolean, string)
 	local probability = key_probability or Biometrics.random_double(0.5)
 	if Random.chance(probability) then
@@ -197,8 +177,7 @@ local function press(w: Widget, key: number, key_probability: number?): (boolean
 	local function on_widget(entry: MenuEntry): boolean
 		return entry.id == w.id and (w.index < 0 or entry.index == w.index)
 	end
-	local clicked = Interact.with(w, "Continue", on_widget, false)
-	return clicked, "click"
+	return (Interact.with(w, "Continue", on_widget, false)), "click"
 end
 
 function ChatOptions.select(text: string, match_case: boolean?, key_probability: number?): boolean
@@ -213,12 +192,11 @@ function ChatOptions.select(text: string, match_case: boolean?, key_probability:
 	local pressed, how = press(option.widget, option.key, key_probability)
 	if not pressed then
 		Log.log("ChatOptions", `couldn't pick "{option.text}" ({how})`)
-		return pressed
+		return false
 	end
-	local moved = wait_change(before)
-	if not moved then
+	if not wait_change(before) then
 		Log.log("ChatOptions", `the dialogue didn't move on after "{option.text}" ({how})`)
-		return moved
+		return false
 	end
 	return true
 end
@@ -256,8 +234,7 @@ function ChatOptions.continue_widget(): Widget?
 end
 
 function ChatOptions.contains_continue(): boolean
-	local w = ChatOptions.continue_widget()
-	return w ~= nil
+	return ChatOptions.continue_widget() ~= nil
 end
 
 function ChatOptions.continue_chat(key_probability: number?): boolean
@@ -279,12 +256,11 @@ function ChatOptions.continue_chat(key_probability: number?): boolean
 	local pressed, how = press(w, Keyboard.keys.SPACE, key_probability)
 	if not pressed then
 		Log.log("ChatOptions", `couldn't press "Click here to continue" ({how})`)
-		return pressed
+		return false
 	end
-	local moved = wait_change(before)
-	if not moved then
+	if not wait_change(before) then
 		Log.log("ChatOptions", `the dialogue didn't move on ({how})`)
-		return moved
+		return false
 	end
 	return true
 end
@@ -292,18 +268,10 @@ end
 function ChatOptions.continue_until_option(text: string, timeout_ms: number?, match_case: boolean?): boolean
 	local deadline = time() + (timeout_ms or CONTINUE_UNTIL_MS)
 	while time() < deadline do
-		local found = ChatOptions.contains(text, match_case)
-		if found == nil then
-			return false
-		end
-		if found then
+		if ChatOptions.contains(text, match_case) then
 			return ChatOptions.select(text, match_case)
 		end
-		local continued = ChatOptions.continue_chat()
-		if continued == nil then
-			return false
-		end
-		if not continued then
+		if not ChatOptions.continue_chat() then
 			sleep(POLL_MS * 4)
 		else
 			Random.sleep(0, 1200, "left")
@@ -347,7 +315,7 @@ function ChatOptions.is_title(text: string, similarity: number?): boolean
 end
 
 function ChatOptions.wait_title(text: string, timeout_ms: number?, similarity: number?): boolean
-	return wait(function()
+	return Widgets.wait_until(function()
 		return ChatOptions.is_title(text, similarity)
 	end, timeout_ms or WAIT_MS)
 end
@@ -371,7 +339,6 @@ function ChatOptions.speech(): { name: string, text: string }?
 	return nil
 end
 
--- The first level up game message newer than the message `since` (its uid).
 function ChatOptions.level_up_message(since: number?): Chat.Message?
 	local found = Chat.new_messages(since or -1)
 	if found == nil then
@@ -386,11 +353,7 @@ function ChatOptions.level_up_message(since: number?): Chat.Message?
 end
 
 function ChatOptions.leveled_up(): boolean
-	local open = Chatbox.is_open(Chatbox.LEVELUP_DISPLAY)
-	if open == nil then
-		return false
-	end
-	if open then
+	if Chatbox.is_open(Chatbox.LEVELUP_DISPLAY) then
 		return true
 	end
 	local text = Chatbox.text()
@@ -402,7 +365,6 @@ end
 
 export type LevelUp = { skill: string, level: number }
 
--- Reads the skill and level from a level up display or game message text.
 function ChatOptions.parse_level_up(text: string): LevelUp?
 	local clean = Chat.clean(text)
 	local skill = string.match(clean, "advanced an? ([%w ]-) level")
@@ -414,7 +376,6 @@ function ChatOptions.parse_level_up(text: string): LevelUp?
 	return { skill = skill, level = tonumber(level) :: number }
 end
 
--- The skill and level of the level up showing now, from the display or chatbox; nil when none.
 function ChatOptions.level_up(): LevelUp?
 	local text = Chatbox.text()
 	if text == nil then
@@ -426,17 +387,10 @@ end
 function ChatOptions.handle_level_up(key_probability: number?): boolean
 	local deadline = time() + LEVEL_UP_MS
 	while time() < deadline do
-		local leveled = ChatOptions.leveled_up()
-		if leveled == nil then
-			return false
-		end
-		if not leveled then
+		if not ChatOptions.leveled_up() then
 			return true
 		end
-		local continued = ChatOptions.continue_chat(key_probability)
-		if continued == nil then
-			return false
-		end
+		ChatOptions.continue_chat(key_probability)
 		Random.sleep(60, 1500, "left")
 	end
 	Log.log("ChatOptions", "the level up messages didn't go away")

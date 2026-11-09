@@ -2,7 +2,6 @@
 local Host = require("@lib/host")
 local widget = Host.widget
 local varc = Host.varc
-local sleep = Host.sleep
 local Chat = require("@lib/main/interfaces/chatbox/chat")
 local Interact = require("@lib/main/interact")
 local Log = require("@lib/utils/log")
@@ -42,7 +41,6 @@ local OPTIONS: { [State]: string } = {
 	autochat = "Show autochat",
 }
 
-local POLL_MS = 50
 local CHANGE_TIMEOUT_MS = 1500
 
 local function component(tab: Tab): number
@@ -61,45 +59,21 @@ end
 
 function ChatTabs.is_active(tab: Tab): boolean
 	local active = ChatTabs.active()
-	if active == nil then
-		return false
-	end
-	return active == tab
-end
-
-local function wait(check: () -> boolean, timeout_ms: number): boolean
-	local waited = 0
-	while true do
-		local done = check()
-		if done == nil then
-			return false
-		end
-		if done or waited >= timeout_ms then
-			return done
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
+	return active ~= nil and active == tab
 end
 
 function ChatTabs.open(tab: Tab): boolean
-	local active = ChatTabs.is_active(tab)
-	if active == nil then
-		return false
-	end
-	if active then
+	if ChatTabs.is_active(tab) then
 		return true
 	end
-	local clicked = Widgets.click(Chat.GROUP, component(tab))
-	if not clicked then
-		return clicked
+	if not Widgets.click(Chat.GROUP, component(tab)) then
+		return false
 	end
-	return wait(function()
+	return Widgets.wait_until(function()
 		return ChatTabs.is_active(tab)
 	end, CHANGE_TIMEOUT_MS)
 end
 
--- Queues the click and returns at once; true if the tab is active or queued, `force` clicks even when active.
 function ChatTabs.open_async(tab: Tab, force: boolean?): boolean
 	if not force and ChatTabs.is_active(tab) then
 		return true
@@ -149,16 +123,12 @@ function ChatTabs.set_state(tab: Tab, state: State): boolean
 	if tab_widget == nil then
 		return false
 	end
-	local ok = Interact.with(tab_widget, option, nil, false)
-	if not ok then
-		return ok
+	if not Interact.with(tab_widget, option, nil, false) then
+		return false
 	end
-	return wait(function()
+	return Widgets.wait_until(function()
 		local now = ChatTabs.state(tab)
-		if now == nil then
-			return false
-		end
-		return now == state
+		return now ~= nil and now == state
 	end, CHANGE_TIMEOUT_MS)
 end
 

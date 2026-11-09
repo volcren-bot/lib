@@ -1,7 +1,4 @@
 --!strict
--- Prints what the client logs as it happens: each game tick (the server's tick packet, 2, with whether the server moved you and to
--- which tile) and every change to an item container. Callbacks run inside Host.sleep, which they wake early; a script that never
--- sleeps never runs them.
 local Host = require("@lib/host")
 
 local last: number? = nil

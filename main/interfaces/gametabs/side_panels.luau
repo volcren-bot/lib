@@ -16,7 +16,6 @@ local Random = require("@lib/utils/math/random")
 local SidePanels = {}
 
 SidePanels.VARC = 171
--- how likely a tab is opened with its F-key (a biometric around this) instead of a click
 SidePanels.KEY_CHANCE = 0.9
 
 SidePanels.COMBAT_INTERFACE = 0
@@ -55,7 +54,6 @@ local STONES: { [number]: { [number]: number } } = {
 	[161] = { [0] = 59, 60, 61, 62, 63, 64, 65, 43, 44, 45, 46, 47, 48, 49 },
 }
 
--- Tab keys are found by the cache's varbit name (the id is only a hint) and read once per tab.
 local KEY_VARBITS: { [number]: { name: string, hint: number } } = {
 	[0] = { name = "stone_combat_key", hint = 4675 },
 	[1] = { name = "stone_stats_key", hint = 4676 },
@@ -73,7 +71,6 @@ local KEY_VARBITS: { [number]: { name: string, hint: number } } = {
 	[13] = { name = "stone_music_key", hint = 4688 },
 }
 
--- A key varbit holds 1 to 12 for F1 to F12, 13 for escape and 0 when unbound.
 local KEY_ESCAPE = 13
 local F_KEYS: { number } = {
 	Keyboard.keys.F1,
@@ -95,7 +92,6 @@ local key_varbit_ids: { [number]: number }? = nil
 local keys: { [number]: number | false } = {}
 
 local POLL_MS = 100
--- 3 game ticks
 local DEFAULT_TIMEOUT_MS = 1800
 
 function SidePanels.name(tab: number): string?
@@ -127,8 +123,7 @@ function SidePanels.is_open(tab: number | string): boolean
 	if id == nil then
 		return false
 	end
-	local current = SidePanels.current()
-	return current == id
+	return SidePanels.current() == id
 end
 
 function SidePanels.button(tab: number | string): Widget?
@@ -145,11 +140,7 @@ function SidePanels.button(tab: number | string): Widget?
 	if stones == nil then
 		return nil
 	end
-	local button = widget(root, stones[id])
-	if button == nil then
-		return nil
-	end
-	return button
+	return (widget(root, stones[id]))
 end
 
 local function resolve_key_varbits(): { [number]: number }
@@ -223,12 +214,19 @@ function SidePanels.key(tab: number | string): number?
 	elseif value > 0 then
 		key = F_KEYS[value]
 	end
-	if key == nil then
-		keys[id] = false
-	else
-		keys[id] = key
-	end
+	keys[id] = if key == nil then false else key
 	return key
+end
+
+local function key_chance(key: number, key_probability: number?): number
+	return key_probability
+		or if key == Keyboard.keys.ESCAPE
+			then Biometrics.get_probability(Biometrics.ESCAPE)
+			else Biometrics.random_double(SidePanels.KEY_CHANCE)
+end
+
+local function no_button(id: number)
+	Log.log("SidePanels", "the " .. NAMES[id] .. " tab's button isn't available")
 end
 
 local function wait_open(id: number, timeout_ms: number): boolean
@@ -243,7 +241,6 @@ local function wait_open(id: number, timeout_ms: number): boolean
 	return false
 end
 
--- Opens a tab with its key (chance `key_probability`, default a biometric) or a click, up to 3 times.
 function SidePanels.open(tab: number | string, key_probability: number?, timeout_ms: number?): boolean
 	local id = SidePanels.resolve(tab)
 	if id == nil then
@@ -255,23 +252,17 @@ function SidePanels.open(tab: number | string, key_probability: number?, timeout
 
 	local timeout = timeout_ms or DEFAULT_TIMEOUT_MS
 	local key = SidePanels.key(id)
-	if key ~= nil then
-		local probability = key_probability
-			or if key == Keyboard.keys.ESCAPE
-				then Biometrics.get_probability(Biometrics.ESCAPE)
-				else Biometrics.random_double(SidePanels.KEY_CHANCE)
-		if Random.chance(probability) then
-			Keyboard.key_press(key)
-			if wait_open(id, timeout) then
-				return true
-			end
+	if key ~= nil and Random.chance(key_chance(key, key_probability)) then
+		Keyboard.key_press(key)
+		if wait_open(id, timeout) then
+			return true
 		end
 	end
 
 	for _ = 1, 3 do
 		local button = SidePanels.button(id)
 		if button == nil then
-			Log.log("SidePanels", "the " .. NAMES[id] .. " tab's button isn't available")
+			no_button(id)
 			return false
 		end
 		Mouse.click(button)
@@ -283,7 +274,6 @@ function SidePanels.open(tab: number | string, key_probability: number?, timeout
 	return false
 end
 
--- Queues the key press or click and returns at once; true if the tab is open or input was queued, `force` queues anyway.
 function SidePanels.open_async(tab: number | string, key_probability: number?, force: boolean?): boolean
 	local id = SidePanels.resolve(tab)
 	if id == nil then
@@ -294,20 +284,14 @@ function SidePanels.open_async(tab: number | string, key_probability: number?, f
 	end
 
 	local key = SidePanels.key(id)
-	if key ~= nil then
-		local probability = key_probability
-			or if key == Keyboard.keys.ESCAPE
-				then Biometrics.get_probability(Biometrics.ESCAPE)
-				else Biometrics.random_double(SidePanels.KEY_CHANCE)
-		if Random.chance(probability) then
-			Keyboard.key_press_async(key)
-			return true
-		end
+	if key ~= nil and Random.chance(key_chance(key, key_probability)) then
+		Keyboard.key_press_async(key)
+		return true
 	end
 
 	local button = SidePanels.button(id)
 	if button == nil then
-		Log.log("SidePanels", "the " .. NAMES[id] .. " tab's button isn't available")
+		no_button(id)
 		return false
 	end
 	return Mouse.click_async(button)

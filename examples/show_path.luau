@@ -1,5 +1,4 @@
 --!strict
--- Draws the walking path from the player to a tile on the minimap and in view.
 local Host = require("@lib/host")
 local form = Host.form
 local Draw = require("@lib/utils/draw")
@@ -24,7 +23,6 @@ if path == nil then
 end
 print(`{#path - 1} steps to {target.x}, {target.y}`)
 
--- the whole path in one overlay update
 Draw.batch(function()
 	Draw.clear()
 	local segments = {}

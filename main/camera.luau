@@ -32,7 +32,6 @@ Camera.method = "mouse" :: Method
 Camera.tolerance = 64
 Camera.zoom_tolerance = 12
 
--- `face` turns just enough to keep things within FACE_LIMIT degrees of the camera, with a distance chance (`face_chance`).
 Camera.FACE_LIMIT = 70
 Camera.FACE_PITCH_SLACK = 200
 Camera.FACE_CHANCES = { { 2, 0.1 }, { 12, 0.8 }, { 20, 1 } }
@@ -44,11 +43,7 @@ local YAW_PER_PIXEL = 16.4
 local PITCH_PER_PIXEL = 15.4
 
 function Camera.state(): CameraState?
-	local state = game_state()
-	if state.camera == nil then
-		return nil
-	end
-	return state.camera
+	return game_state().camera
 end
 
 function Camera.yaw_to_degrees(yaw: number): number
@@ -89,13 +84,7 @@ end
 
 function Camera.zoom(): number?
 	local camera = Camera.state()
-	if camera == nil then
-		return nil
-	end
-	if camera.zoom == nil then
-		return nil
-	end
-	return camera.zoom
+	return if camera then camera.zoom else nil
 end
 
 local function yaw_difference(from: number, to: number): number
@@ -105,6 +94,15 @@ end
 
 local function differences(camera: CameraState, yaw: number?, pitch: number?): (number, number)
 	return if yaw then yaw_difference(camera.yaw, yaw) else 0, if pitch then pitch - camera.pitch else 0
+end
+
+local function reached(camera: CameraState, yaw: number?, pitch: number?): boolean
+	local dyaw, dpitch = differences(camera, yaw, pitch)
+	return math.abs(dyaw) <= Camera.tolerance and math.abs(dpitch) <= Camera.tolerance
+end
+
+local function clamp_pitch(pitch: number?): number?
+	return if pitch then math.clamp(pitch, Camera.PITCH_MIN, Camera.PITCH_MAX) else nil
 end
 
 local function settle(): CameraState?
@@ -123,7 +121,6 @@ local function settle(): CameraState?
 	return last
 end
 
--- Where a drag of `dx`, `dy` starts: the mouse itself when it's over the game view with room for the drag, else a new spot.
 local function drag_start(dx: number, dy: number): Point?
 	local view = Toplevel.viewport()
 	if view == nil then
@@ -143,7 +140,6 @@ local function drag_start(dx: number, dy: number): Point?
 		return Toplevel.is_visible(p, view, blockers)
 			and Toplevel.is_visible(Point.new(p.x + dx, p.y + dy), view, blockers)
 	end
-	-- Queued input may still be moving the mouse away from where it reads now.
 	local here = if Mouse.busy() then nil else Mouse.position()
 	if here and Box.contains(room, here) and fits(here) then
 		return here
@@ -162,7 +158,6 @@ local function is_mouse_at(p: Point): boolean
 	return here ~= nil and here.x == p.x and here.y == p.y
 end
 
--- Where a middle-button drag starts and how far it goes to reach `yaw` and `pitch`; start is nil without room.
 local function plan_drag(camera: CameraState, yaw: number?, pitch: number?): (Point?, number, number)
 	local state = game_state()
 	local view = Toplevel.viewport()
@@ -244,17 +239,14 @@ local function hold_key(yaw: number?, pitch: number?): boolean
 end
 
 local function turn(yaw: number?, pitch: number?, method: Method?): boolean
-	if pitch then
-		pitch = math.clamp(pitch, Camera.PITCH_MIN, Camera.PITCH_MAX)
-	end
+	pitch = clamp_pitch(pitch)
 	local how = method or Camera.method
 	for _ = 1, 6 do
 		local camera = settle()
 		if camera == nil then
 			return false
 		end
-		local dyaw, dpitch = differences(camera, yaw, pitch)
-		if math.abs(dyaw) <= Camera.tolerance and math.abs(dpitch) <= Camera.tolerance then
+		if reached(camera, yaw, pitch) then
 			return true
 		end
 		local ok
@@ -269,11 +261,8 @@ local function turn(yaw: number?, pitch: number?, method: Method?): boolean
 		Random.sleep(60, 200)
 	end
 	local camera = settle()
-	if camera then
-		local dyaw, dpitch = differences(camera, yaw, pitch)
-		if math.abs(dyaw) <= Camera.tolerance and math.abs(dpitch) <= Camera.tolerance then
-			return true
-		end
+	if camera and reached(camera, yaw, pitch) then
+		return true
 	end
 	Log.log("Camera", "the camera didn't reach the angle")
 	return false
@@ -299,17 +288,13 @@ function Camera.set_angles(yaw: number, pitch: number, method: Method?): boolean
 	return turn(yaw % Camera.TURN, pitch, method)
 end
 
--- Queues a middle-button drag towards `yaw` and `pitch` and returns at once; open loop, false when it can't drag.
 local function turn_async(yaw: number?, pitch: number?): boolean
-	if pitch then
-		pitch = math.clamp(pitch, Camera.PITCH_MIN, Camera.PITCH_MAX)
-	end
+	pitch = clamp_pitch(pitch)
 	local camera = Camera.state()
 	if camera == nil then
 		return false
 	end
-	local dyaw, dpitch = differences(camera, yaw, pitch)
-	if math.abs(dyaw) <= Camera.tolerance and math.abs(dpitch) <= Camera.tolerance then
+	if reached(camera, yaw, pitch) then
 		return true
 	end
 	local start, dx, dy = plan_drag(camera, yaw, pitch)
@@ -339,7 +324,25 @@ function Camera.set_angles_async(yaw: number, pitch: number): boolean
 	return turn_async(yaw % Camera.TURN, pitch)
 end
 
--- Queues scrolls from the current zoom towards `zoom` and returns at once; open loop, one notch is about ZOOM_STEP.
+local function scroll_spot(): (boolean, Point?)
+	local view = Toplevel.viewport()
+	if view == nil then
+		return false, nil
+	end
+	local blockers = Toplevel.blockers() or {}
+	local here = Mouse.position()
+	if here ~= nil and Toplevel.is_visible(here, view, blockers) then
+		return true, nil
+	end
+	local w, h = view.x2 - view.x1, view.y2 - view.y1
+	local spot =
+		Toplevel.visible_point(Box.new(view.x1 + w * 0.25, view.y1 + h * 0.25, view.x2 - w * 0.25, view.y2 - h * 0.25))
+	if spot == nil then
+		return false, nil
+	end
+	return true, Point.random(spot, 30)
+end
+
 function Camera.set_zoom_async(zoom: number): boolean
 	local target = math.clamp(zoom, Camera.ZOOM_MIN, Camera.ZOOM_MAX)
 	local current = Camera.zoom()
@@ -350,23 +353,9 @@ function Camera.set_zoom_async(zoom: number): boolean
 	if math.abs(diff) <= Camera.zoom_tolerance then
 		return true
 	end
-
-	local view = Toplevel.viewport()
-	if view == nil then
+	local ok, over = scroll_spot()
+	if not ok then
 		return false
-	end
-	local blockers = Toplevel.blockers() or {}
-	local here = Mouse.position()
-	local over: Point? = nil
-	if here == nil or not Toplevel.is_visible(here, view, blockers) then
-		local w, h = view.x2 - view.x1, view.y2 - view.y1
-		local spot = Toplevel.visible_point(
-			Box.new(view.x1 + w * 0.25, view.y1 + h * 0.25, view.x2 - w * 0.25, view.y2 - h * 0.25)
-		)
-		if spot == nil then
-			return false
-		end
-		over = Point.random(spot, 30)
 	end
 	Mouse.scroll_async(math.max(1, math.round(math.abs(diff) / Camera.ZOOM_STEP)), diff < 0, over)
 	return true
@@ -381,22 +370,12 @@ function Camera.set_zoom(zoom: number): boolean
 	if math.abs(target - current) <= Camera.zoom_tolerance then
 		return true
 	end
-
-	local view = Toplevel.viewport()
-	if view == nil then
+	local ok, over = scroll_spot()
+	if not ok then
 		return false
 	end
-	local blockers = Toplevel.blockers() or {}
-	local here = Mouse.position()
-	if here == nil or not Toplevel.is_visible(here, view, blockers) then
-		local w, h = view.x2 - view.x1, view.y2 - view.y1
-		local spot = Toplevel.visible_point(
-			Box.new(view.x1 + w * 0.25, view.y1 + h * 0.25, view.x2 - w * 0.25, view.y2 - h * 0.25)
-		)
-		if spot == nil then
-			return false
-		end
-		Mouse.move(Point.random(spot, 30))
+	if over then
+		Mouse.move(over)
 	end
 
 	local stuck = 0
@@ -423,7 +402,6 @@ function Camera.set_zoom(zoom: number): boolean
 	return false
 end
 
--- The chance `face` turns for a thing `tiles` away, from FACE_CHANCES.
 function Camera.face_chance(tiles: number): number
 	local points = Camera.FACE_CHANCES
 	if tiles <= points[1][1] then
@@ -438,7 +416,6 @@ function Camera.face_chance(tiles: number): number
 	return points[#points][2]
 end
 
--- The yaw `face` turns to, or nil when `tile` is already within FACE_LIMIT of the camera's direction.
 local function facing_yaw(camera: CameraState, tile: Tile, me: Tile): number?
 	local facing = Camera.yaw_to_degrees(camera.yaw)
 	local bearing = math.deg(math.atan2(tile.x - me.x, tile.y - me.y))
@@ -451,7 +428,6 @@ local function facing_yaw(camera: CameraState, tile: Tile, me: Tile): number?
 	return Camera.degrees_to_yaw(facing + ahead - sign * left_off)
 end
 
--- Turns the camera so `tile` shows in the upper half of the screen; `force` skips the distance chance. Returns whether it turned.
 function Camera.face(tile: Tile, force: boolean?): boolean
 	if not Camera.face_enabled then
 		return false

@@ -7,40 +7,34 @@ local function timestamp(): string
 	return string.format("%02d:%02d:%02d:%03d", ms // 3600000, ms // 60000 % 60, ms // 1000 % 60, ms % 1000)
 end
 
--- prints `[tag][hh:mm:ss:ms]: ...`
-function Log.log(tag: string, ...: any)
+local function line(tag: string, ...: any): string
 	local parts = { `[{tag}][{timestamp()}]:` }
 	for i = 1, select("#", ...) do
 		table.insert(parts, tostring((select(i, ...))))
 	end
-	print(table.concat(parts, " "))
+	return table.concat(parts, " ")
 end
 
--- like `Log.log`, but the loader shows the line in yellow
+function Log.log(tag: string, ...: any)
+	print(line(tag, ...))
+end
+
 function Log.warn(tag: string, ...: any)
-	local parts = { `[{tag}][{timestamp()}]:` }
-	for i = 1, select("#", ...) do
-		table.insert(parts, tostring((select(i, ...))))
-	end
-	local line = table.concat(parts, " ")
-	-- an injector from before report_warning only has print
+	local text = line(tag, ...)
 	if Host.report_warning == nil then
-		print(line)
+		print(text)
 		return
 	end
-	Host.report_warning(line)
+	Host.report_warning(text)
 end
 
--- one row of a block: a label and its value, or a `section` heading when value is nil
 export type Row = { label: string, value: string? }
 
--- `h:mm:ss` for a duration in milliseconds
 function Log.duration(ms: number): string
 	local sec = math.floor(ms / 1000)
 	return string.format("%d:%02d:%02d", sec // 3600, sec // 60 % 60, sec % 60)
 end
 
--- `count` per hour over `ms` milliseconds, 0 before any time passed
 function Log.per_hour(count: number, ms: number): number
 	if ms <= 0 then
 		return 0
@@ -48,7 +42,6 @@ function Log.per_hour(count: number, ms: number): number
 	return count * 3600000 / ms
 end
 
--- 1234567.8 -> "1,234,568"; keeps one decimal below 100
 function Log.number(n: number): string
 	local text = if math.abs(n) < 100 and n ~= math.floor(n)
 		then string.format("%.1f", n)
@@ -64,7 +57,6 @@ function Log.number(n: number): string
 	return sign .. int .. rest
 end
 
--- prints one multi-line entry: the `[tag][time]:` title, then aligned rows (a row without a value is a heading)
 function Log.block(tag: string, title: string, rows: { Row })
 	local width = 0
 	for _, row in ipairs(rows) do

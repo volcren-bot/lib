@@ -3,7 +3,6 @@ local Host = require("@lib/host")
 local widget = Host.widget
 local widget_children = Host.widget_children
 local sub_interfaces = Host.sub_interfaces
-local sleep = Host.sleep
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
 local Interact = require("@lib/main/interact")
@@ -12,12 +11,12 @@ local Mouse = require("@lib/utils/input/mouse")
 local Player = require("@lib/main/player")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 local Varbits = require("@lib/main/varbits")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Prayer = {}
 
 Prayer.GROUP = 541
 
--- The quick prayers: the minimap orb, and the setup panel with its slots (children of 77:4) and Done button.
 Prayer.ORB_GROUP = 160
 Prayer.ORB = 20
 Prayer.QUICK_SELECTED_VARBIT = 4102
@@ -26,26 +25,18 @@ Prayer.SETUP_GROUP = 77
 Prayer.SETUP_SLOTS = 4
 Prayer.SETUP_DONE = 5
 
-local POLL_MS = 50
 local TOGGLE_TIMEOUT_MS = 2000
 
 export type Info = {
 	key: string,
 	name: string,
-	-- the prayer's slot, a component of group 541
 	child: number,
-	-- 1 while the prayer is active
 	varbit: number,
 	level: number,
-	-- Defence level it needs besides the Prayer level
 	defence: number?,
-	-- 1 once the prayer is unlocked, for the ones that have to be
 	unlock: number?,
-	-- the varbit of the upgrade that takes this slot, once its scroll is used
 	upgrade: number?,
-	-- for an upgrade (Deadeye, Mystic Vigour, Zeal): the key of the prayer whose slot and quick prayer bit it takes
 	replaces: string?,
-	-- Attack and Strength levels it needs besides (Zeal)
 	attack: number?,
 	strength: number?,
 }
@@ -78,7 +69,6 @@ local function info(key: string, name: string, child: number, varbit: number, le
 	}) :: Info
 end
 
--- In the order of the prayer tab.
 Prayer.PRAYERS = table.freeze({
 	info("thick_skin", "Thick Skin", 9, 4104, 1),
 	info("burst_of_strength", "Burst of Strength", 10, 4105, 4),
@@ -109,13 +99,11 @@ Prayer.PRAYERS = table.freeze({
 	info("piety", "Piety", 35, 4129, 70, { defence = 70, upgrade = 16577 }),
 	info("augury", "Augury", 36, 5465, 77, { unlock = 5452, defence = 70 }),
 	info("preserve", "Preserve", 37, 5466, 55, { unlock = 5453 }),
-	-- the upgrades, each in the slot of the prayer it replaces once its unlock is 1
 	info("deadeye", "Deadeye", 29, 16090, 62, { unlock = 16097, replaces = "eagle_eye" }),
 	info("mystic_vigour", "Mystic Vigour", 32, 16091, 63, { unlock = 16098, replaces = "mystic_might" }),
 	info("zeal", "Zeal", 35, 16577, 84, { unlock = 16578, replaces = "piety", attack = 75, strength = 75 }),
 }) :: { Info }
 
--- The prayers in the order of the quick prayer setup's slots. The selected prayers are a bitmask of them: bit 0 is the first.
 Prayer.QUICK_ORDER = table.freeze({
 	"thick_skin",
 	"burst_of_strength",
@@ -181,26 +169,11 @@ local function resolve_all(prayers: { read PrayerRef }): { Info }?
 	return list
 end
 
--- A prayer, a name, or a list of either.
 local function many(prayers: PrayerRef | { read PrayerRef }): { Info }?
 	if type(prayers) == "string" or (type(prayers) == "table" and (prayers :: any).key ~= nil) then
 		return resolve_all({ prayers :: PrayerRef })
 	end
 	return resolve_all(prayers :: { read PrayerRef })
-end
-
-local function wait_until(check: () -> boolean, timeout_ms: number): boolean
-	local waited = 0
-	while true do
-		if check() then
-			return true
-		end
-		if waited >= timeout_ms then
-			return false
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
 end
 
 local function varbit_on(id: number): boolean
@@ -215,7 +188,6 @@ function Prayer.open(timeout_ms: number?): boolean
 	return SidePanels.open(SidePanels.PRAYERBOOK, nil, timeout_ms)
 end
 
--- Prayer points left and the Prayer level (the points at full).
 function Prayer.points(): (number?, number?)
 	return Player.prayer()
 end
@@ -228,7 +200,6 @@ function Prayer.widget(prayer: PrayerRef): Widget?
 	return widget(Prayer.GROUP, p.child)
 end
 
--- False while the prayer's slot is hidden, by the tab being closed or by the prayer filters.
 function Prayer.is_visible(prayer: PrayerRef): boolean
 	local w = Prayer.widget(prayer)
 	return w ~= nil and not w.hidden
@@ -242,7 +213,6 @@ function Prayer.is_unlocked(prayer: PrayerRef): boolean
 	return p.unlock == nil or varbit_on(p.unlock)
 end
 
--- Whether the prayer is on. Reads game settings, so the tab doesn't have to be open.
 function Prayer.is_on(prayer: PrayerRef): boolean
 	local p = Prayer.prayer(prayer)
 	if p == nil then
@@ -251,7 +221,6 @@ function Prayer.is_on(prayer: PrayerRef): boolean
 	return varbit_on(p.varbit) or (p.upgrade ~= nil and varbit_on(p.upgrade))
 end
 
--- True if all the prayers are active.
 function Prayer.is_active(prayers: PrayerRef | { read PrayerRef }): boolean
 	local list = many(prayers)
 	if list == nil then
@@ -284,7 +253,6 @@ function Prayer.active(): { Info }
 	return list
 end
 
--- Whether you have what the prayer needs: the Prayer level, the Defence level and the unlock, and prayer points to use it.
 function Prayer.can_activate(prayer: PrayerRef): boolean
 	local p = Prayer.prayer(prayer)
 	if p == nil then
@@ -307,8 +275,8 @@ function Prayer.can_activate(prayer: PrayerRef): boolean
 	return Prayer.is_unlocked(p)
 end
 
-local function on(p: Info): (MenuEntry) -> boolean
-	local id = Prayer.GROUP * 65536 + p.child
+local function on_component(group: number, child: number): (MenuEntry) -> boolean
+	local id = group * 65536 + child
 	return function(entry: MenuEntry): boolean
 		return entry.id == id
 	end
@@ -327,7 +295,6 @@ function Prayer.hover(prayer: PrayerRef): boolean
 	return true
 end
 
--- Switches one prayer on or off and waits for it to change.
 function Prayer.set(prayer: PrayerRef, active: boolean): boolean
 	local p = Prayer.prayer(prayer)
 	if p == nil then
@@ -348,11 +315,12 @@ function Prayer.set(prayer: PrayerRef, active: boolean): boolean
 		Log.log("Prayer", `the {p.name} slot isn't visible, check the prayer filters`)
 		return false
 	end
-	local ok = Interact.with(w, if active then "Activate" else "Deactivate", on(p), false)
-	if not ok then
+	if
+		not Interact.with(w, if active then "Activate" else "Deactivate", on_component(Prayer.GROUP, p.child), false)
+	then
 		return false
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return Prayer.is_on(p) == active
 	end, TOGGLE_TIMEOUT_MS) then
 		return true
@@ -361,34 +329,26 @@ function Prayer.set(prayer: PrayerRef, active: boolean): boolean
 	return false
 end
 
--- Turns on every prayer given that is off. True if all of them are active in the end.
-function Prayer.activate(prayers: PrayerRef | { read PrayerRef }): boolean
+local function set_all(prayers: PrayerRef | { read PrayerRef }, active: boolean): boolean
 	local list = many(prayers)
 	if list == nil then
 		return false
 	end
 	local result = true
 	for _, p in ipairs(list) do
-		if not Prayer.set(p, true) then
+		if not Prayer.set(p, active) then
 			result = false
 		end
 	end
 	return result
 end
 
--- Turns off every prayer given that is on. True if all of them are off in the end.
+function Prayer.activate(prayers: PrayerRef | { read PrayerRef }): boolean
+	return set_all(prayers, true)
+end
+
 function Prayer.deactivate(prayers: PrayerRef | { read PrayerRef }): boolean
-	local list = many(prayers)
-	if list == nil then
-		return false
-	end
-	local result = true
-	for _, p in ipairs(list) do
-		if not Prayer.set(p, false) then
-			result = false
-		end
-	end
-	return result
+	return set_all(prayers, false)
 end
 
 function Prayer.deactivate_all(): boolean
@@ -405,7 +365,6 @@ local function quick_bit(p: Info): number?
 	return nil
 end
 
--- whether `p` is in the quick prayers `mask` (the quick selection varbit)
 local function quick_selected_in(mask: number?, p: Info): boolean
 	local bit = quick_bit(p)
 	if mask == nil or bit == nil then
@@ -414,7 +373,6 @@ local function quick_selected_in(mask: number?, p: Info): boolean
 	return bit32.band(bit32.rshift(mask, bit), 1) == 1
 end
 
--- Whether the prayer is one of the quick prayers.
 function Prayer.is_quick_selected(prayer: PrayerRef): boolean
 	local p = Prayer.prayer(prayer)
 	if p == nil then
@@ -434,7 +392,6 @@ function Prayer.quick_prayers(): { Info }
 	return list
 end
 
--- Whether the quick prayers are on.
 function Prayer.is_quick_active(): boolean
 	return varbit_on(Prayer.QUICK_ACTIVE_VARBIT)
 end
@@ -444,13 +401,9 @@ local function orb_option(option: string): boolean
 	if w == nil then
 		return false
 	end
-	local id = Prayer.ORB_GROUP * 65536 + Prayer.ORB
-	return (Interact.with(w, option, function(entry: MenuEntry): boolean
-		return entry.id == id
-	end, false))
+	return (Interact.with(w, option, on_component(Prayer.ORB_GROUP, Prayer.ORB), false))
 end
 
--- Turns the quick prayers on or off from the minimap orb and waits for the change; on needs prayer points and a quick prayer.
 function Prayer.set_quick_active(active: boolean): boolean
 	if Prayer.is_quick_active() == active then
 		return true
@@ -469,7 +422,7 @@ function Prayer.set_quick_active(active: boolean): boolean
 	if not orb_option(if active then "Activate" else "Deactivate") then
 		return false
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return Prayer.is_quick_active() == active
 	end, TOGGLE_TIMEOUT_MS) then
 		return true
@@ -494,7 +447,7 @@ function Prayer.open_quick_setup(): boolean
 	if not orb_option("Setup") then
 		return false
 	end
-	if wait_until(Prayer.is_quick_setup_open, TOGGLE_TIMEOUT_MS) then
+	if Widgets.wait_until(Prayer.is_quick_setup_open, TOGGLE_TIMEOUT_MS) then
 		return true
 	end
 	Log.log("Prayer", "the quick prayer setup didn't open")
@@ -509,19 +462,14 @@ function Prayer.close_quick_setup(): boolean
 	if done == nil then
 		return false
 	end
-	local id = Prayer.SETUP_GROUP * 65536 + Prayer.SETUP_DONE
-	local ok = Interact.with(done, "Done", function(entry: MenuEntry): boolean
-		return entry.id == id
-	end, false)
-	if not ok then
+	if not Interact.with(done, "Done", on_component(Prayer.SETUP_GROUP, Prayer.SETUP_DONE), false) then
 		return false
 	end
-	return wait_until(function()
+	return Widgets.wait_until(function()
 		return not Prayer.is_quick_setup_open()
 	end, TOGGLE_TIMEOUT_MS)
 end
 
--- Adds or removes one prayer from the quick prayers through the open setup.
 local function toggle_quick(p: Info, selected: boolean): boolean
 	if Prayer.is_quick_selected(p) == selected then
 		return true
@@ -534,13 +482,14 @@ local function toggle_quick(p: Info, selected: boolean): boolean
 	end
 	local id = Prayer.SETUP_GROUP * 65536 + Prayer.SETUP_SLOTS
 	local index = w.index
-	local ok = Interact.with(w, "Toggle", function(entry: MenuEntry): boolean
-		return entry.id == id and entry.index == index
-	end, false)
-	if not ok then
+	if
+		not Interact.with(w, "Toggle", function(entry: MenuEntry): boolean
+			return entry.id == id and entry.index == index
+		end, false)
+	then
 		return false
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return Prayer.is_quick_selected(p) == selected
 	end, TOGGLE_TIMEOUT_MS) then
 		return true
@@ -549,7 +498,6 @@ local function toggle_quick(p: Info, selected: boolean): boolean
 	return false
 end
 
--- Makes these the quick prayers through the setup panel; false when one can't be selected or they exclude each other.
 function Prayer.set_quick_prayers(prayers: PrayerRef | { read PrayerRef }): boolean
 	local list = many(prayers)
 	if list == nil then
@@ -573,7 +521,6 @@ function Prayer.set_quick_prayers(prayers: PrayerRef | { read PrayerRef }): bool
 		return false
 	end
 	local result = true
-	-- deselect first, since selecting a prayer deselects the ones it can't be used with
 	for _, selected in ipairs({ false, true }) do
 		for _, p in ipairs(Prayer.PRAYERS) do
 			if (wanted[p.key] == true) == selected and not toggle_quick(p, selected) then

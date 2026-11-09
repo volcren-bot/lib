@@ -1,9 +1,6 @@
 --!strict
--- The Wilderness obelisks: four stones around a 3 x 3 grid, and everyone on the grid is taken when one is activated. Only "Set Destination" (group 187, the game's generic `menu` list, after the Wilderness hard diary) makes the landing known; "Activate" alone is random.
--- A trip is "Set Destination", a row of the list, then "Teleport to Destination", with the player back on the grid, because clicking a stone walks you up to it.
 local Host = require("@lib/host")
 local sleep = Host.sleep
-local time = Host.time
 local widget_children = Host.widget_children
 type Widget = Host.Widget
 type Loc = Host.Loc
@@ -14,6 +11,7 @@ local Player = require("@lib/main/player")
 local Random = require("@lib/utils/math/random")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 local Walker = require("@lib/main/walker")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Obelisk = {}
 
@@ -23,12 +21,10 @@ Obelisk.CLOSE = 4
 Obelisk.OBJECT = "Obelisk"
 Obelisk.SET = "Set Destination"
 Obelisk.TELEPORT = "Teleport to Destination"
--- How far to look for the stones: they stand 4 tiles apart.
 Obelisk.RANGE = 8
 Obelisk.OPEN_TIMEOUT_MS = 5000
 Obelisk.CLOSE_TIMEOUT_MS = 3000
 Obelisk.POLL_MS = 50
--- A pause (min, max in ms) after the list opens, and how long to wait for a walk onto the grid.
 Obelisk.SETTLE_MS = { 250, 500 }
 Obelisk.GRID_TIMEOUT_MS = 4000
 
@@ -61,7 +57,6 @@ export type Destination = {
 	row: Widget,
 }
 
--- The stones within `RANGE`, nearest first.
 function Obelisk.stones(): { Loc }
 	local here = Player.position()
 	local found: { Loc } = {}
@@ -83,7 +78,6 @@ function Obelisk.is_open(): boolean
 	return Toplevel.is_open(Obelisk.GROUP)
 end
 
--- Opens the list with "Set Destination" on the nearest stone. True once it is open.
 function Obelisk.open(): boolean
 	if Obelisk.is_open() then
 		return true
@@ -92,18 +86,13 @@ function Obelisk.open(): boolean
 	if stone == nil or not Objects.interact(stone, Obelisk.SET) then
 		return false
 	end
-	local deadline = time() + Obelisk.OPEN_TIMEOUT_MS
-	while not Obelisk.is_open() do
-		if time() >= deadline then
-			return false
-		end
-		sleep(Obelisk.POLL_MS)
+	if not Widgets.wait_for(Obelisk.is_open, Obelisk.OPEN_TIMEOUT_MS, Obelisk.POLL_MS) then
+		return false
 	end
 	sleep(Random.int(Obelisk.SETTLE_MS[1], Obelisk.SETTLE_MS[2]))
 	return true
 end
 
--- Every row of the open list. Nil when it isn't open.
 function Obelisk.destinations(): { Destination }?
 	if not Obelisk.is_open() then
 		return nil
@@ -120,19 +109,13 @@ function Obelisk.destinations(): { Destination }?
 	return found
 end
 
--- Clicks a row of the open list and waits for it to close. True once it has.
 function Obelisk.select(level: Level): boolean
 	for _, d in ipairs(Obelisk.destinations() or {}) do
 		if string.lower(d.name) == string.lower(level) then
 			Mouse.click(d.row)
-			local deadline = time() + Obelisk.CLOSE_TIMEOUT_MS
-			while Obelisk.is_open() do
-				if time() >= deadline then
-					return false
-				end
-				sleep(Obelisk.POLL_MS)
-			end
-			return true
+			return Widgets.wait_for(function()
+				return not Obelisk.is_open()
+			end, Obelisk.CLOSE_TIMEOUT_MS, Obelisk.POLL_MS)
 		end
 	end
 	return false
@@ -144,7 +127,6 @@ function Obelisk.close(): boolean
 	end)
 end
 
--- Whether the player stands on the grid between the stones.
 function Obelisk.on_grid(): boolean
 	local here = Player.position()
 	local stones = Obelisk.stones()
@@ -159,7 +141,6 @@ function Obelisk.on_grid(): boolean
 	return here.x > x1 and here.x < x2 and here.y > y1 and here.y < y2
 end
 
--- Clicks "Teleport to Destination" on the nearest stone, then walks back onto the grid if the click walked off it. The trip follows a few seconds later.
 function Obelisk.teleport(): boolean
 	local stones = Obelisk.stones()
 	if #stones < 4 or not Objects.interact(stones[1], Obelisk.TELEPORT) then

@@ -64,8 +64,12 @@ local function interfaces_of(root: number?): { Open }?
 	return found
 end
 
+local function root(): number?
+	return game_state().root_interface
+end
+
 function Toplevel.interfaces(): { Open }?
-	return interfaces_of(game_state().root_interface)
+	return interfaces_of(root())
 end
 
 function Toplevel.interface(): number?
@@ -94,51 +98,41 @@ end
 
 local ESC_TO_CLOSE_VARBIT = 4681
 local CLOSE_POLL_MS = 100
--- 3 game ticks
 local CLOSE_TIMEOUT_MS = 1800
 local CLOSE_CLEAR_MS = 600
 
-local function wait_closed(group: number | string, timeout_ms: number): boolean
+local function wait_for(closed: () -> boolean, timeout_ms: number): boolean
 	local waited = 0
 	while waited < timeout_ms do
 		sleep(CLOSE_POLL_MS)
 		waited += CLOSE_POLL_MS
-		if not Toplevel.is_open(group) then
+		if closed() then
 			return true
 		end
 	end
 	return false
 end
 
--- Escape is tried this many times (with a short pause between) before it is given up on for the rest of the run
 Toplevel.ESCAPE_TRIES = 3
 Toplevel.ESCAPE_PAUSE_MS = { 150, 400 }
 local escape_disabled = false
 
--- false once Escape failed to close an interface ESCAPE_TRIES times in a row: "Esc to close" is probably off, so only the mouse is used from then on
 function Toplevel.escape_enabled(): boolean
 	return not escape_disabled
 end
 
--- Turns Escape closing back on (it stays off until the end of the run otherwise).
 function Toplevel.reset_escape()
 	escape_disabled = false
 end
 
--- Presses Escape up to ESCAPE_TRIES times, `timeout_ms` for each to see `closed()` turn true; failing every try turns Escape off for the run.
 local function escape_close(closed: () -> boolean, timeout_ms: number, name: () -> string): boolean
 	if escape_disabled then
 		return false
 	end
 	for attempt = 1, Toplevel.ESCAPE_TRIES do
 		Keyboard.key_press(Keyboard.keys.ESCAPE)
-		local waited = 0
-		while waited < timeout_ms do
-			sleep(CLOSE_POLL_MS)
-			waited += CLOSE_POLL_MS
-			if closed() then
-				return true
-			end
+		if wait_for(closed, timeout_ms) then
+			return true
 		end
 		if attempt < Toplevel.ESCAPE_TRIES then
 			sleep(Random.range(Toplevel.ESCAPE_PAUSE_MS[1], Toplevel.ESCAPE_PAUSE_MS[2]))
@@ -152,7 +146,6 @@ local function escape_close(closed: () -> boolean, timeout_ms: number, name: () 
 	return false
 end
 
--- Closes whatever main screen interface is open with Escape. false when none could be closed or Escape is off (the mouse has to do it then).
 function Toplevel.escape_clear(timeout_ms: number?): boolean
 	if not Toplevel.has_interface() then
 		return true
@@ -168,7 +161,6 @@ function Toplevel.escape_clear(timeout_ms: number?): boolean
 	)
 end
 
--- Closes a main screen interface and waits: Escape with `key_probability` unless "Esc to close" is off, else clicks `button()`.
 function Toplevel.close(
 	group: number | string,
 	button: () -> Widget?,
@@ -180,10 +172,10 @@ function Toplevel.close(
 	end
 	local timeout = timeout_ms or CLOSE_TIMEOUT_MS
 	local probability = key_probability or Biometrics.get_probability(Biometrics.ESCAPE)
+	local function closed(): boolean
+		return not Toplevel.is_open(group)
+	end
 	if varbit(ESC_TO_CLOSE_VARBIT) ~= 0 and not escape_disabled and Random.chance(probability) then
-		local function closed(): boolean
-			return not Toplevel.is_open(group)
-		end
 		local function name(): string
 			if type(group) == "string" then
 				return group
@@ -202,7 +194,7 @@ function Toplevel.close(
 			return false
 		end
 		Mouse.click(close)
-		if wait_closed(group, timeout) then
+		if wait_for(closed, timeout) then
 			return true
 		end
 	end
@@ -215,23 +207,19 @@ function Toplevel.is_open(interface: number | string): boolean
 	if open == nil then
 		return false
 	end
+	local wanted = if type(interface) == "string" then string.lower(interface) else nil
 	for _, o in ipairs(open) do
 		if o.group == interface then
 			return true
 		end
-		if type(interface) == "string" then
+		if wanted then
 			local name = GameVal.interface(o.group)
-			if name and string.lower(name) == string.lower(interface) then
+			if name and string.lower(name) == wanted then
 				return true
 			end
 		end
 	end
 	return false
-end
-
-local function root(): number?
-	local state = game_state()
-	return state.root_interface
 end
 
 local function box_of(group: number, child: number): Box?
@@ -251,7 +239,6 @@ function Toplevel.viewport(): Box?
 	return box_of(top, layout.viewport)
 end
 
--- The side panels and the chat that cover the game view, without the windows open on top of it.
 local function panel_blockers_of(top: number?): { Box }?
 	if top == nil then
 		return nil

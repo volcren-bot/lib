@@ -19,6 +19,7 @@ local Minimenu = require("@lib/main/interfaces/minimenu")
 local Mouse = require("@lib/utils/input/mouse")
 local Random = require("@lib/utils/math/random")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local CONTAINER = 93
 local SIZE = 28
@@ -101,20 +102,6 @@ local Inventory = {
 	interact = items.interact,
 }
 
-local function wait_until(check: () -> boolean, timeout_ms: number): boolean
-	local waited = 0
-	while true do
-		if check() then
-			return true
-		end
-		if waited >= timeout_ms then
-			return false
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
-end
-
 function Inventory.is_open(): boolean
 	return SidePanels.is_open(SidePanels.INVENTORY)
 end
@@ -125,10 +112,7 @@ end
 
 function Inventory.is_full(): boolean
 	local free = Inventory.free_slots()
-	if free == nil then
-		return false
-	end
-	return free == 0
+	return free ~= nil and free == 0
 end
 
 function Inventory.selected(): number?
@@ -149,7 +133,6 @@ function Inventory.deselect(): boolean
 	if current == nil then
 		return true
 	end
-	-- the item can be gone while the client still has it selected: then only "Cancel" clears it
 	local ok = current.id == ITEMS_ID and Inventory.interact_slot(current.index, "Use")
 	if not ok then
 		local at = Mouse.position()
@@ -161,7 +144,7 @@ function Inventory.deselect(): boolean
 	if not ok then
 		return false
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return selected_widget() == nil
 	end, SELECT_TIMEOUT_MS) then
 		return true
@@ -175,17 +158,13 @@ function Inventory.select_slot(slot: number): boolean
 	if current ~= nil and current.id == ITEMS_ID and current.index == slot then
 		return true
 	end
-	if current ~= nil then
-		local ok = Inventory.deselect()
-		if not ok then
-			return false
-		end
+	if current ~= nil and not Inventory.deselect() then
+		return false
 	end
-	local ok = Inventory.interact_slot(slot, "Use")
-	if not ok then
-		return ok
+	if not Inventory.interact_slot(slot, "Use") then
+		return false
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return Inventory.is_selected(slot) == true
 	end, SELECT_TIMEOUT_MS) then
 		return true
@@ -196,10 +175,7 @@ end
 
 function Inventory.select(items: Item | { Item }): boolean
 	local slots = Inventory.indices_of(items)
-	if slots == nil then
-		return false
-	end
-	if #slots == 0 then
+	if slots == nil or #slots == 0 then
 		return false
 	end
 	local current = Inventory.selected()
@@ -210,16 +186,14 @@ function Inventory.select(items: Item | { Item }): boolean
 end
 
 function Inventory.combine_slots(slot_a: number, slot_b: number): boolean
-	local selected = Inventory.select_slot(slot_a)
-	if not selected then
-		return selected
+	if not Inventory.select_slot(slot_a) then
+		return false
 	end
 	Random.sleep(0, 600, "left")
-	local ok = Inventory.interact_slot(slot_b, "Use")
-	if not ok then
-		return ok
+	if not Inventory.interact_slot(slot_b, "Use") then
+		return false
 	end
-	if wait_until(function()
+	if Widgets.wait_until(function()
 		return Inventory.selected() == nil
 	end, SELECT_TIMEOUT_MS) then
 		return true
@@ -229,8 +203,7 @@ function Inventory.combine_slots(slot_a: number, slot_b: number): boolean
 end
 
 function Inventory.combine(items_a: Item | { Item }, items_b: Item | { Item }): boolean
-	local opened = Inventory.open()
-	if not opened then
+	if not Inventory.open() then
 		return false
 	end
 	local slots_a = Inventory.indices_of(items_a)
@@ -269,7 +242,6 @@ function Inventory.combine(items_a: Item | { Item }, items_b: Item | { Item }): 
 	return Inventory.combine_slots(best_a, best_b)
 end
 
--- The ranges an account's click order habit is picked from (see `Inventory.pattern`), and what a move of one slot costs along and across its preferred axis.
 Inventory.PATTERN_HABIT = {
 	turn = { 1, 2.5 },
 	sloppy = { 0.12, 0.37 },
@@ -292,7 +264,6 @@ type Habit = {
 	corner: number,
 }
 
--- A number from 0 to 1 that stays the same for the account (it comes from the Biometrics hash), one per `salt`.
 local function account_roll(hash: string, salt: number): number
 	return Host.murmur2a(hash, salt) / 4294967295
 end
@@ -315,7 +286,6 @@ local function habit(): Habit
 	}
 end
 
--- The slot of `slots` whose centre is nearest `from`; nil when the slots can't be seen.
 local function nearest_slot(slots: { number }, from: Point): number?
 	local boxes = Inventory.boxes()
 	if boxes == nil then
@@ -364,14 +334,12 @@ function Inventory.pattern(slots: { number }?, from: Point?): ({ number }, { boo
 	local function place_on_line(slot: number): number
 		return if h.rows then slot % COLUMNS else slot // COLUMNS
 	end
-	-- along the preferred axis, towards the side of the inventory with more slots
 	local function heading_from(slot: number): Point
 		if h.rows then
 			return { x = if slot % COLUMNS <= (COLUMNS - 1) / 2 then 1 else -1, y = 0 }
 		end
 		return { x = 0, y = if slot // COLUMNS <= (ROWS - 1) / 2 then 1 else -1 }
 	end
-	-- on a new line, head along it towards the farthest slot left on it
 	local function heading_on_line(slot: number): Point?
 		local farthest, gap = nil, 0
 		for other in pairs(remaining) do
@@ -501,15 +469,11 @@ local function wait_dropped(targets: { [number]: number }, order: { number }): {
 end
 
 local function start_drop(slots: { number }): { [number]: number }?
-	local opened = Inventory.open()
-	if not opened then
+	if not Inventory.open() then
 		return nil
 	end
-	if selected_widget() ~= nil then
-		local ok = Inventory.deselect()
-		if not ok then
-			return nil
-		end
+	if selected_widget() ~= nil and not Inventory.deselect() then
+		return nil
 	end
 	return holding(slots)
 end
@@ -545,10 +509,7 @@ end
 
 function Inventory.drop(items: Item | { Item }, pattern: { number }?): boolean
 	local slots = Inventory.indices_of(items)
-	if slots == nil then
-		return false
-	end
-	if #slots == 0 then
+	if slots == nil or #slots == 0 then
 		return false
 	end
 	return Inventory.drop_slots(if pattern then in_order(slots, pattern) else (Inventory.pattern(slots)))
@@ -556,7 +517,7 @@ end
 
 local function shift_drops(slot: number): boolean
 	local matches = owns(slot)
-	return wait_until(function()
+	return Widgets.wait_until(function()
 		local entries = Minimenu.entries()
 		local top = entries and entries[1]
 		return top ~= nil and matches(top) and top.option == "Drop"
@@ -625,10 +586,7 @@ end
 
 function Inventory.shift_drop(items: Item | { Item }, pattern: { number }?): boolean
 	local slots = Inventory.indices_of(items)
-	if slots == nil then
-		return false
-	end
-	if #slots == 0 then
+	if slots == nil or #slots == 0 then
 		return false
 	end
 	return Inventory.shift_drop_slots(if pattern then in_order(slots, pattern) else (Inventory.pattern(slots)))

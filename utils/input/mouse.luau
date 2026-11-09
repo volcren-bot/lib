@@ -61,15 +61,16 @@ function Mouse.position(): Point?
 	return Point.new(conn.mouse_x, conn.mouse_y)
 end
 
--- wind_mouse plans 100 + 14 * sqrt(distance) / (speed / 10) ms for a move, give or take 22%, and runs it `pace` times faster.
 local function planned_ms(distance: number): number
 	return (100 + 14 * math.sqrt(distance) / (math.clamp(Mouse.speed, 2, 30) / 10)) / math.clamp(Mouse.pace, 0.25, 4)
 end
 
--- How long moves really take next to their plan, learned from the moves made so far.
 local travel_scale = 0.9
 
--- How long a move from `from` (the mouse by default) to `to` usually takes, in milliseconds.
+local function press_ms(): number
+	return Random.trunc(Random.left(Mouse.press_min, Mouse.press_max))
+end
+
 function Mouse.travel_ms(to: Point, from: Point?): number
 	local start = from or Mouse.position()
 	if start == nil or Mouse.use_teleport then
@@ -114,6 +115,16 @@ function Mouse.miss(destination: Point): Point
 	return Point.random(at, range)
 end
 
+local function wind_options()
+	return {
+		speed = Mouse.speed,
+		wind = Mouse.wind,
+		gravity = Mouse.gravity,
+		timeout = Mouse.timeout,
+		pace = Mouse.pace,
+	}
+end
+
 local function move_to(destination: Point)
 	if Mouse.use_teleport then
 		Mouse.teleport(destination)
@@ -149,13 +160,7 @@ local function move_to(destination: Point)
 
 	local start = Mouse.position()
 	local started = time()
-	wind_mouse(math.round(destination.x), math.round(destination.y), {
-		speed = Mouse.speed,
-		wind = Mouse.wind,
-		gravity = Mouse.gravity,
-		timeout = Mouse.timeout,
-		pace = Mouse.pace,
-	})
+	wind_mouse(math.round(destination.x), math.round(destination.y), wind_options())
 	local distance = if start then Point.distance(start, destination) else 0
 	if distance >= 20 then
 		local ratio = (time() - started) / planned_ms(distance)
@@ -179,7 +184,6 @@ end
 
 local SHAPES = { box = Box, circle = Circle, quad = Quad }
 
--- Where in the target a move goes, or nil when the mouse is already inside it and the move isn't forced.
 local function pick(target: Target, forced: boolean?, distribution: Distribution?): Point?
 	local kind, s = shape(target)
 	if kind == "point" then
@@ -213,7 +217,6 @@ function Mouse.move(target: Target, forced: boolean?, distribution: Distribution
 	end
 end
 
--- Queues the move, with no misses or idling, and returns where it goes (nil when the mouse is already there).
 local function queue_move(target: Target, forced: boolean?, distribution: Distribution?): Point?
 	local p = pick(target, forced, distribution)
 	if p == nil then
@@ -223,23 +226,15 @@ local function queue_move(target: Target, forced: boolean?, distribution: Distri
 	if Mouse.use_teleport then
 		move_async(x, y)
 	else
-		wind_mouse_async(x, y, {
-			speed = Mouse.speed,
-			wind = Mouse.wind,
-			gravity = Mouse.gravity,
-			timeout = Mouse.timeout,
-			pace = Mouse.pace,
-		})
+		wind_mouse_async(x, y, wind_options())
 	end
 	return Point.new(x, y)
 end
 
--- Starts a move and returns at once; other input, `Mouse.cancel` or a minimenu read stops it where it got to.
 function Mouse.move_async(target: Target, forced: boolean?, distribution: Distribution?)
 	queue_move(target, forced, distribution)
 end
 
--- Starts a click, after the move if there is a target, and returns at once; false if the mouse isn't over the client.
 function Mouse.click_async(target: Target?, button: Button?, forced: boolean?, distribution: Distribution?): boolean
 	local at: Point? = nil
 	if target ~= nil then
@@ -250,11 +245,10 @@ function Mouse.click_async(target: Target?, button: Button?, forced: boolean?, d
 		Log.log("Mouse", "click_async: the mouse isn't over the client and there is no target.")
 		return false
 	end
-	click_async(math.round(at.x), math.round(at.y), button, Random.trunc(Random.left(Mouse.press_min, Mouse.press_max)))
+	click_async(math.round(at.x), math.round(at.y), button, press_ms())
 	return true
 end
 
--- Queues pressing a button and keeping it held. Cancelling (or the script ending) releases it.
 function Mouse.hold_async(button: Button?)
 	mouse_down_async(button)
 end
@@ -263,7 +257,6 @@ function Mouse.release_async(button: Button?)
 	mouse_up_async(button)
 end
 
--- Queues a drag: press, move to the target, release. Cancelling in the middle still releases the button.
 function Mouse.drag_async(target: Target, button: Button?)
 	mouse_down_async(button)
 	sleep_async(Random.int(40, 90))
@@ -272,7 +265,6 @@ function Mouse.drag_async(target: Target, button: Button?)
 	mouse_up_async(button)
 end
 
--- Queues turning the mouse wheel, after the move to the target if there is one.
 function Mouse.scroll_async(amount: number, down: boolean, target: Target?, forced: boolean?)
 	if target ~= nil then
 		queue_move(target, forced)
@@ -280,12 +272,10 @@ function Mouse.scroll_async(amount: number, down: boolean, target: Target?, forc
 	scroll_async(if down then amount else -amount)
 end
 
--- Whether async mouse input is still running or queued.
 function Mouse.busy(): boolean
 	return input_busy()
 end
 
--- Waits for async input to finish. False if one failed (the reason is printed).
 function Mouse.wait(): boolean
 	local err = input_wait()
 	if err then
@@ -295,7 +285,6 @@ function Mouse.wait(): boolean
 	return true
 end
 
--- Stops async input and drops what was queued; `Mouse.position` may trail a frame or two.
 function Mouse.cancel()
 	input_cancel()
 end
@@ -305,7 +294,7 @@ function Mouse.click(target: Target?, button: Button?, forced: boolean?, distrib
 		Mouse.move(target, forced, distribution)
 	end
 	mouse_down(button)
-	sleep(Random.trunc(Random.left(Mouse.press_min, Mouse.press_max)))
+	sleep(press_ms())
 	mouse_up(button)
 end
 

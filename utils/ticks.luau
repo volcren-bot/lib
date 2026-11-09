@@ -9,8 +9,7 @@ Ticks.MS = 600
 Ticks.POLL_MS = 50
 
 function Ticks.current(): number?
-	local state = game_state()
-	return state.tick_count
+	return game_state().tick_count
 end
 
 function Ticks.wait(count: number?, timeout_ms: number?): number?

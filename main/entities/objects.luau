@@ -21,12 +21,20 @@ Objects.WALL_DECORATION = 1
 Objects.GAME_OBJECT = 2
 Objects.GROUND_DECORATION = 3
 
--- `what` is a lowercase name or an id
 local function matches(loc: Loc, what: string | number): boolean
 	if type(what) == "number" then
 		return loc.id == what
 	end
 	return loc.name ~= nil and string.lower((string.gsub(loc.name, "<[^>]*>", ""))) == what
+end
+
+local function label(loc: Loc): string
+	return loc.name or tostring(loc.id)
+end
+
+local function centre(loc: Loc): (number, number)
+	return loc.scene_x * Projection.TILE + loc.size_x * Projection.TILE / 2,
+		loc.scene_y * Projection.TILE + loc.size_y * Projection.TILE / 2
 end
 
 function Objects.distance(loc: Loc, from: Tile): number
@@ -67,11 +75,7 @@ function Objects.nearest(what: (string | number)?, from: Tile): Loc?
 end
 
 function Objects.model(loc: Loc): NpcModel?
-	local model = loc_model(loc)
-	if model == nil then
-		return nil
-	end
-	return model
+	return (loc_model(loc))
 end
 
 function Objects.clickbox(loc: Loc): Clickbox?
@@ -79,7 +83,7 @@ function Objects.clickbox(loc: Loc): Clickbox?
 	if model == nil then
 		return nil
 	end
-	return Clickbox.from_model(model, loc.name or tostring(loc.id))
+	return Clickbox.from_model(model, label(loc))
 end
 
 local MENU_LOC = 3
@@ -98,8 +102,7 @@ function Objects.hovered(loc: Loc): boolean
 end
 
 function Objects.projected(loc: Loc, at: Tile): Clickbox?
-	local centre_x = loc.scene_x * Projection.TILE + loc.size_x * Projection.TILE / 2
-	local centre_y = loc.scene_y * Projection.TILE + loc.size_y * Projection.TILE / 2
+	local centre_x, centre_y = centre(loc)
 	local cuboid = Projection.cuboid(centre_x, centre_y, math.max(loc.size_x, loc.size_y), nil, at)
 	if cuboid == nil then
 		return nil
@@ -108,21 +111,24 @@ function Objects.projected(loc: Loc, at: Tile): Clickbox?
 end
 
 local function clickbox_of(loc: Loc): Clickbox.Aim
-	local anchor: Clickbox.Anchor = {
-		x = loc.scene_x * Projection.TILE + loc.size_x * Projection.TILE / 2,
-		y = loc.scene_y * Projection.TILE + loc.size_y * Projection.TILE / 2,
-		size = math.max(loc.size_x, loc.size_y),
-	}
+	local x, y = centre(loc)
+	local anchor: Clickbox.Anchor = { x = x, y = y, size = math.max(loc.size_x, loc.size_y) }
 	return Clickbox.walking(function()
 		return Objects.clickbox(loc)
 	end, function()
 		return anchor
-	end, loc.name or tostring(loc.id))
+	end, label(loc))
 end
 
 local function hovered_by(loc: Loc): () -> boolean
 	return function()
 		return Objects.hovered(loc)
+	end
+end
+
+local function owned_by(loc: Loc): (MenuEntry) -> boolean
+	return function(entry)
+		return Objects.owns(loc, entry)
 	end
 end
 
@@ -134,13 +140,11 @@ local function tile_of(loc: Loc): () -> Tile?
 end
 
 function Objects.hover(loc: Loc): boolean
-	return Clickbox.hover(clickbox_of(loc), hovered_by(loc), loc.name or tostring(loc.id), tile_of(loc))
+	return Clickbox.hover(clickbox_of(loc), hovered_by(loc), label(loc), tile_of(loc))
 end
 
--- Starts moving the mouse over the object and returns at once; true if there was a spot to aim at. Doesn't turn the camera.
--- `at` is the tile the player will stand on when it is time to click: the object is aimed at as the screen will show it then.
 function Objects.hover_async(loc: Loc, at: Tile?): boolean
-	local name = loc.name or tostring(loc.id)
+	local name = label(loc)
 	if at == nil then
 		return Clickbox.hover_async(clickbox_of(loc), name)
 	end
@@ -150,10 +154,9 @@ function Objects.hover_async(loc: Loc, at: Tile?): boolean
 end
 
 function Objects.click(loc: Loc, button: Mouse.Button?, spam: number?): boolean
-	return Clickbox.click(clickbox_of(loc), hovered_by(loc), loc.name or tostring(loc.id), button, tile_of(loc), spam)
+	return Clickbox.click(clickbox_of(loc), hovered_by(loc), label(loc), button, tile_of(loc), spam)
 end
 
--- `face` false leaves the camera alone (for a loc already on screen).
 function Objects.interact(
 	loc: Loc,
 	option: string | { string },
@@ -161,15 +164,12 @@ function Objects.interact(
 	face: boolean?,
 	spam: number?
 ): boolean
-	local function owns(entry: MenuEntry): boolean
-		return Objects.owns(loc, entry)
-	end
 	return Clickbox.interact(
 		clickbox_of(loc),
 		hovered_by(loc),
-		loc.name or tostring(loc.id),
+		label(loc),
 		option,
-		owns,
+		owned_by(loc),
 		if face == false then nil else tile_of(loc),
 		walk_timeout_ms,
 		spam
@@ -177,18 +177,7 @@ function Objects.interact(
 end
 
 function Objects.approach(loc: Loc, options: string | { string }, opts: Clickbox.Approach?): boolean
-	local function owns(entry: MenuEntry): boolean
-		return Objects.owns(loc, entry)
-	end
-	return Clickbox.approach(
-		clickbox_of(loc),
-		hovered_by(loc),
-		loc.name or tostring(loc.id),
-		options,
-		owns,
-		tile_of(loc),
-		opts
-	)
+	return Clickbox.approach(clickbox_of(loc), hovered_by(loc), label(loc), options, owned_by(loc), tile_of(loc), opts)
 end
 
 return Objects

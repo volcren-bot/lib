@@ -1,5 +1,4 @@
 --!strict
--- Transports the walker can use, from the data the loader sends (`Host.transports`). `choose` weighs walking against them and `travel` uses the best; see docs/main/transports.md.
 local Host = require("@lib/host")
 local sleep = Host.sleep
 local time = Host.time
@@ -8,6 +7,7 @@ local Ferox = require("@lib/main/ferox")
 local GameState = require("@lib/main/game_state")
 local Log = require("@lib/utils/log")
 local Random = require("@lib/utils/math/random")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 type Transport = Host.Transport
 type Loc = Host.Loc
@@ -15,124 +15,78 @@ type Tile = { x: number, y: number, plane: number? }
 
 local Transports = {}
 
--- Transports are used by the walker unless this is false (or a walk passes `transports = false`).
 Transports.ENABLED = true
--- A transport has to save this many game ticks over walking.
 Transports.MIN_SAVING_TICKS = 30
--- Walking at a run, with a detour, for the tiles apart.
 Transports.WALK_TICKS_PER_TILE = 0.6
--- Ticks added to a spell's duration for the cast, and how long to wait to land.
 Transports.CAST_SLACK_TICKS = 3
 Transports.LAND_TIMEOUT_MS = 8000
--- A cast the data says takes longer than that (the home teleports): how long past its duration to wait, and how long it may take to start.
 Transports.SLOW_CAST_SLACK_MS = 3000
 Transports.SLOW_CAST_START_MS = 3000
--- A jump of this many tiles between two looks is a trip: walking can't do it.
 Transports.LAND_DISTANCE = 6
--- How long after landing to wait for the scene to load.
 Transports.SETTLE_TIMEOUT_MS = 10000
--- A transport that failed isn't chosen again for this long.
 Transports.RETRY_AFTER_MS = 5 * 60 * 1000
--- A charter trip: ticks added for the trader's menu, and how long the boat may take to come.
 Transports.CHARTER_SLACK_TICKS = 6
 Transports.CHARTER_SAIL_TIMEOUT_MS = 15000
--- Leaving a boat: the gangplank's name, how long to try, and how near the dock counts as arrived.
 Transports.GANGPLANK = "Gangplank"
 Transports.CROSS_TIMEOUT_MS = 20000
 Transports.ARRIVED_NEAR = 4
--- A gate: ticks added for the click, how long the step through may take, and how near the far tile counts.
 Transports.LINK_SLACK_TICKS = 2
 Transports.LINK_TIMEOUT_MS = 8000
 Transports.LINK_ARRIVED_NEAR = 1
--- What a passage (a far hop of `transports.tsv`: a tunnel, a cart, a ladder to another part of the map) adds to the data's duration, in ticks.
 Transports.PASSAGE_SLACK_TICKS = 3
--- A lever: ticks added for the pull, how long the teleport may take, how near its destination counts, and how far from the row's tile the object may be.
 Transports.LEVER_SLACK_TICKS = 3
 Transports.LEVER_TIMEOUT_MS = 12000
 Transports.LEVER_ARRIVED_NEAR = 2
 Transports.LEVER_OBJECT_NEAR = 3
--- Whether a balloon may count on logs in storage, which can't be read before a flight. Off: a balloon is only used with its log in the inventory.
 Transports.BALLOON_STORAGE = false
--- Whether a trip may go from safety into the Wilderness: off unless a script asks (this, or `options.wilderness` for one plan).
 Transports.WILDERNESS = false
--- The `UNLOCK_*` items of the data: the varbit that says so (Karamja elite diary, the guard's permission), or `true` when the game shows none: paying the ghost captain, and the tablet on a Xeric's talisman.
 Transports.UNLOCKS = {
 	UNLOCK_KARAMJA_ELITE = { varbit = 4566, at_least = 1 },
 	UNLOCK_MOR_UL_REK = { varbit = 5646, at_least = 1 },
 	UNLOCK_DRAGONTOOTH = true,
 	UNLOCK_XERICS_HONOUR = true,
 } :: { [string]: { varbit: number, at_least: number } | boolean }
--- The item groups of the data that have to be worn to use a row: the walk puts them on from the inventory when it gets there, and leaves them on.
 Transports.WORN_GROUPS = { "CROSSBOW", "MITH_GRAPPLE", "CLIMBING_BOOTS" }
 Transports.WEAR_OPTIONS = { "Wield", "Wear", "Equip" }
 Transports.WEAR_TIMEOUT_MS = 2500
--- What going from where you land in the house to the furniture adds, in ticks.
 Transports.HOUSE_SLACK_TICKS = 12
--- A canoe trip: what chopping, shaping and floating add to the data's duration, in ticks.
 Transports.CANOE_SLACK_TICKS = 20
--- Tries per transport, the pause between them.
 Transports.ATTEMPTS = 3
 Transports.RETRY_PAUSE_MS = 1500
--- A charter or boat retried from this close to its destination is taken to be aboard already.
 Transports.ABOARD_NEAR = 15
--- A network of separate starts and ends (see `HUBS`): how long the trip may take to land.
 Transports.HUB_TIMEOUT_MS = 20000
--- A ride (a boat, ferry, cart or magic carpet): ticks added to the data's duration, how long the dialogue and trip may take, and the pause between looks.
 Transports.RIDE_SLACK_TICKS = 8
 Transports.RIDE_TIMEOUT_MS = 45000
 Transports.RIDE_POLL_MS = 200
--- How long after a conversation has ended without a trip before it counts as refused.
 Transports.RIDE_QUIET_MS = 8000
--- How long a voyage that has begun may take to reach the destination.
 Transports.RIDE_VOYAGE_MS = 40000
--- How far from the click the player has to be for a ride to have taken them: walking to the NPC is not that.
 Transports.RIDE_LAND_DISTANCE = 25
--- The player's pose while riding a magic carpet, and how long a merchant a few tiles away may stay silent after the click.
 Transports.CARPET_POSE = 6936
 Transports.CARPET_SILENT_MS = 8000
--- Taken off a carpet ride's cost: a ride beats a walk of about the same length, which is longer than walking's straight line anyway.
 Transports.CARPET_BONUS_TICKS = 15
--- How long after the click with nothing said and no trip before the click counts as having done nothing.
 Transports.RIDE_SILENT_MS = 25000
--- Buying a cart ticket: how long it may take, how long after "Buy" the talk is over, and how long a quiet talk before it counts as gone nowhere.
 Transports.TICKET_TIMEOUT_MS = 40000
 Transports.TICKET_DONE_MS = 2500
 Transports.TICKET_IDLE_MS = 8000
--- A pause (min, max in ms) after a boat lands: the gangplank doesn't take a click at once.
 Transports.RIDE_DOCK_PAUSE_MS = { 2500, 4000 }
--- Finding a ride's NPC by asking: how far from the boarding tile, and how many of the nearest.
 Transports.RIDE_NPC_RANGE = 12
 Transports.RIDE_NPC_LOOKS = 8
--- Agility shortcuts are used by the walker unless this is false (or a walk passes `shortcuts = false`).
 Transports.SHORTCUTS = true
--- A shortcut has to save this many tiles over walking round.
 Transports.SHORTCUT_MIN_SAVING_TILES = 10
--- How long what the planner found out about the gated rows and grown trees is kept.
 Transports.VALID_FOR_MS = 20 * 1000
--- Ticks added for a walk that changes plane.
 Transports.PLANE_CHANGE_TICKS = 10
--- A goal that looks cut off but is at most this far is asked of the planner before a transport is taken.
 Transports.CONFIRM_WALK_TILES = 64
--- The planner's `near` for that question.
 Transports.CONFIRM_WALK_NEAR = 2
--- The item containers: the inventory and what is worn.
 Transports.INVENTORY = 93
 Transports.WORN = 94
--- How far from a dock or start tile the walk to it may stop.
 Transports.DOCK_NEAR = 3
--- Teleport items are used unless this is false (or a plan excludes "items", or the item's name).
 Transports.ITEMS = true
--- Ticks added to using an item, and to one that spends a charge, to keep it for a real saving.
 Transports.ITEM_SLACK_TICKS = 3
 Transports.ITEM_CHARGE_TICKS = 40
--- How long to wait to land after an item is clicked, and for its dialogue before taking the submenu.
 Transports.ITEM_TIMEOUT_MS = 12000
 Transports.ITEM_DIALOGUE_MS = 2500
--- The least often the destination is picked in the submenu; biometrics raise it up to always.
 Transports.ITEM_SUBMENU_BASE = 0.7
--- The menu options that open an item's list of destinations, in the order tried.
 Transports.ITEM_OPENERS = { "Rub", "Teleport", "Teleports", "Commune", "Break", "Operate" }
--- Options of an item that are never its teleport.
 Transports.ITEM_NOT_TELEPORT = {
 	"Wear",
 	"Wield",
@@ -150,30 +104,21 @@ Transports.ITEM_NOT_TELEPORT = {
 	"Features",
 	"Spellbook",
 }
--- The underground (dungeons) is the same map 6,400 tiles north.
 Transports.UNDERGROUND = 6400
 
 export type Options = {
-	-- names never to use: a spell's or item's as in the data ("Varrock Teleport"), a charter's or ride's label, a minigame's activity ("Castle Wars"), or a group: "spells", "minigames", "items", "charter", "ride", "gates", "levers", or a network's kind ("fairy_rings")
 	exclude: { [string]: boolean }?,
-	-- overrides `MIN_SAVING_TICKS`
 	min_saving_ticks: number?,
-	-- whether agility shortcuts join landmasses for the walk (default `Transports.SHORTCUTS`)
 	shortcuts: boolean?,
-	-- whether a trip may go from safety into the Wilderness (default `Transports.WILDERNESS`)
 	wilderness: boolean?,
 }
 
 export type Choice = {
-	-- "spell", "minigame", "item", "quetzal_whistle", "scroll_book", "charter", "link", "lever", "ride" or the kind of a network ("fairy_rings", ...)
 	kind: string,
 	transport: Transport,
-	-- its name in the list of failures
 	id: string?,
-	-- a spell's name and its menu option (nil: the default one); an item's name and the destination to pick; empty for the rest
 	spell: string,
 	option: string?,
-	-- ticks the whole way is expected to take, and ticks saved against walking
 	ticks: number,
 	saved: number,
 }
@@ -186,17 +131,19 @@ local function gap(a: Tile, b: Tile): number
 	return math.max(math.abs(a.x - b.x), math.abs(a.y - b.y))
 end
 
--- A runner's way of saying what went wrong: logged, and false.
+local function within(a: Tile?, b: Tile, near: number): boolean
+	return a ~= nil and a.plane == b.plane and gap(a, b) <= near
+end
+
+local function log_saving(what: string, choice: Choice)
+	Log.log("Transports", `{what}: saves about {math.floor(choice.saved)} ticks`)
+end
+
 local function fail(id: string, why: string): boolean
 	Log.log("Transports", `{id}: {why}`)
 	return false
 end
 
-----------------------------------------------------------------------------------------------------
--- The data
-----------------------------------------------------------------------------------------------------
-
--- `Host.transports` copies thousands of rows: read once, by kind.
 local rows_by_kind: { [string]: { Transport } }? = nil
 local item_ids: { [string]: { number } } = {}
 
@@ -224,7 +171,6 @@ local function rows_of(kind: string): { Transport }
 	return (rows_by_kind :: { [string]: { Transport } })[kind] or {}
 end
 
--- "Varrock Teleport: Grand Exchange" is the spell "Varrock Teleport" with the option "Grand Exchange", and "Teleport to House (Inside)" the option "Inside".
 function Transports.split(name: string): (string, string?)
 	local base, option = string.match(name, "^(.-): (.+)$")
 	if base then
@@ -237,8 +183,6 @@ function Transports.split(name: string): (string, string?)
 	return name, nil
 end
 
--- The wilderness level of a tile, 0 outside it.
-
 function Transports.wilderness_level(x: number, y: number): number
 	if x >= 2944 and x < 3392 then
 		if y >= 3523 and y < 3968 then
@@ -250,16 +194,10 @@ function Transports.wilderness_level(x: number, y: number): number
 	return 0
 end
 
-----------------------------------------------------------------------------------------------------
--- Requirements
-----------------------------------------------------------------------------------------------------
-
--- What one plan has read of the account: each read is an IPC round trip, and many rows test the same few.
 type Check = {
 	levels: { [string]: number }?,
 	here_wild: number,
 	into_wild: boolean,
-	-- the goal is in the Ferox Enclave, so a trip may land in it
 	goal_in_ferox: boolean?,
 	vars: { [number]: number | boolean },
 	quests: { [string]: boolean },
@@ -276,11 +214,9 @@ local function new_check(from: Tile?, into_wild: boolean?): Check
 		vars = {},
 		quests = {},
 		castable = {},
-		held = nil,
 	}
 end
 
--- Whether the varbit and varp tests of a row hold. They pick the row that applies (the spellbook, the diary, the house's place).
 local function holds(t: Transport, c: Check): boolean
 	for _, list in { t.varbits, t.varps } do
 		local is_varp = list == t.varps
@@ -295,7 +231,6 @@ local function holds(t: Transport, c: Check): boolean
 				return false
 			end
 			local value = known :: number
-			-- "@" is a cooldown: the variable keeps the minute since the Unix epoch it started
 			local ok = if clause.op == "="
 				then value == clause.value
 				elseif clause.op == ">" then value > clause.value
@@ -311,8 +246,6 @@ local function holds(t: Transport, c: Check): boolean
 	return true
 end
 
--- The player's levels by lowercase skill name, with `total` (the total level) and `combat` (the combat level), as the data's `Skills` column names them.
--- Skill levels are the current ones, boosts included, the way the game checks them; the total and combat levels use the real ones.
 function Transports.levels(real_only: boolean?): { [string]: number }?
 	local skills = Host.game_state().skills
 	if skills == nil then
@@ -331,7 +264,6 @@ function Transports.levels(real_only: boolean?): { [string]: number }?
 	local function r(name: string): number
 		return real[name] or 1
 	end
-	-- combat level: a quarter of defence, hitpoints and half the prayer level, plus the best of the three styles
 	local base = 0.25 * (r("defence") + r("hitpoints") + math.floor(r("prayer") / 2))
 	local melee = 0.325 * (r("attack") + r("strength"))
 	local ranged = 0.325 * math.floor(r("ranged") * 1.5)
@@ -342,7 +274,6 @@ end
 
 local warned_skills: { [string]: boolean } = {}
 
--- Whether the skill levels a transport needs are met. `levels` is `Transports.levels()` unless given. A skill the data names that isn't known (not in `levels`) counts as not met.
 function Transports.skills_met(t: Transport, levels: { [string]: number }?): boolean
 	if #t.skills == 0 then
 		return true
@@ -368,7 +299,6 @@ function Transports.skills_met(t: Transport, levels: { [string]: number }?): boo
 	return true
 end
 
--- The ids of a named item group (`COINS`), from the data's `item-variations.tsv`; a number names itself.
 local function ids_of(name: string): { number }?
 	local number = tonumber(name)
 	if number ~= nil then
@@ -382,7 +312,6 @@ local warned_items: { [string]: boolean } = {}
 
 type ItemToken = { text: string, ids: { number }?, quantity: number }
 
--- One `Items` cell as any-of groups of all-of tokens. Kept: thousands of rows share a few hundred cells.
 local parsed_items: { [string]: { { ItemToken } } } = {}
 
 local function parse_items(cell: string): { { ItemToken } }
@@ -397,7 +326,6 @@ local function parse_items(cell: string): { { ItemToken } }
 		local tokens: { ItemToken } = {}
 		for token in string.gmatch(alternative, "[^&]+") do
 			local name, quantity = string.match(token, "^([%w_]+)=(%d+)$")
-			-- a slot, an unlock or an unknown group can't be counted
 			local countable = name ~= nil and string.sub(name, 1, 7) ~= "UNLOCK_" and string.sub(name, -4) ~= "SLOT"
 			table.insert(tokens, {
 				text = token,
@@ -413,7 +341,6 @@ local function parse_items(cell: string): { { ItemToken } }
 	return alternatives
 end
 
--- The amounts of the items in the inventory and on the body, by item id.
 local function held_counts(): { [number]: number }
 	local counts: { [number]: number } = {}
 	for _, container in { Transports.INVENTORY, Transports.WORN } do
@@ -426,7 +353,6 @@ local function held_counts(): { [number]: number }
 	return counts
 end
 
--- A comment above some rows that states a requirement: "Karamja (varbit:4566=0?COINS=200)" owes the items while the variable is at most the value.
 type Note = { text: string, varp: boolean, id: number, value: number, items: string }
 
 local notes: { [string]: Note | false } = {}
@@ -464,7 +390,6 @@ local function warn_note(text: string)
 	end
 end
 
--- Whether an `UNLOCK_*` item is met: by its variable, or `true` when the game shows no variable, so it is taken as met until the trip is refused. Nil for one with neither, which isn't checked.
 local function unlocked(token: ItemToken): boolean?
 	local unlock = Transports.UNLOCKS[string.match(token.text, "^[%w_]+") or ""]
 	if unlock == nil then
@@ -477,7 +402,6 @@ local function unlocked(token: ItemToken): boolean?
 	return now ~= nil and now >= unlock.at_least
 end
 
--- Whether the items a transport needs are held, in the inventory or worn (`counts`, else read now). `Items` is any-of groups (`|`) of all-of items (`&`).
 function Transports.items_met(t: Transport, counts: { [number]: number }?): boolean
 	if t.items == "" then
 		return true
@@ -522,7 +446,6 @@ function Transports.items_met(t: Transport, counts: { [number]: number }?): bool
 	return false
 end
 
--- Whether the quests a transport needs are done (`known` remembers the answers of one plan).
 function Transports.quests_done(t: Transport, known: { [string]: boolean }?): boolean
 	if #t.quests == 0 then
 		return true
@@ -543,7 +466,6 @@ function Transports.quests_done(t: Transport, known: { [string]: boolean }?): bo
 	return true
 end
 
--- Game ticks to walk between two tiles: the longer axis, a detour and running.
 function Transports.walk_ticks(a: Tile, b: Tile): number
 	return gap(a, b) * Transports.WALK_TICKS_PER_TILE
 end
@@ -557,7 +479,6 @@ local function held(c: Check): { [number]: number }
 	return counts
 end
 
--- The tests every row shares, cheapest first.
 local function row_ok(t: Transport, c: Check): boolean
 	return holds(t, c)
 		and Transports.skills_met(t, c.levels)
@@ -567,7 +488,6 @@ end
 
 local failed: { [string]: number } = {}
 
--- The axes held when a station last said there is none it can use: a held one can be too high a level. Nil when none has said so, or the axes held have changed since.
 local no_canoe_axe: string? = nil
 
 local function axes_held(have: { [number]: number }): string
@@ -580,7 +500,6 @@ local function axes_held(have: { [number]: number }): string
 	return table.concat(ids, ",")
 end
 
--- What a visit to the house showed isn't there, by furniture and by route id, for the rest of the run.
 local house_missing: { [string]: boolean } = {}
 
 local function is_house(tile: { x: number, y: number }): boolean
@@ -592,15 +511,9 @@ local function not_failed(id: string): boolean
 	return at == nil or time() - at > Transports.RETRY_AFTER_MS
 end
 
-----------------------------------------------------------------------------------------------------
--- Rows the planner has to be told about, and that join landmasses
-----------------------------------------------------------------------------------------------------
-
 type Gated = { keys: { string }, across: { Transport }, by_ends: { [string]: { Transport } }, at: number }
 local gated_rows: { [boolean]: Gated } = {}
 
--- The gated climbs, links and shortcuts the player can use now: their names for the planner, and the rows that are a way across (links and shortcuts).
--- The types of transport the user turned off in the loader, by name.
 local function turned_off(): { [string]: boolean }
 	local off: { [string]: boolean } = {}
 	for _, name in ipairs(Host.transport_settings().off) do
@@ -609,22 +522,18 @@ local function turned_off(): { [string]: boolean }
 	return off
 end
 
--- Whether the user has this type of transport on in the loader. See the docs for the names.
 function Transports.is_enabled(name: string): boolean
 	return not turned_off()[name]
 end
 
--- Raises an error that stops the script when the user has this type of transport off, for a script that can't work without it.
 function Transports.require_enabled(name: string)
 	if not Transports.is_enabled(name) then
 		error(`this script needs the transport type "{name}", which is turned off in the loader's Settings`)
 	end
 end
 
--- Whether what a comment above a row asks for is met; set below, with the gates that read it.
 local note_ok: (t: Transport, c: Check) -> boolean
 
--- Whether a row needs something put on to be used.
 local function needs_worn(t: Transport): boolean
 	for _, group in ipairs(Transports.WORN_GROUPS) do
 		if string.find(t.items, group, 1, true) ~= nil then
@@ -644,24 +553,21 @@ local function gated(shortcuts: boolean?): Gated
 	local keys: { string } = {}
 	local across: { Transport } = {}
 	local by_ends: { [string]: { Transport } } = {}
-	local function allow(t: Transport, is_across: boolean)
+	local function allow(t: Transport)
 		local o, d = t.origin :: Host.TransportTile, t.destination :: Host.TransportTile
 		local ends = `{o.x},{o.y},{o.plane}>{d.x},{d.y},{d.plane}`
 		by_ends[ends] = by_ends[ends] or {}
 		table.insert(by_ends[ends], t)
-		if is_across then
-			table.insert(across, t)
-		end
+		table.insert(across, t)
 	end
 	for _, kind in { "climb_gated", "link_gated" } do
 		for _, t in ipairs(rows_of(kind)) do
 			if row_ok(t, c) and note_ok(t, c) then
-				allow(t, true)
+				allow(t)
 			end
 		end
 	end
 	if on then
-		-- on the real levels: a boost can run out on the way
 		local real = new_check()
 		real.levels = Transports.levels(true)
 		real.vars, real.quests, real.held = c.vars, c.quests, c.held
@@ -672,11 +578,10 @@ local function gated(shortcuts: boolean?): Gated
 				and Transports.wilderness_level(d.x, d.y) == 0
 				and row_ok(t, real)
 			then
-				allow(t, true)
+				allow(t)
 			end
 		end
 	end
-	-- several rows can join the same two tiles, like a wall's Grapple and Climb: the planner gets one that needs nothing put on, if there is one
 	for ends, rows in by_ends do
 		local plain: { Transport } = {}
 		for _, t in ipairs(rows) do
@@ -695,20 +600,14 @@ local function gated(shortcuts: boolean?): Gated
 	return made
 end
 
--- The climbs and shortcuts that ask for something and that the player can use, as the planner names them ("x,y,plane>x,y,plane"), for `allow_climbs` of `Host.nav_plan`.
 function Transports.allowed_climbs(options: { shortcuts: boolean? }?): { string }
 	return gated(options and options.shortcuts).keys
 end
-
-----------------------------------------------------------------------------------------------------
--- Landmasses
-----------------------------------------------------------------------------------------------------
 
 local function tile_key(x: number, y: number, plane: number): number
 	return x * 65536 + y * 4 + plane
 end
 
--- Kept: they only change with a game update. 0: unknown, so walking is allowed.
 local landmass_of: { [number]: number } = {}
 
 local function learn_landmasses(points: { Tile })
@@ -737,11 +636,6 @@ local function landmass(p: Tile): number
 	return landmass_of[tile_key(p.x, p.y, p.plane or 0)] or 0
 end
 
-----------------------------------------------------------------------------------------------------
--- The ways of travelling
-----------------------------------------------------------------------------------------------------
-
--- A transport read once from a data row. `group` and `name` are what `exclude` can rule it out by.
 type Route = {
 	kind: string,
 	transport: Transport,
@@ -751,7 +645,6 @@ type Route = {
 	slack: number,
 	spell: string,
 	option: string?,
-	-- the name of the type the user can turn off, when it isn't `group`
 	setting: string?,
 }
 
@@ -771,12 +664,18 @@ local function ends_id(prefix: string, t: Transport): string
 	return `{prefix} {o.x},{o.y} {d.x},{d.y}`
 end
 
--- The Wilderness rule: never from safety into it unless asked. Once in it, leaving and moving within it are fine, but not walking out to a start in safety that leads back in.
+local function menu_id(prefix: string, t: Transport): string
+	return `{ends_id(prefix, t)} {t.menu}`
+end
+
+local function lands_only(t: Transport): boolean
+	return t.origin == nil and t.destination ~= nil
+end
+
 local function wild_allowed(o: Host.TransportTile?, to: Host.TransportTile, c: Check): boolean
 	if c.into_wild then
 		return true
 	end
-	-- going to Clan Wars or Last Man Standing: the Enclave is safe, and with the goal inside it no walk through the Wilderness follows
 	if c.goal_in_ferox and Ferox.contains(to.x, to.y) and (o == nil or Transports.wilderness_level(o.x, o.y) == 0) then
 		return true
 	end
@@ -792,7 +691,6 @@ local function safe(t: Transport, c: Check): boolean
 	return wild_allowed(t.origin, t.destination :: Host.TransportTile, c) and c.here_wild <= (t.wilderness or 20)
 end
 
--- Whether a gate can be passed: `(varbit:217=7?ECTO_TOKEN=2)` in the comment above its row means free once the quest keeping its progress in that varbit is complete, else the items after the `?`.
 local function gate_open(t: Transport, c: Check): boolean
 	local note = read_note(t.note or "")
 	if note == nil then
@@ -802,7 +700,6 @@ local function gate_open(t: Transport, c: Check): boolean
 	return note_passed(note) or Transports.items_met({ items = note.items } :: any, held(c))
 end
 
--- Whether any row under this comment asks for the comment's items itself. Then the comment only says when those rows stop paying, as with Karamja's carts, and the free rows beside them aren't bound.
 local note_named: { [string]: boolean } = {}
 
 local function some_row_names(note: Note): boolean
@@ -811,7 +708,6 @@ local function some_row_names(note: Note): boolean
 		return known
 	end
 	local named = false
-	-- the paying rows are often far hops, as Karamja's Travel cart is, which keep the file's kind
 	for _, kind in { "climb_gated", "link_gated", "transports" } do
 		for _, t in ipairs(rows_of(kind)) do
 			if t.note == note.text and t.items == note.items then
@@ -823,7 +719,6 @@ local function some_row_names(note: Note): boolean
 	return named
 end
 
--- Rows under a comment stating a requirement: those that name its items check them themselves (`items_met`), and when no row names them it binds them all.
 note_ok = function(t: Transport, c: Check): boolean
 	if (t.note or "") == "" then
 		return true
@@ -839,11 +734,15 @@ note_ok = function(t: Transport, c: Check): boolean
 	return Transports.items_met({ items = note.items } :: any, held(c))
 end
 
+local function safe_row(route: Route, c: Check): boolean
+	return safe(route.transport, c) and row_ok(route.transport, c)
+end
+
 local FAMILIES: { Family } = {
 	{
 		kinds = { "teleportation_spells", "teleportation_spells_home" },
 		build = function(t: Transport): Route?
-			if t.origin ~= nil or t.destination == nil then
+			if not lands_only(t) then
 				return nil
 			end
 			local spell, option = Transports.split(t.name)
@@ -864,7 +763,6 @@ local FAMILIES: { Family } = {
 			if not safe(t, c) or not holds(t, c) or not Transports.skills_met(t, c.levels) then
 				return false
 			end
-			-- the game's own check covers the runes, and is shared by the spell's rows
 			local known = c.castable[route.spell]
 			if known == nil then
 				local Magic = lib("@lib/main/interfaces/gametabs/magic")
@@ -878,10 +776,9 @@ local FAMILIES: { Family } = {
 	{
 		kinds = { "teleportation_minigames" },
 		build = function(t: Transport): Route?
-			if t.origin ~= nil or t.destination == nil then
+			if not lands_only(t) then
 				return nil
 			end
-			-- "Rat Pits Minigame Teleport: 1. Ardougne": the activity, and which pit
 			local spell, option = Transports.split(t.name)
 			local name = string.gsub(spell, "%s*Minigame Teleport$", "")
 			return {
@@ -895,15 +792,12 @@ local FAMILIES: { Family } = {
 				option = if option ~= nil then string.match(option, "^%d+%.%s*(.+)$") or option else nil,
 			}
 		end,
-		usable = function(route: Route, c: Check): boolean
-			local t = route.transport
-			return safe(t, c) and row_ok(t, c)
-		end,
+		usable = safe_row,
 	},
 	{
 		kinds = { "teleportation_items" },
 		build = function(t: Transport): Route?
-			if t.origin ~= nil or t.destination == nil then
+			if not lands_only(t) then
 				return nil
 			end
 			local item, label = Transports.split(t.name)
@@ -911,7 +805,6 @@ local FAMILIES: { Family } = {
 				return nil
 			end
 			return {
-				-- the book's scrolls are chosen in its own interface
 				kind = if item == "Master scroll book" then "scroll_book" else "item",
 				setting = if item == "Master scroll book" then "scroll_book" else nil,
 				transport = t,
@@ -931,7 +824,7 @@ local FAMILIES: { Family } = {
 	{
 		kinds = { "quetzal_whistle" },
 		build = function(t: Transport): Route?
-			if t.origin ~= nil or t.destination == nil then
+			if not lands_only(t) then
 				return nil
 			end
 			local item, label = Transports.split(t.name)
@@ -939,7 +832,6 @@ local FAMILIES: { Family } = {
 				kind = "quetzal_whistle",
 				setting = "quetzal_whistle",
 				transport = t,
-				-- one id for every site: an empty whistle fails them all
 				id = item,
 				group = "items",
 				name = item,
@@ -971,9 +863,7 @@ local FAMILIES: { Family } = {
 				spell = "",
 			}
 		end,
-		usable = function(route: Route, c: Check): boolean
-			return safe(route.transport, c) and row_ok(route.transport, c)
-		end,
+		usable = safe_row,
 	},
 	{
 		kinds = { "boats", "ships", "minecarts" },
@@ -984,17 +874,14 @@ local FAMILIES: { Family } = {
 			return {
 				kind = "ride",
 				transport = t,
-				id = `{ends_id("ride", t)} {t.menu}`,
+				id = menu_id("ride", t),
 				group = "ride",
-				-- the destination's name when the data gives it, else the menu without its id
 				name = if t.name ~= "" then t.name else (string.gsub(t.menu, "%s*%d+%s*$", "")),
 				slack = Transports.RIDE_SLACK_TICKS,
 				spell = "",
 			}
 		end,
-		usable = function(route: Route, c: Check): boolean
-			return safe(route.transport, c) and row_ok(route.transport, c)
-		end,
+		usable = safe_row,
 	},
 	{
 		kinds = { "magic_carpets" },
@@ -1005,7 +892,7 @@ local FAMILIES: { Family } = {
 			return {
 				kind = "ride",
 				transport = t,
-				id = `{ends_id("ride", t)} {t.menu}`,
+				id = menu_id("ride", t),
 				group = "ride",
 				setting = "magic_carpets",
 				name = t.name,
@@ -1013,7 +900,6 @@ local FAMILIES: { Family } = {
 				spell = "",
 			}
 		end,
-		-- the Desert hard diary makes the rides free, so the fare in the data need not be held
 		usable = function(route: Route, c: Check): boolean
 			local t = route.transport
 			if not safe(t, c) or not holds(t, c) or not Transports.quests_done(t, c.quests) then
@@ -1030,26 +916,22 @@ local FAMILIES: { Family } = {
 	},
 	{
 		kinds = { "teleportation_portals" },
-		-- the free-for-all portal is a PvP arena
 		build = function(t: Transport): Route?
 			if not both_ends(t) or string.find(t.menu, "Free-for-all", 1, true) ~= nil then
 				return nil
 			end
 			local home = string.sub(t.menu, 1, 5) == "Home "
 			return {
-				-- out of the house it's the portal inside, wherever that is
 				kind = if home and is_house(t.origin :: Host.TransportTile) then "house_exit" else "ride",
 				transport = t,
-				id = `{ends_id("ride", t)} {t.menu}`,
+				id = menu_id("ride", t),
 				group = if home then "house" else "portals",
 				name = t.name,
 				slack = Transports.PASSAGE_SLACK_TICKS,
 				spell = "",
 			}
 		end,
-		usable = function(route: Route, c: Check): boolean
-			return safe(route.transport, c) and row_ok(route.transport, c)
-		end,
+		usable = safe_row,
 	},
 	{
 		kinds = { "teleportation_portals_poh", "teleportation_boxes" },
@@ -1068,7 +950,6 @@ local FAMILIES: { Family } = {
 					end
 				end
 			end
-			-- the respawn portal isn't used yet, and the box's Corporeal Beast is a boss's room
 			if furniture == nil or string.find(t.name, "Corporeal", 1, true) ~= nil then
 				return nil
 			end
@@ -1084,7 +965,6 @@ local FAMILIES: { Family } = {
 				option = label,
 			}
 		end,
-		-- the variables say what the Nexus and the box offer, and a visit shows what is mounted (`House.offers`)
 		usable = function(route: Route, c: Check): boolean
 			local offered = false
 			for _, by in ipairs(lib("@lib/main/house").offers(route.option :: string)) do
@@ -1109,7 +989,6 @@ local FAMILIES: { Family } = {
 				spell = "",
 			}
 		end,
-		-- the game doesn't show whether a station's NPC holds an axe: that is assumed, until a station says otherwise
 		usable = function(route: Route, c: Check): boolean
 			local t = route.transport
 			if not safe(t, c) or not holds(t, c) or not Transports.skills_met(t, c.levels) then
@@ -1131,7 +1010,7 @@ local FAMILIES: { Family } = {
 				return {
 					kind = "item_on",
 					transport = t,
-					id = `{ends_id("item_on", t)} {t.menu}`,
+					id = menu_id("item_on", t),
 					group = "passages",
 					setting = if t.kind == "agility_shortcuts" then "shortcuts" else nil,
 					name = t.name,
@@ -1140,11 +1019,10 @@ local FAMILIES: { Family } = {
 				}
 			end
 			if string.sub(t.menu, 1, 8) ~= "Pay-toll" then
-				-- too far for the planner: a tunnel, a cart, a ladder to another part of the map
 				return {
 					kind = "ride",
 					transport = t,
-					id = `{ends_id("ride", t)} {t.menu}`,
+					id = menu_id("ride", t),
 					group = "passages",
 					name = t.name,
 					slack = Transports.PASSAGE_SLACK_TICKS,
@@ -1164,7 +1042,6 @@ local FAMILIES: { Family } = {
 		usable = function(route: Route, c: Check): boolean
 			local t = route.transport
 			if route.kind == "item_on" then
-				-- the item is in the menu, and not always in the row's items
 				local item = string.match(t.menu, "^Use (.-) %-> ") or ""
 				local ids = ids_of(item)
 				if ids == nil then
@@ -1200,7 +1077,6 @@ local FAMILIES: { Family } = {
 		end,
 		usable = function(route: Route, c: Check): boolean
 			local t = route.transport
-			-- the wilderness levers have no level cap: they have to be pullable from there
 			return wild_allowed(t.origin, t.destination :: Host.TransportTile, c) and row_ok(t, c)
 		end,
 	},
@@ -1225,28 +1101,19 @@ local function routes_of(family: Family): { Route }
 	return found
 end
 
--- A network whose data lists the starts and the ends apart: every start goes to every end not within `radius` of it. Paired while planning: the fairy rings alone would be 3,000 trips.
 type Hub = {
 	kind: string,
 	module: string,
 	radius: number,
-	-- ticks added to the data's duration for opening the interface and choosing
 	slack: number,
-	-- the destination's name for the interface, from the end's `Display info` (nil: not a destination to pick)
 	label: (name: string) -> string?,
-	-- a start that is an object whose current form must offer the click (a spirit tree in a farming patch)
 	object_start: boolean?,
-	-- whether the network can be used at all now, and why not
 	gate: (() -> (boolean, string?))?,
-	-- whether a destination can be gone to now, beyond what its row asks (a balloon's log, which may be in storage)
 	end_usable: ((m: any, label: string) -> boolean)?,
-	-- the kind of `House.FURNITURE` that makes the house a stop of this network; a network without it leaves the house out
 	furniture: string?,
-	-- chooses the destination in the interface: false and why when it didn't work, and true third when trying again is pointless. `at` is the object to use when it isn't standing beside the player (a house's)
 	go: (m: any, label: string, at: Loc?) -> (boolean, string?, boolean?),
 }
 
--- Whether to take the quicker of two ways to the same place (a minimenu's submenu over a dialogue, "Last-destination" over a map): most of the time, how often depends on the account's biometrics.
 local function prefers_quick(): boolean
 	local Biometrics = lib("@lib/main/antiban/biometrics")
 	local p = Transports.ITEM_SUBMENU_BASE
@@ -1259,7 +1126,6 @@ local function numbered_name(name: string): string?
 	return if label ~= "" then label else nil
 end
 
--- An interface that lists destinations: open it and select by name.
 local function pick_from_list(m: any, label: string): (boolean, string?)
 	if not m.open(nil, false) then
 		return false, "the list didn't open"
@@ -1305,7 +1171,6 @@ local HUBS: { Hub } = {
 				return false, "the list didn't open"
 			end
 			local place = m.find(label)
-			-- a place that isn't unlocked is drawn grey, and still offers to continue: the list is the only place to tell
 			if place == nil or not place.available then
 				m.close()
 				return false, `{label} isn't unlocked`
@@ -1331,7 +1196,6 @@ local HUBS: { Hub } = {
 		radius = 6,
 		slack = 12,
 		label = numbered_name,
-		-- without the diary the landing is random
 		gate = function(): (boolean, string?)
 			local ok = lib("@lib/main/diaries").tier("wilderness", "hard") == true
 			return ok, if ok then nil else "the obelisks need the Wilderness hard diary to set a destination"
@@ -1355,11 +1219,9 @@ local HUBS: { Hub } = {
 		module = "@lib/main/interfaces/mainscreen/mushtree",
 		radius = 5,
 		slack = 4,
-		-- "3. Sticky Swamp"
 		label = function(name: string): string?
 			return string.match(name, "^%d+%.%s*(.+)$")
 		end,
-		-- the data names no quest for them
 		gate = function(): (boolean, string?)
 			local ok = lib("@lib/main/interfaces/gametabs/journal").is_quest_complete("Bone Voyage")
 			return ok, if ok then nil else "the mushtrees need Bone Voyage"
@@ -1412,7 +1274,6 @@ local HUBS: { Hub } = {
 		furniture = "fairy_ring",
 		radius = 6,
 		slack = 12,
-		-- "A I Q" is the code AIQ, "ZANARIS" the ring's own option; a chain of several codes isn't one trip
 		label = function(name: string): string?
 			if string.match(name, "^%u %u %u$") ~= nil then
 				return (string.gsub(name, " ", ""))
@@ -1422,7 +1283,6 @@ local HUBS: { Hub } = {
 		gate = function(): (boolean, string?)
 			return lib("@lib/main/interfaces/mainscreen/fairyring").can_use()
 		end,
-		-- travel raises when the rings can't be used, and returns the way it went or nil when nothing happened
 		go = function(m: any, label: string, at: Loc?): (boolean, string?)
 			local ok, way = pcall(m.travel, label, nil, at)
 			if not ok then
@@ -1441,7 +1301,6 @@ end
 type HubStart = {
 	rep: Host.TransportTile,
 	menu: string,
-	-- every row of the structure: the same start can be listed with different requirements
 	members: { Transport },
 	option: string,
 }
@@ -1450,7 +1309,6 @@ type HubData = { starts: { HubStart }, ends: { HubEnd } }
 
 local hub_data: { [string]: HubData } = {}
 
--- The starts of a network, one per structure (rows within 4 tiles with the same click), and its ends. The player's house is an instance, not where the data puts it: only a network with `furniture` keeps it.
 local function load_hub(h: Hub): HubData
 	local kept = hub_data[h.kind]
 	if kept ~= nil then
@@ -1499,7 +1357,7 @@ local function load_hub(h: Hub): HubData
 	for i = 1, #rows do
 		for j = i + 1, #rows do
 			local a, b = rows[i].origin :: Host.TransportTile, rows[j].origin :: Host.TransportTile
-			if rows[i].menu == rows[j].menu and a.plane == b.plane and gap(a, b) <= 4 then
+			if rows[i].menu == rows[j].menu and within(a, b, 4) then
 				group[root_of(j)] = root_of(i)
 			end
 		end
@@ -1517,7 +1375,6 @@ local function load_hub(h: Hub): HubData
 			rep = row.origin :: Host.TransportTile,
 			menu = row.menu,
 			members = list,
-			-- "Travel Spirit Tree 8355": the option, the object's name, its id
 			option = string.match(row.menu, "^(%S+)") or "",
 		})
 	end
@@ -1530,11 +1387,9 @@ local function hub_id(kind: string, rep: Host.TransportTile, label: string): str
 	return `{kind} {rep.x},{rep.y} {label}`
 end
 
--- What is placed around a start never changes in a session; what it looks like does (a patch that grows).
 local placed_ids: { [HubStart]: { number } } = {}
 local grown_now: { [HubStart]: { offers: boolean?, at: number } } = {}
 
--- Whether the object placed beside a spirit tree start offers its click in the form it has now, or nil when that can't be told. The data's id is the grown form, so the placed objects are asked.
 local function offers_now(start: HubStart): boolean?
 	local kept = grown_now[start]
 	if kept ~= nil and time() - kept.at < Transports.VALID_FOR_MS then
@@ -1585,13 +1440,8 @@ local function offers_now(start: HubStart): boolean?
 	return offers
 end
 
-----------------------------------------------------------------------------------------------------
--- The route
-----------------------------------------------------------------------------------------------------
-
 type Node = { x: number, y: number, plane: number, folded_y: number, under: boolean, mass: number }
 
--- A way from one point to another: a route, or a trip of a network.
 type Edge = {
 	to: number,
 	cost: number,
@@ -1601,7 +1451,6 @@ type Edge = {
 	finish: HubEnd?,
 }
 
--- Whether a network can be used at all, kept for `VALID_FOR_MS`: its gate can read a lot (the fairy rings' diary).
 local gate_results: { [string]: { ok: boolean, at: number } } = {}
 local function gate_open_now(hub: Hub): boolean
 	if hub.gate == nil then
@@ -1619,7 +1468,6 @@ local function gate_open_now(hub: Hub): boolean
 	return ok
 end
 
--- Adds the trips of the networks the player can use now.
 local function add_hub_edges(
 	off: { [string]: boolean },
 	opts: Options,
@@ -1641,9 +1489,7 @@ local function add_hub_edges(
 			continue
 		end
 		local starts: { HubStart } = {}
-		-- starts whose object hasn't grown: the data puts the end beside its start, so those ends are out too
 		local blocked: { HubStart } = {}
-		-- a house's stop only counts once a visit has shown it
 		local in_house = hub.furniture ~= nil and House.seen(hub.furniture) == true
 		for _, start in ipairs(data.starts) do
 			if House.is_tile(start.rep) then
@@ -1673,7 +1519,7 @@ local function add_hub_edges(
 				and (in_house or not House.is_tile(finish.tile))
 			if usable then
 				for _, start in ipairs(blocked) do
-					if start.rep.plane == finish.tile.plane and gap(start.rep, finish.tile) <= 8 then
+					if within(start.rep, finish.tile, 8) then
 						usable = false
 						break
 					end
@@ -1706,41 +1552,38 @@ local function add_hub_edges(
 	end
 end
 
--- Whether the planner can walk it after all: landmasses don't see every way through.
--- Whether the world map says the goal can be walked to, climbs and one-way doors included. Nothing can be said about an instance, which counts as yes.
-local function foot_route(from: Tile, goal: Tile, opts: Options): boolean
+local function endpoints(from: Tile, goal: Tile)
 	local a = { x = from.x, y = from.y, plane = from.plane or 0 }
 	local b = { x = goal.x, y = goal.y, plane = goal.plane or from.plane or 0 }
+	return a, b
+end
+
+local function foot_route(from: Tile, goal: Tile, opts: Options): boolean
+	local a, b = endpoints(from, goal)
 	local route = Host.world_route(a, b, gated(opts.shortcuts).keys)
 	return route == nil or route.reachable
 end
 
 local function planner_reaches(from: Tile, goal: Tile, opts: Options): boolean
-	local plan = Host.nav_plan(
-		{ x = from.x, y = from.y, plane = from.plane or 0 },
-		{ x = goal.x, y = goal.y, plane = goal.plane or from.plane or 0 },
-		{
-			near = Transports.CONFIRM_WALK_NEAR,
-			allow_climbs = gated(opts.shortcuts).keys,
-			shortcut_saving = Transports.SHORTCUT_MIN_SAVING_TILES,
-		}
-	)
+	if gap(from, goal) > Transports.CONFIRM_WALK_TILES then
+		return false
+	end
+	local a, b = endpoints(from, goal)
+	local plan = Host.nav_plan(a, b, {
+		near = Transports.CONFIRM_WALK_NEAR,
+		allow_climbs = gated(opts.shortcuts).keys,
+		shortcut_saving = Transports.SHORTCUT_MIN_SAVING_TILES,
+	})
 	return plan ~= nil and plan.reached == true
 end
 
--- Whether `goal` can be walked to from `from`, climbing as needed. When it can't be known (an instance, say) the answer is yes. The collision comes from the cache, so a close goal that looks cut off is also asked of the planner.
 function Transports.walkable(from: Tile, goal: Tile, options: Options?): boolean
 	local opts = options or {}
-	if foot_route(from, goal, opts) then
-		return true
-	end
-	return gap(from, goal) <= Transports.CONFIRM_WALK_TILES and planner_reaches(from, goal, opts)
+	return foot_route(from, goal, opts) or planner_reaches(from, goal, opts)
 end
 
--- The first transport on the best way from `from` to `goal`, or nil to walk. A shortest path over the start, the goal and every usable transport's ends: see the docs.
 function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 	local opts = options or {}
-	-- inside the house you are where the data's rows start, except for a goal inside it too
 	local House = lib("@lib/main/house")
 	if House.inside() then
 		House.survey()
@@ -1767,11 +1610,9 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 		end
 		return n
 	end
-	-- the start and the goal are 1 and 2, even when they share a tile
 	nodes[1] = { x = from.x, y = from.y, plane = from.plane or plane, folded_y = from.y, under = false, mass = 0 }
 	nodes[2] = { x = goal.x, y = goal.y, plane = plane, folded_y = goal.y, under = false, mass = 0 }
 
-	-- edges by the node they leave from; one that leaves from anywhere is cheapest from the start
 	local out: { [number]: { Edge } } = { [1] = {} }
 	local function add(from_node: number?, edge: Edge)
 		local list = out[from_node or 1]
@@ -1801,7 +1642,6 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 	end
 	add_hub_edges(off, opts, check, node, add)
 
-	-- the landmass of each node, with those joined by a way across the player can use
 	local ways = gated(opts.shortcuts).across
 	local points: { Tile } = table.clone(nodes) :: any
 	for _, t in ipairs(ways) do
@@ -1829,14 +1669,12 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 	end
 	local per_tile = Transports.WALK_TICKS_PER_TILE
 	local climb = Transports.PLANE_CHANGE_TICKS
-	-- landmasses join both ways, and a door that only asks on the way in doesn't join them: the way out is still a walk
 	local origin, target = nodes[1], nodes[2]
 	local on_foot = origin.mass ~= 0
 		and target.mass ~= 0
 		and origin.mass ~= target.mass
 		and foot_route(from, goal, opts)
 	local function walk_cost(a: Node, b: Node): number
-		-- the data's tile for the house is nowhere you can walk to or from
 		if (a.x == House.TILE.x and a.y == House.TILE.y) ~= (b.x == House.TILE.x and b.y == House.TILE.y) then
 			return math.huge
 		end
@@ -1847,7 +1685,6 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 		return if a.under ~= b.under or a.plane ~= b.plane then ticks + climb else ticks
 	end
 
-	-- Dijkstra, every node joined to every other by walking
 	local count = #nodes
 	local dist: { number } = table.create(count, math.huge)
 	local back: { number } = table.create(count, 0)
@@ -1885,7 +1722,6 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 	if dist[2] == math.huge then
 		return nil
 	end
-	-- the way back from the goal: the first transport on it is what to use now
 	local first: Edge? = nil
 	local rides_carpet = false
 	local v = 2
@@ -1902,17 +1738,12 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 	if first == nil then
 		return nil
 	end
-	-- carpets are preferred over walking: a way with one has only to be no slower
 	local needed = opts.min_saving_ticks or (if rides_carpet then 0 else Transports.MIN_SAVING_TICKS)
 	local direct = walk_cost(nodes[1], nodes[2])
 	if direct ~= math.huge and direct - dist[2] < needed then
 		return nil
 	end
-	if
-		direct == math.huge
-		and gap(from, goal) <= Transports.CONFIRM_WALK_TILES
-		and planner_reaches(from, goal, opts)
-	then
+	if direct == math.huge and planner_reaches(from, goal, opts) then
 		return nil
 	end
 	local saved = if direct == math.huge then 1e9 else direct - dist[2]
@@ -1928,7 +1759,6 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 			saved = saved,
 		}
 	end
-	-- a trip of a network: a transport made of its start and its end
 	local start, finish, hub = first.start :: HubStart, first.finish :: HubEnd, first.hub :: Hub
 	local trip = {
 		kind = hub.kind,
@@ -1950,41 +1780,25 @@ function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
 	}
 end
 
-----------------------------------------------------------------------------------------------------
--- Carrying a choice out
-----------------------------------------------------------------------------------------------------
-
--- Waits for the new scene to load after a trip.
 function Transports.settle()
-	local deadline = time() + Transports.SETTLE_TIMEOUT_MS
-	while time() < deadline do
-		if Host.game_state().game_state == GameState.LOGGED_IN then
-			return
-		end
-		sleep(200)
-	end
+	Widgets.wait_within(function(): boolean
+		return Host.game_state().game_state == GameState.LOGGED_IN
+	end, Transports.SETTLE_TIMEOUT_MS, 200)
 end
 
--- Walks to a tile unless we are near it already, looking for no transport on the way.
 local function walk_near(tile: Host.TransportTile, near: number): boolean
 	local here = lib("@lib/main/player").position()
-	if here ~= nil and here.plane == tile.plane and gap(here, tile) <= near then
+	if within(here, tile, near) then
 		return true
 	end
 	return lib("@lib/main/walker").walk(tile, { near = near, transports = false, plane = tile.plane })
 end
 
--- Waits for a trip that was just started to land: a jump walking can't make, a change of plane, or standing at the destination. False at the timeout.
 local function wait_to_land(name: string, to: Host.TransportTile, timeout_ms: number): boolean
-	-- into the house it lands outside for a moment first, and the jump alone says nothing
 	if is_house(to) then
 		local House = lib("@lib/main/house")
-		local deadline = time() + timeout_ms
-		while not House.inside() do
-			if time() >= deadline then
-				return false
-			end
-			sleep(100)
+		if not Widgets.wait_for(House.inside, timeout_ms, 100) then
+			return false
 		end
 		Transports.settle()
 		return true
@@ -1996,7 +1810,7 @@ local function wait_to_land(name: string, to: Host.TransportTile, timeout_ms: nu
 		local now = Player.position()
 		if now ~= nil then
 			last = last or now
-			local arrived = now.plane == to.plane and gap(now, to) <= Transports.ARRIVED_NEAR
+			local arrived = within(now, to, Transports.ARRIVED_NEAR)
 			if arrived or now.plane ~= last.plane or gap(now, last) >= Transports.LAND_DISTANCE then
 				if gap(now, to) > 10 then
 					Log.log("Transports", `{name} landed at {now.x}, {now.y}, not near {to.x}, {to.y}`)
@@ -2011,29 +1825,19 @@ local function wait_to_land(name: string, to: Host.TransportTile, timeout_ms: nu
 	return false
 end
 
--- Waits to stand within `near` of a tile on its plane.
 local function wait_near(to: Host.TransportTile, near: number, timeout_ms: number): boolean
 	local Player = lib("@lib/main/player")
-	local deadline = time() + timeout_ms
-	while time() < deadline do
-		local now = Player.position()
-		if now ~= nil and now.plane == to.plane and gap(now, to) <= near then
-			return true
-		end
-		sleep(150)
-	end
-	return false
+	return Widgets.wait_within(function(): boolean
+		return within(Player.position(), to, near)
+	end, timeout_ms, 150)
 end
 
--- Casts the chosen teleport and waits to land.
--- Waits for a cast that was just clicked to land. The second result is true when a slow one never started.
 local function wait_for_cast(t: Transport): (boolean, boolean?)
 	local Player = lib("@lib/main/player")
 	local timeout = Transports.LAND_TIMEOUT_MS
 	local takes = (t.duration or 0) * 600 + Transports.SLOW_CAST_SLACK_MS
 	if takes > timeout then
 		timeout = takes
-		-- the game refuses such a cast with a message (in combat, say): don't wait out the whole of it
 		local deadline = time() + Transports.SLOW_CAST_START_MS
 		while not Player.is_animating() do
 			if time() >= deadline then
@@ -2052,8 +1856,7 @@ end
 function Transports.cast(choice: Choice): (boolean, boolean?)
 	local Magic = lib("@lib/main/interfaces/gametabs/magic")
 	local t = choice.transport
-	Log.log("Transports", `casting {t.name}: saves about {math.floor(choice.saved)} ticks`)
-	-- not Magic.cast: its check that the spell was cast only knows the "Cast" option, and a teleport lands by itself
+	log_saving(`casting {t.name}`, choice)
 	local ok = (Magic.is_open() or Magic.open()) and Magic.interact(choice.spell, choice.option or "Cast")
 	if not ok then
 		return fail(t.name, "didn't work")
@@ -2061,10 +1864,9 @@ function Transports.cast(choice: Choice): (boolean, boolean?)
 	return wait_for_cast(t)
 end
 
--- Takes a minigame teleport, by the spell's list or the Grouping view: `choice.spell` is the activity and `choice.option` the rat pit. The second result is true when the cast never started.
 function Transports.minigame(choice: Choice): (boolean, boolean?)
 	local t = choice.transport
-	Log.log("Transports", `{t.name}: saves about {math.floor(choice.saved)} ticks`)
+	log_saving(t.name, choice)
 	local ok, why = lib("@lib/main/interfaces/mainscreen/minigames").teleport(choice.spell, choice.option)
 	if not ok then
 		return fail(t.name, why or "couldn't start it")
@@ -2072,7 +1874,6 @@ function Transports.minigame(choice: Choice): (boolean, boolean?)
 	return wait_for_cast(t)
 end
 
--- Gets off a boat: crosses the gangplank onto the dock at `to` and waits for the scene to settle.
 function Transports.disembark(to: Tile): boolean
 	local Player = lib("@lib/main/player")
 	local Objects = lib("@lib/main/entities/objects")
@@ -2086,10 +1887,7 @@ function Transports.disembark(to: Tile): boolean
 		local now = Player.position()
 		local plank = if now then Objects.nearest(Transports.GANGPLANK, { x = now.x, y = now.y }) else nil
 		if plank ~= nil and Objects.interact(plank, "Cross") then
-			local waited = time() + 5000
-			while not arrived() and time() < waited do
-				sleep(150)
-			end
+			Widgets.wait_for(arrived, 5000, 150)
 		else
 			sleep(300)
 		end
@@ -2101,14 +1899,13 @@ function Transports.disembark(to: Tile): boolean
 	return true
 end
 
--- Takes a trip of a network: walks to the start, has the interface choose the destination by its name, and waits to land.
 function Transports.hub(choice: Choice): (boolean, boolean?)
 	local t = choice.transport :: any
 	local hub = HUB_BY_KIND[choice.kind]
 	local from, to = t.origin :: Host.TransportTile, t.destination :: Host.TransportTile
 	local label = t.label :: string
 	local id = choice.id or hub_id(choice.kind, from, label)
-	Log.log("Transports", `{choice.kind} to {label}: saves about {math.floor(choice.saved)} ticks`)
+	log_saving(`{choice.kind} to {label}`, choice)
 	local at: Loc? = nil
 	if is_house(from) then
 		local House = lib("@lib/main/house")
@@ -2137,7 +1934,6 @@ function Transports.hub(choice: Choice): (boolean, boolean?)
 	return true
 end
 
--- The option of a dialogue to pick for a ride: the one that names where it goes, else a yes. `hints` are lowercase pieces of the destination's name.
 local AFFIRMATIVE = { "yes", "ok", "okay", "sure", "pay", "go", "travel", "take", "accept", "board" }
 
 function Transports.dialogue_pick(options: { { text: string } }, hints: { string }): string?
@@ -2160,8 +1956,6 @@ function Transports.dialogue_pick(options: { { text: string } }, hints: { string
 	return nil
 end
 
--- Buys the ticket a cart asks for ("You must purchase a ticket to Keldagrim before you can ride the mine cart"): talks to the conductor standing by, takes "I'd like to buy a ticket" and then
--- "Buy" (or, when a menu of routes comes first, the one that names the fare the data gives, like 150 for "COINS=150"). False when there is no conductor or the talk goes some other way.
 local function buy_ticket(fare: string): boolean
 	local Player = lib("@lib/main/player")
 	local Npcs = lib("@lib/main/entities/npcs")
@@ -2226,13 +2020,10 @@ local function buy_ticket(fare: string): boolean
 	return bought_at ~= nil
 end
 
--- Takes a ride (a boat, ferry, train cart or magic carpet): walks to the tile it is boarded from, clicks the NPC or object the data names (by its id, with the menu option the data starts its menu with),
--- follows the dialogue (the option that names the destination, else a yes, and "continue"), and waits to land. False when it didn't work, and that trip is then left alone for a while.
 function Transports.ride(choice: Choice): (boolean, boolean?)
 	local t = choice.transport
 	local from, to = t.origin :: Host.TransportTile, t.destination :: Host.TransportTile
 	local id = choice.id or ends_id("ride", t)
-	-- "Musa Point Captain Tobias 14979": the id is last; what comes before is the menu option followed by the name, and where one ends isn't marked, so every beginning is tried, longest first
 	local words: { string } = {}
 	for word in string.gmatch(t.menu, "%S+") do
 		table.insert(words, word)
@@ -2248,7 +2039,6 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 	end
 	local hints: { string } = {}
 	if t.name ~= "" then
-		-- "3: Pollnivneach": the number is where the dialogue lists it, which can change
 		table.insert(hints, string.lower(numbered_name(t.name) or t.name))
 	end
 	for _, option in ipairs(options) do
@@ -2262,8 +2052,7 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 	if before == nil then
 		return false
 	end
-	Log.log("Transports", `boarding {t.menu}: saves about {math.floor(choice.saved)} ticks`)
-	-- a retry after the crossing happened but getting off didn't: we are by the destination already, so only getting off is left
+	log_saving(`boarding {t.menu}`, choice)
 	local by_destination = gap(before, to) <= Transports.ABOARD_NEAR and gap(before, from) > Transports.ABOARD_NEAR
 	if by_destination then
 		if before.plane ~= to.plane and not Transports.disembark(to) then
@@ -2274,12 +2063,8 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 	if not walk_near(from, Transports.DOCK_NEAR) then
 		return fail(id, "couldn't walk to the boarding tile")
 	end
-	-- the NPC with that id, else the object
 	local npc = Npcs.nearest(target, from)
 	local loc = if npc == nil then Objects.nearest(target, from) else nil
-	-- The data's ids and names are not always the game's: an NPC id can be the form an NPC shows after a quest or varbit has changed it (the game's list has the placed one), and names
-	-- change (the sailor the data calls Veos is Cabin Boy Herbert). The options hold: so the NPC is found by asking which of the ones near offers an option the menu starts with, by its
-	-- right-click menu, and the option is picked from that menu.
 	local picked = false
 	if npc == nil and loc == nil then
 		local Minimenu = lib("@lib/main/interfaces/minimenu")
@@ -2296,7 +2081,6 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 		end)
 		for i = 1, math.min(#near, Transports.RIDE_NPC_LOOKS) do
 			local candidate = near[i].npc
-			-- an NPC can only be right-clicked where the camera shows it, and one that walks about can slip from under the mouse: look twice
 			for _ = 1, 2 do
 				if picked then
 					break
@@ -2331,19 +2115,13 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 	local clicked = picked
 	local function click_target(): boolean
 		for _, option in ipairs(options) do
-			local done = false
-			if npc ~= nil then
-				done = Npcs.interact(npc, option)
-			else
-				done = Objects.interact(loc, option)
-			end
+			local done = if npc ~= nil then Npcs.interact(npc, option) else Objects.interact(loc, option)
 			if done then
 				return true
 			end
 		end
 		return false
 	end
-	-- what the game says after the click is read from here on: a cart that wants a ticket says so
 	local Chat = lib("@lib/main/interfaces/chatbox/chat")
 	local seen = (Chat.last_message() or { uid = 0 }).uid
 	if not clicked then
@@ -2353,21 +2131,17 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 		return fail(id, `none of the options {table.concat(options, " / ")} could be clicked`)
 	end
 	local ticket_tried = false
-	-- the dialogue and the trip
 	local deadline = time() + Transports.RIDE_TIMEOUT_MS
 	local underground = start.y >= 6400
-	-- what was said last, and when anything last happened: a conversation that ends without a trip (the monk who won't take weapons to Entrana) is over soon after, not when the time is up
 	local last_said: string? = nil
 	local quiet_since = time()
 	local clicked_at = time()
-	-- a dialogue with only options says nothing, and the trip it starts can take a while to show
 	local answered = false
 	while time() < deadline do
 		local now = Player.position()
 		if now ~= nil then
 			local moved = gap(now, start)
 			local near_destination = gap(now, to) <= Transports.ARRIVED_NEAR + 10
-			-- the click can make the player walk to the NPC or the cart, up a gangplank: that is not the trip. The trip is a jump (a voyage, a ride, a teleport), or being at the destination
 			if
 				moved >= Transports.RIDE_LAND_DISTANCE
 				or (near_destination and moved >= Transports.LAND_DISTANCE)
@@ -2379,23 +2153,19 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 					end
 					return true
 				end
-				-- a voyage can be an instance (the squire's boat at Port Sarim) that ends at the destination some seconds later: wait for it
 				local voyage = time() + Transports.RIDE_VOYAGE_MS
 				while time() < voyage and gap(now, to) > Transports.ARRIVED_NEAR + 10 do
 					sleep(Transports.RIDE_POLL_MS)
 					now = Player.position() or now
 				end
 				Transports.settle()
-				-- a magic carpet glides the whole way, hovers a moment after it stops, and the player then walks off it: a click before that is over does nothing
 				if t.kind == "magic_carpets" then
-					local off = time() + Transports.RIDE_VOYAGE_MS
-					while time() < off and Player.pose() == Transports.CARPET_POSE do
-						sleep(Transports.RIDE_POLL_MS)
-					end
+					Widgets.wait_within(function(): boolean
+						return Player.pose() ~= Transports.CARPET_POSE
+					end, Transports.RIDE_VOYAGE_MS, Transports.RIDE_POLL_MS)
 					Player.wait_server_still(Transports.RIDE_VOYAGE_MS)
 				end
 				now = Player.position() or now
-				-- a boat can put you aboard, a plane above the dock the data names: the gangplank leads onto it
 				if now.plane ~= to.plane then
 					Random.sleep(Transports.RIDE_DOCK_PAUSE_MS[1], Transports.RIDE_DOCK_PAUSE_MS[2])
 				end
@@ -2425,7 +2195,6 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 				if not buy_ticket(fare) then
 					return fail(id, "couldn't buy the ticket")
 				end
-				-- the ticket is bought: click the cart again
 				seen = (Chat.last_message() or { uid = seen }).uid
 				if not click_target() then
 					return fail(id, "couldn't click the cart again after buying the ticket")
@@ -2448,7 +2217,6 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 			return fail(id, "nothing was said and nothing happened")
 		end
 		if last_said ~= nil and time() - quiet_since > Transports.RIDE_QUIET_MS then
-			-- the conversation is over and the trip did not start: this is a no, and asking again gets the same
 			Log.log("Transports", `{id}: the conversation ended and nothing happened; last said "{last_said}"`)
 			return false, true
 		end
@@ -2458,7 +2226,6 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 				Log.log("Transports", `{id}: no option to pick among {ChatOptions.to_string(choices) or "?"}`)
 				return false
 			end
-			-- the key doesn't always take: then the line is clicked
 			if not ChatOptions.select(pick) and ChatOptions.find(pick) ~= nil then
 				ChatOptions.select(pick, nil, 0)
 			end
@@ -2470,7 +2237,6 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 	return fail(id, "the trip didn't happen")
 end
 
--- Takes the chosen charter ship: walks to the dock, talks to the trader, picks the destination by name, waits for the boat and crosses the gangplank.
 function Transports.sail(choice: Choice): boolean
 	local t = choice.transport
 	local dock, to = t.origin :: Host.TransportTile, t.destination :: Host.TransportTile
@@ -2479,7 +2245,6 @@ function Transports.sail(choice: Choice): boolean
 	if label == nil then
 		return fail(id, "no destination name in the data")
 	end
-	-- what to say to the trader: the first word of "Charter Trader Crewmember 1330"
 	local option = string.match(t.menu, "^(%S+)")
 	if option == nil then
 		return fail(id, "the data doesn't say what to say to the trader")
@@ -2488,8 +2253,7 @@ function Transports.sail(choice: Choice): boolean
 	if before == nil then
 		return false
 	end
-	Log.log("Transports", `sailing to {label}: saves about {math.floor(choice.saved)} ticks`)
-	-- a retry after the boat came but the gangplank didn't work: only the crossing is left
+	log_saving(`sailing to {label}`, choice)
 	if gap(before, to) > Transports.ABOARD_NEAR then
 		if not walk_near(dock, Transports.DOCK_NEAR) then
 			return fail(id, "couldn't walk to the dock")
@@ -2498,7 +2262,6 @@ function Transports.sail(choice: Choice): boolean
 		if not opened then
 			return fail(id, why or "the destination list didn't open")
 		end
-		-- by name, never by key letter: the letters differ by port
 		if Chartering.select(label :: any) == nil then
 			return fail(id, `{label} isn't in the list`)
 		end
@@ -2512,12 +2275,10 @@ function Transports.sail(choice: Choice): boolean
 	return true
 end
 
--- Goes through the chosen gate: walks to the tile before it, clicks the object between the tiles by name (its id changes with quest progress) and waits to be on the other side.
 function Transports.pass(choice: Choice): boolean
 	local t = choice.transport
 	local o, d = t.origin :: Host.TransportTile, t.destination :: Host.TransportTile
 	local id = choice.id or ends_id("link", t)
-	-- "Pay-toll(2-Ecto) Energy Barrier 16105": the option, the object's name, its id
 	local option, target = string.match(t.menu, "^(%S+)%s+(.-)%s+%d+%s*$")
 	if option == nil or target == nil then
 		return fail(id, "the data doesn't say what to click")
@@ -2540,7 +2301,6 @@ function Transports.pass(choice: Choice): boolean
 	return true
 end
 
--- Uses the item in the row's menu on the object: "Use Rope -> Boulder 5842". True once standing where the row lands.
 function Transports.use_on(choice: Choice): boolean
 	local t = choice.transport
 	local o, d = t.origin :: Host.TransportTile, t.destination :: Host.TransportTile
@@ -2575,7 +2335,6 @@ function Transports.use_on(choice: Choice): boolean
 	return true
 end
 
--- Pulls the chosen lever: walks beside it, clicks the option the row names on the object it names ("Pull Lever 1814") and waits to land on the row's destination.
 function Transports.pull(choice: Choice): boolean
 	local t = choice.transport
 	local o, d = t.origin :: Host.TransportTile, t.destination :: Host.TransportTile
@@ -2606,7 +2365,6 @@ function Transports.pull(choice: Choice): boolean
 	return true
 end
 
--- Lowercase text without colour tags, a leading "1. ", apostrophes and trailing dots, to compare a destination with a menu row or a dialogue line.
 local function plain(text: string): string
 	local t = string.lower((string.gsub(text, "<[^>]*>", "")))
 	t = string.gsub(t, "['`]", "")
@@ -2616,7 +2374,6 @@ local function plain(text: string): string
 	return t
 end
 
--- The line that names `label`: the same text first, else one that contains it.
 local function best_line(lines: { string }, label: string): string?
 	local want = plain(label)
 	for _, line in ipairs(lines) do
@@ -2632,7 +2389,6 @@ local function best_line(lines: { string }, label: string): string?
 	return nil
 end
 
--- A destination reached through several menus is written "Fishing Teleports: Fishing Guild": its parts, outermost first.
 local function label_parts(label: string): { string }
 	local parts: { string } = {}
 	for part in string.gmatch(label .. ": ", "(.-): ") do
@@ -2650,7 +2406,6 @@ local function in_list(list: { string }, option: string): boolean
 	return false
 end
 
--- The inventory (or worn) slot that holds one of `ids`, with the module that clicks it.
 local function find_held(ids: { number }): (any?, number?)
 	local wanted: { [number]: boolean } = {}
 	for _, id in ipairs(ids) do
@@ -2670,8 +2425,6 @@ local function find_held(ids: { number }): (any?, number?)
 	return nil, nil
 end
 
--- The options the menu of an item shows when it is hovered: only a menu about that item counts, since right after the move
--- the menu can still be the one of what the mouse passed over (an anglerfish's "Eat" for a scroll).
 local function item_options(module: any, slot: number): { string }
 	local Minimenu = lib("@lib/main/interfaces/minimenu")
 	local held = module.item(slot)
@@ -2696,7 +2449,6 @@ local function item_options(module: any, slot: number): { string }
 	return {}
 end
 
--- The option of the item's menu that names the destination itself (a crystal's "Lletya"), else, for an item with one destination, its first option that isn't a plain one ("Teleport", "Weiss").
 local function direct_option(options: { string }, label: string?): string?
 	local direct: { string } = {}
 	for _, option in ipairs(options) do
@@ -2716,7 +2468,6 @@ local function direct_option(options: { string }, label: string?): string?
 	return direct[1]
 end
 
--- Closes a dialogue of options left open (Escape) and waits for it to go; false when it stays.
 local function close_dialogue(): boolean
 	local ChatOptions = lib("@lib/main/interfaces/chatbox/chat_options")
 	local Keyboard = lib("@lib/utils/input/keyboard")
@@ -2732,7 +2483,6 @@ local function close_dialogue(): boolean
 	return lines == nil or #lines == 0
 end
 
--- Looks through the submenus of the item's menu (opened by a right click) for the destination: the option that has it listed and the line to pick. The menu is left open when found, else closed.
 local function find_in_submenus(module: any, slot: number, label: string): (string?, string?)
 	local Minimenu = lib("@lib/main/interfaces/minimenu")
 	module.hover_slot(slot)
@@ -2762,8 +2512,6 @@ local function find_in_submenus(module: any, slot: number, label: string): (stri
 	return nil, nil
 end
 
--- Uses a teleport item: picks the destination in the submenu of its option or in the dialogue the option opens, and waits to land.
--- The second result is true when trying again would be pointless (the item or the destination isn't offered).
 function Transports.use_item(choice: Choice): (boolean, boolean?)
 	local Player = lib("@lib/main/player")
 	local ChatOptions = lib("@lib/main/interfaces/chatbox/chat_options")
@@ -2783,12 +2531,11 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 	end
 	close_dialogue()
 	local clicked = false
-	-- the option clicked to open a dialogue, kept in case it opens none (the max cape's list is a submenu and nothing else)
 	local dialogue_parent: string? = nil
 	local clicked_at = 0
 	local Minimenu = lib("@lib/main/interfaces/minimenu")
 	local direct = direct_option(item_options(module, slot), label)
-	if direct ~= nil and label ~= nil then
+	if direct ~= nil then
 		Log.log("Transports", `{t.name}: "{direct}", saves about {math.floor(choice.saved)} ticks`)
 		clicked = module.interact_slot(slot, direct)
 	else
@@ -2814,11 +2561,7 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 			if not clicked then
 				Minimenu.close()
 			end
-		elseif direct ~= nil then
-			Log.log("Transports", `{t.name}: "{direct}", saves about {math.floor(choice.saved)} ticks`)
-			clicked = module.interact_slot(slot, direct)
 		else
-			-- no submenu lists it: the option that opens a dialogue of destinations, if the item has one
 			local opener: string? = nil
 			for _, name in ipairs(Transports.ITEM_OPENERS) do
 				for _, option in ipairs(item_options(module, slot)) do
@@ -2865,7 +2608,6 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 		if lines ~= nil and #lines > 0 then
 			seen_dialogue = true
 		elseif dialogue_parent ~= nil and not seen_dialogue and time() - clicked_at > Transports.ITEM_DIALOGUE_MS then
-			-- no dialogue came: the option only lists its destinations in the submenu
 			dialogue_parent = nil
 			local parent, line = find_in_submenus(module, slot, label :: string)
 			if parent ~= nil and line ~= nil then
@@ -2879,7 +2621,6 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 			for _, line in ipairs(lines) do
 				table.insert(texts, line.text)
 			end
-			-- the next part of the destination that this dialogue names (a flat list names only the last)
 			local text: string? = nil
 			for i = step, #parts do
 				text = best_line(texts, parts[i])
@@ -2888,7 +2629,6 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 					break
 				end
 			end
-			-- the key for a line doesn't always take (the slayer ring's list): then the line is clicked
 			local picked = text ~= nil and ChatOptions.select(text)
 			if text ~= nil and not picked and ChatOptions.find(text) ~= nil then
 				picked = ChatOptions.select(text, nil, 0)
@@ -2907,8 +2647,6 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 	return false
 end
 
--- Uses the teleport item of the data's row with this name ("Ring of dueling: Ferox Enclave") without planning, and waits to land
--- (`Transports.use_item`). False when there is no such row or it didn't work; the second result is true when trying again is pointless.
 function Transports.teleport_item(name: string): (boolean, boolean?)
 	for _, t in ipairs(rows_of("teleportation_items")) do
 		if t.name == name then
@@ -2928,18 +2666,16 @@ function Transports.teleport_item(name: string): (boolean, boolean?)
 	return false, true
 end
 
--- Whether a choice failed in the last `RETRY_AFTER_MS`, and so isn't chosen.
 function Transports.failed_lately(choice: Choice): boolean
 	return not not_failed(choice.id or choice.transport.name)
 end
 
--- Takes a trip with a quetzal whistle: "Last-destination" when that is the site, else its map. The second result is true when the whistle refused, so trying again is pointless.
 function Transports.whistle(choice: Choice): (boolean, boolean?)
 	local Quetzal = lib("@lib/main/interfaces/mainscreen/quetzal")
 	local t = choice.transport
 	local label = choice.option :: string
 	local to = t.destination :: Host.TransportTile
-	Log.log("Transports", `{t.name}: saves about {math.floor(choice.saved)} ticks`)
+	log_saving(t.name, choice)
 	if Quetzal.is_last(label) and prefers_quick() then
 		if not Quetzal.signal_last() then
 			return false
@@ -2962,7 +2698,6 @@ function Transports.whistle(choice: Choice): (boolean, boolean?)
 	return wait_to_land(t.name, to, Transports.ITEM_TIMEOUT_MS)
 end
 
--- Puts on what a climb from one tile to another by this menu option has to be used with (`WORN_GROUPS`), from the inventory. True when nothing more has to be put on.
 function Transports.wear_for_climb(from: Host.NavTile, to: Host.NavTile, option: string): boolean
 	local t: Transport? = nil
 	for _, row in ipairs(gated().by_ends[`{from.x},{from.y},{from.plane}>{to.x},{to.y},{to.plane}`] or {}) do
@@ -3016,7 +2751,6 @@ function Transports.wear_for_climb(from: Host.NavTile, to: Host.NavTile, option:
 	return true
 end
 
--- Takes a trip from inside the house by `House.start_teleport`: the Nexus, the jewellery box or something mounted, wherever it is. What turns out not to be there is left out for the run, and the walk plans again.
 function Transports.house(choice: Choice): (boolean, boolean?)
 	local House = lib("@lib/main/house")
 	local t = choice.transport
@@ -3025,7 +2759,7 @@ function Transports.house(choice: Choice): (boolean, boolean?)
 	if not House.inside() then
 		return fail(id, "not in the house")
 	end
-	Log.log("Transports", `house {furniture} to {label}: saves about {math.floor(choice.saved)} ticks`)
+	log_saving(`house {furniture} to {label}`, choice)
 	local started, why, pointless = House.start_teleport(furniture, label)
 	if started then
 		return wait_to_land(id, t.destination :: Host.TransportTile, Transports.HUB_TIMEOUT_MS)
@@ -3038,7 +2772,6 @@ function Transports.house(choice: Choice): (boolean, boolean?)
 	return fail(id, why or "couldn't use it")
 end
 
--- Leaves the house by its portal, wherever that is.
 function Transports.house_exit(choice: Choice): boolean
 	Log.log("Transports", "leaving the house")
 	if not lib("@lib/main/house").leave() then
@@ -3048,12 +2781,11 @@ function Transports.house_exit(choice: Choice): boolean
 	return true
 end
 
--- Takes a canoe from the station at the row's start, making the smallest canoe that reaches the row's end. The second result is true when trying again is pointless.
 function Transports.canoe(choice: Choice): (boolean, boolean?)
 	local Canoe = lib("@lib/main/interfaces/mainscreen/canoe")
 	local t = choice.transport
 	local from = t.origin :: Host.TransportTile
-	Log.log("Transports", `canoe to {t.name}: saves about {math.floor(choice.saved)} ticks`)
+	log_saving(`canoe to {t.name}`, choice)
 	if not walk_near(from, Transports.DOCK_NEAR) then
 		return false
 	end
@@ -3071,11 +2803,10 @@ function Transports.canoe(choice: Choice): (boolean, boolean?)
 	return false, why == Canoe.CANT_REACH
 end
 
--- Takes a trip with a scroll from the master scroll book. The second result is true when the book can't be used, so trying again is pointless.
 function Transports.scroll_book(choice: Choice): (boolean, boolean?)
 	local Scrollbook = lib("@lib/main/interfaces/mainscreen/scrollbook")
 	local t = choice.transport
-	Log.log("Transports", `{t.name}: saves about {math.floor(choice.saved)} ticks`)
+	log_saving(t.name, choice)
 	local opened, why = Scrollbook.open()
 	if not opened then
 		Log.log("Transports", `{t.name}: {why or "the book didn't open"}`)
@@ -3088,65 +2819,40 @@ function Transports.scroll_book(choice: Choice): (boolean, boolean?)
 	return wait_to_land(t.name, t.destination :: Host.TransportTile, Transports.ITEM_TIMEOUT_MS)
 end
 
--- How each kind of choice is carried out (a table, so that a test can stand in for the game).
-Transports.runners = {
-	minigame = function(choice: Choice): (boolean, boolean?)
-		return Transports.minigame(choice)
-	end,
-	scroll_book = function(choice: Choice): (boolean, boolean?)
-		return Transports.scroll_book(choice)
-	end,
-	quetzal_whistle = function(choice: Choice): (boolean, boolean?)
-		return Transports.whistle(choice)
-	end,
-	spell = function(choice: Choice): (boolean, boolean?)
-		return Transports.cast(choice)
-	end,
-	item = function(choice: Choice): (boolean, boolean?)
-		return Transports.use_item(choice)
-	end,
-	charter = function(choice: Choice): boolean
-		return Transports.sail(choice)
-	end,
-	link = function(choice: Choice): boolean
-		return Transports.pass(choice)
-	end,
-	lever = function(choice: Choice): boolean
-		return Transports.pull(choice)
-	end,
-	ride = function(choice: Choice): (boolean, boolean?)
-		return Transports.ride(choice)
-	end,
-	house = function(choice: Choice): (boolean, boolean?)
-		return Transports.house(choice)
-	end,
-	house_exit = function(choice: Choice): boolean
-		return Transports.house_exit(choice)
-	end,
-	item_on = function(choice: Choice): boolean
-		return Transports.use_on(choice)
-	end,
-	canoe = function(choice: Choice): (boolean, boolean?)
-		return Transports.canoe(choice)
-	end,
-} :: { [string]: (Choice) -> (boolean, boolean?) }
-for _, hub in ipairs(HUBS) do
-	Transports.runners[hub.kind] = function(choice: Choice): (boolean, boolean?)
-		return Transports.hub(choice)
+local function runner(name: string): (Choice) -> (boolean, boolean?)
+	return function(choice: Choice): (boolean, boolean?)
+		return (Transports :: any)[name](choice)
 	end
 end
 
--- Whether a slow trip has landed after all: trying again would spend it twice.
+Transports.runners = {
+	minigame = runner("minigame"),
+	scroll_book = runner("scroll_book"),
+	quetzal_whistle = runner("whistle"),
+	spell = runner("cast"),
+	item = runner("use_item"),
+	charter = runner("sail"),
+	link = runner("pass"),
+	lever = runner("pull"),
+	ride = runner("ride"),
+	house = runner("house"),
+	house_exit = runner("house_exit"),
+	item_on = runner("use_on"),
+	canoe = runner("canoe"),
+} :: { [string]: (Choice) -> (boolean, boolean?) }
+for _, hub in ipairs(HUBS) do
+	Transports.runners[hub.kind] = runner("hub")
+end
+
 local function already_there(choice: Choice): boolean
 	local to = choice.transport.destination
 	if to == nil then
 		return false
 	end
 	local now = lib("@lib/main/player").position()
-	return now ~= nil and now.plane == to.plane and gap(now, to) <= Transports.ARRIVED_NEAR
+	return within(now, to, Transports.ARRIVED_NEAR)
 end
 
--- Uses the chosen transport: up to `ATTEMPTS` tries. If they all fail, or a runner says trying again is pointless, it is left out for `RETRY_AFTER_MS`. True when one worked.
 function Transports.use(choice: Choice): boolean
 	local run = Transports.runners[choice.kind]
 	if run == nil then
@@ -3176,7 +2882,6 @@ function Transports.use(choice: Choice): boolean
 	return false
 end
 
--- Takes the best transport toward `goal`, if one is worth it. Returns whether one was used and whether one failed all its attempts: the caller then plans again from where it is.
 function Transports.travel(from: Tile, goal: Tile, options: Options?): (boolean, boolean)
 	if not Transports.ENABLED then
 		return false, false

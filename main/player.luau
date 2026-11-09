@@ -4,6 +4,7 @@ local game_state = Host.game_state
 local sleep = Host.sleep
 local time = Host.time
 type Tile = Host.Tile
+type PlayerInfo = Host.PlayerInfo
 local GameState = require("@lib/main/game_state")
 local Log = require("@lib/utils/log")
 local Position = require("@lib/main/position")
@@ -17,8 +18,7 @@ function Player.is_logged_in(): boolean
 end
 
 function Player.name(): string?
-	local s = game_state()
-	return s.player_name
+	return game_state().player_name
 end
 
 function Player.position(): Position.Position?
@@ -30,7 +30,6 @@ function Player.position(): Position.Position?
 	return Position.new(p.local_x, p.local_y, p.x, p.y, p.plane)
 end
 
--- the 64x64 map chunks the scene around you is built from; nil when they can't be read
 function Player.map_chunks(): { Position.Chunk }?
 	local regions = Host.map_regions()
 	if regions == nil then
@@ -48,12 +47,10 @@ function Player.in_instance(): boolean
 	if flag ~= nil then
 		return flag
 	end
-	-- an agent without the flag: instances sit far east of the overworld
 	local pos = Player.position()
 	return pos ~= nil and pos:in_instance()
 end
 
--- the map chunks the instance you are in was copied from; nil outside instances or when unreadable
 function Player.instance_chunks(): { Position.Chunk }?
 	if not Player.in_instance() then
 		return nil
@@ -61,7 +58,6 @@ function Player.instance_chunks(): { Position.Chunk }?
 	return Player.map_chunks()
 end
 
--- the id of the map chunk the instance was copied from, when it is a copy of a single chunk
 function Player.instance_id(): number?
 	local chunks = Player.instance_chunks()
 	if chunks == nil or #chunks ~= 1 then
@@ -74,9 +70,6 @@ function Player.plane(): number?
 	local s = game_state()
 	local p = s.position
 	if p == nil then
-		return nil
-	end
-	if p.plane == nil then
 		return nil
 	end
 	return p.plane
@@ -92,8 +85,7 @@ function Player.run_energy(): number?
 end
 
 function Player.weight(): number?
-	local s = game_state()
-	return s.weight
+	return game_state().weight
 end
 
 local function levels(name: string): (number?, number?)
@@ -115,11 +107,7 @@ function Player.prayer(): (number?, number?)
 end
 
 function Player.is_running(): boolean
-	local value = Varps.get(Varps.RUN)
-	if value == nil then
-		return false
-	end
-	return value == 1
+	return Varps.get(Varps.RUN) == 1
 end
 
 function Player.special_attack(): number?
@@ -131,11 +119,7 @@ function Player.special_attack(): number?
 end
 
 function Player.special_attack_enabled(): boolean
-	local value = Varps.get(Varps.SPECIAL_ATTACK_ENABLED)
-	if value == nil then
-		return false
-	end
-	return value == 1
+	return Varps.get(Varps.SPECIAL_ATTACK_ENABLED) == 1
 end
 
 function Player.poison(): string?
@@ -158,7 +142,6 @@ local function fine(): (number?, number?)
 	return p.local_x, p.local_y
 end
 
--- server packet 2 ends a game tick; packet ids reshuffle when the game updates
 local TICK_PACKET = 2
 
 function Player.is_moving(sample_ms: number?): boolean
@@ -166,7 +149,6 @@ function Player.is_moving(sample_ms: number?): boolean
 	if movement ~= nil then
 		return movement.moving
 	end
-	-- an agent that doesn't track the server tile: watch the model, which lags the server
 	local x, y = fine()
 	if x == nil then
 		return false
@@ -179,39 +161,7 @@ function Player.is_moving(sample_ms: number?): boolean
 	return x2 ~= x or y2 ~= y
 end
 
-local function animation_of(name: string?): number?
-	if name == nil then
-		return nil
-	end
-	for _, p in ipairs(Host.players() or {}) do
-		if p.name == name then
-			return p.animation
-		end
-	end
-	return nil
-end
-
--- The id of the animation the player is playing, -1 for none: an obstacle, a search, an attack. Walking and running are the pose, not this.
-function Player.animation(): number?
-	return animation_of(game_state().player_name)
-end
-
--- The id of the player's pose: what it does when no animation plays, like standing, walking or riding a magic carpet.
-function Player.pose(): number?
-	local name = game_state().player_name
-	if name == nil then
-		return nil
-	end
-	for _, p in ipairs(Host.players() or {}) do
-		if p.name == name then
-			return p.pose
-		end
-	end
-	return nil
-end
-
-local function me(): Host.PlayerInfo?
-	local name = game_state().player_name
+local function player_named(name: string?): PlayerInfo?
 	if name == nil then
 		return nil
 	end
@@ -223,16 +173,30 @@ local function me(): Host.PlayerInfo?
 	return nil
 end
 
--- the hitsplat kinds of a hit that involves the player, dealt or taken: damage, a block, a max hit
+local function animation_of(name: string?): number?
+	local p = player_named(name)
+	return if p then p.animation else nil
+end
+
+local function me(): PlayerInfo?
+	return player_named(game_state().player_name)
+end
+
+function Player.animation(): number?
+	return animation_of(game_state().player_name)
+end
+
+function Player.pose(): number?
+	local p = me()
+	return if p then p.pose else nil
+end
+
 Player.HIT_KINDS = { [16] = true, [12] = true, [43] = true } :: { [number]: boolean }
--- how long a landed hit keeps a fight going: longer than the slowest attacks take
 Player.COMBAT_MS = 6000
--- the player's interaction state while it acts on an NPC (2 once the NPC is gone, 3 once it is done)
 Player.INTERACTING = 0
 
 local CYCLES_PER_MS = 50 / 1000
 
--- Whether one of the hitsplats is a hit that ended less than COMBAT_MS ago (a hitsplat's cycle is when it stops showing).
 local function hit_lately(splats: { Host.Hitsplat }?, now: number): boolean
 	local since = now - Player.COMBAT_MS * CYCLES_PER_MS
 	for _, splat in ipairs(splats or {}) do
@@ -243,7 +207,6 @@ local function hit_lately(splats: { Host.Hitsplat }?, now: number): boolean
 	return false
 end
 
--- The NPC the player is fighting: the one it acts on, once its hits land on it or its projectiles fly at it.
 function Player.attacking(): Host.Npc?
 	local self, now = me(), Host.client_cycle()
 	if self == nil or now == nil or self.target_state ~= Player.INTERACTING or self.interacting_npc < 0 then
@@ -262,7 +225,6 @@ function Player.attacking(): Host.Npc?
 	if hit_lately((Host.npc_hitsplats({ target.index }) or {})[target.index], now) then
 		return target
 	end
-	-- the client often stores only where a projectile starts: one from the player's tile at the target is the player's
 	local pos = game_state().position
 	for _, p in ipairs(Host.projectiles() or {}) do
 		local from_tile = p.source_player < 0
@@ -277,7 +239,6 @@ function Player.attacking(): Host.Npc?
 	return nil
 end
 
--- Whether hits land on the player or a projectile flies at it.
 function Player.is_attacked(): boolean
 	local self, now = me(), Host.client_cycle()
 	if self == nil or now == nil then
@@ -298,7 +259,6 @@ function Player.in_combat(): boolean
 	return Player.attacking() ~= nil or Player.is_attacked()
 end
 
--- Runs `drink` (a click on a pool, say) and waits up to `timeout_ms` for it to take: hitpoints, prayer or run energy going up, or all of them full. False and why.
 function Player.restore_with(drink: () -> boolean, timeout_ms: number): (boolean, string?)
 	local function levels(): (number, number, number)
 		return Player.hitpoints() or 0, Player.prayer() or 0, Player.run_energy() or 0
@@ -330,11 +290,8 @@ function Player.is_animating(): boolean
 	return id ~= nil and id ~= -1
 end
 
--- an animation can pause for a moment between two others
 Player.IDLE_MS = 300
 
--- Waits until the player has neither moved nor played an animation for `Player.IDLE_MS`. False after `timeout_ms`.
--- `on_poll` is called on every check.
 function Player.wait_idle(timeout_ms: number?, on_poll: (() -> ())?): boolean
 	local timeout = timeout_ms or Player.WALK_TIMEOUT
 	local started = time()
@@ -363,11 +320,9 @@ function Player.wait_idle(timeout_ms: number?, on_poll: (() -> ())?): boolean
 end
 
 function Player.destination(): Tile?
-	local s = game_state()
-	return s.destination
+	return game_state().destination
 end
 
--- Whether the player is still on the way somewhere. The destination alone doesn't say: it clears on the server's last step, a few tiles before the player gets there.
 function Player.in_transit(): boolean
 	if Player.destination() ~= nil then
 		return true

@@ -1,8 +1,4 @@
 --!strict
--- The Surprise Exam random event: the Dunce takes you to Mr. Mordaut's classroom (region 7502), where two kinds of question
--- come up, "what comes next" (interface 103, `pattern_next`) and three cards out of fifteen matching a hint (interface 559,
--- `pattern_cards`); once passed, the door out gives the reward. The questions show exam-only models (no item's): `ITEMS`
--- names them and `THEMES` groups them, with the words a card hint uses for each theme.
 local Host = require("@lib/host")
 local sleep = Host.sleep
 local time = Host.time
@@ -18,19 +14,16 @@ local Walker = require("@lib/main/walker")
 
 local SurpriseExam = {}
 
--- The classroom's map square, the teacher, the Dunce who brings you and his answer, and the door out.
 SurpriseExam.REGION = 7502
 SurpriseExam.MORDAUT = 5504
 SurpriseExam.DUNCE = 6749
 SurpriseExam.ACCEPT = "Sure, I fancy an exam."
 SurpriseExam.DOOR = 9316
 
--- "What comes next": the pattern's three models, the four answers' models (each answer is clicked on its model), "Select".
 SurpriseExam.PATTERN = 103
 SurpriseExam.PATTERN_SEQUENCE = { 10, 11, 12 }
 SurpriseExam.PATTERN_ANSWERS = { 15, 17, 19, 21 }
 SurpriseExam.SELECT = "Select"
--- The cards: their models (first card's child, 15 in rows of five), the cells to click, the hint and the confirm button.
 SurpriseExam.CARDS = 559
 SurpriseExam.CARD_MODELS = 21
 SurpriseExam.CARD_CELLS = 52
@@ -40,29 +33,6 @@ SurpriseExam.CARD_HINT = 67
 SurpriseExam.CARD_CONFIRM = 68
 SurpriseExam.CONFIRM = "Confirm"
 
--- The data below (every exam model's item, the themes and their hint keywords) is from Random Event Helper
--- (github.com/Infinitay/Random-Event-Helper), under this license:
---
--- Copyright (c) 2025, infinity
--- All rights reserved.
---
--- Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
--- following conditions are met:
---
--- 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following
---    disclaimer.
--- 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
---    disclaimer in the documentation and/or other materials provided with the distribution.
---
--- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
--- INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
--- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
--- SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
--- SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
--- WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
--- OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
--- What each exam model shows, by model id.
 SurpriseExam.ITEMS = {
 	[41168] = "air_rune",
 	[41188] = "square_shield_1",
@@ -163,7 +133,6 @@ SurpriseExam.ITEMS = {
 	[29232] = "key",
 } :: { [number]: string }
 
--- Themes: the items that go together, and the words a card hint uses for them.
 SurpriseExam.THEMES = {
 	combat_ecosystem = {
 		items = {
@@ -491,7 +460,6 @@ SurpriseExam.ANSWER_SETTLE_MS = 1200
 SurpriseExam.POLL_MS = 100
 SurpriseExam.LEAVE_TIMEOUT_MS = 8000
 
--- item -> the themes it is in, built from THEMES
 local themes_of: { [string]: { string } } = {}
 for theme, def in SurpriseExam.THEMES do
 	for _, item in def.items do
@@ -500,7 +468,6 @@ for theme, def in SurpriseExam.THEMES do
 	end
 end
 
--- Whether we're in the classroom: its map square, or the teacher there.
 function SurpriseExam.inside(): boolean
 	local pos = Host.game_state().position
 	if pos and (pos.x // 64) * 256 + pos.y // 64 == SurpriseExam.REGION then
@@ -510,7 +477,6 @@ function SurpriseExam.inside(): boolean
 	return teacher ~= nil and #teacher > 0
 end
 
--- What an exam model shows, nil when ITEMS doesn't list it.
 function SurpriseExam.item(model: number): string?
 	return SurpriseExam.ITEMS[model]
 end
@@ -518,6 +484,14 @@ end
 local function model_at(group: number, child: number): number?
 	local m = widget_model(group, child)
 	return if m and m.id and m.id > 0 then m.id else nil
+end
+
+local function pattern_models(children: { number }): { number }
+	local models = {}
+	for _, c in children do
+		table.insert(models, model_at(SurpriseExam.PATTERN, c) or -1)
+	end
+	return models
 end
 
 local function unknown(models: { number }, what: string)
@@ -532,29 +506,17 @@ local function unknown(models: { number }, what: string)
 	end
 end
 
--- Whether a theme lists the item.
 local function in_theme(theme: string, item: string?): boolean
 	return item ~= nil and table.find(SurpriseExam.THEMES[theme].items, item) ~= nil
 end
 
--- "What comes next": the pattern's models and the answers' models, nil when the question isn't open.
 function SurpriseExam.pattern(): ({ number }?, { number }?)
 	if not Toplevel.is_open(SurpriseExam.PATTERN) then
 		return nil, nil
 	end
-	local sequence, answers = {}, {}
-	for _, c in SurpriseExam.PATTERN_SEQUENCE do
-		table.insert(sequence, model_at(SurpriseExam.PATTERN, c) or -1)
-	end
-	for _, c in SurpriseExam.PATTERN_ANSWERS do
-		table.insert(answers, model_at(SurpriseExam.PATTERN, c) or -1)
-	end
-	return sequence, answers
+	return pattern_models(SurpriseExam.PATTERN_SEQUENCE), pattern_models(SurpriseExam.PATTERN_ANSWERS)
 end
 
--- The answer to "what comes next" (1 to 4): each answer scores over every theme by how many of the row's items the theme
--- has (3: 10 with the answer in it, 4 without; 2: 8 or 2; 1: 3 or 0.5; none: 1 or 0), and the best scoring one is taken.
--- Unknown models are logged.
 function SurpriseExam.pattern_answer(sequence: { number }, answers: { number }): number
 	unknown(sequence, "pattern")
 	unknown(answers, "answers")
@@ -580,7 +542,6 @@ function SurpriseExam.pattern_answer(sequence: { number }, answers: { number }):
 	return best
 end
 
--- The cards' models (1 to 15, in rows of five) and the hint, nil when the question isn't open.
 function SurpriseExam.cards(): ({ number }?, string?)
 	if not Toplevel.is_open(SurpriseExam.CARDS) then
 		return nil, nil
@@ -593,8 +554,6 @@ function SurpriseExam.cards(): ({ number }?, string?)
 	return models, hint and hint.text
 end
 
--- How well each theme fits a hint: 5 for each of its keywords the hint has as a word (or phrase), 3 for one only part of
--- a word matches (arrow in arrows).
 function SurpriseExam.hint_scores(hint: string): { [string]: number }
 	local lower = string.lower(hint)
 	local words: { [string]: boolean } = {}
@@ -621,8 +580,6 @@ function SurpriseExam.hint_scores(hint: string): { [string]: number }
 	return scores
 end
 
--- Three cards (1 to 15) for the hint: each card takes the score of its best fitting theme, the best three are picked.
--- Unknown models, and a hint no theme fits, are logged.
 function SurpriseExam.card_answer(models: { number }, hint: string): { number }
 	unknown(models, "cards")
 	local scores = SurpriseExam.hint_scores(hint)
@@ -660,7 +617,6 @@ local function click(group: number, child: number, option: string): boolean
 	return (Interact.with(w, option))
 end
 
--- Answers the question that is open (either kind). True when an answer was given.
 function SurpriseExam.answer(): boolean
 	local sequence, answers = SurpriseExam.pattern()
 	if sequence and answers then
@@ -683,7 +639,6 @@ function SurpriseExam.answer(): boolean
 	return false
 end
 
--- Out of the classroom by the door (the reward comes then). True once outside.
 function SurpriseExam.leave(): boolean
 	local me = Walker.position()
 	local door = me and Objects.nearest(SurpriseExam.DOOR, me)
@@ -698,7 +653,6 @@ function SurpriseExam.leave(): boolean
 	return not SurpriseExam.inside()
 end
 
--- Sits the exam from wherever it is: through the teacher's talk, every question, then out by the door. True once outside.
 function SurpriseExam.complete(): boolean
 	local idle_since = time()
 	while SurpriseExam.inside() do
@@ -711,7 +665,6 @@ function SurpriseExam.complete(): boolean
 			sleep(SurpriseExam.ANSWER_SETTLE_MS)
 			idle_since = time()
 		elseif time() - idle_since > SurpriseExam.QUESTION_TIMEOUT_MS then
-			-- no question and no talk: the exam is over (passed or not), out by the door
 			return SurpriseExam.leave()
 		else
 			sleep(SurpriseExam.POLL_MS)
@@ -720,7 +673,6 @@ function SurpriseExam.complete(): boolean
 	return true
 end
 
--- The Dunce's event: says yes to the exam, then sits it. True once back outside.
 function SurpriseExam.accept(dunce: Host.Npc): boolean
 	if not Npcs.interact(dunce, "Talk-to") then
 		return false

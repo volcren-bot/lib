@@ -142,10 +142,7 @@ function Biometrics.random_mode_integer(input: number, minimum: number, maximum:
 end
 
 function Biometrics.random_boolean(probability: number?): boolean
-	if probability == nil then
-		return Random.chance(Biometrics.random_double(0.5))
-	end
-	return Random.chance(Biometrics.random_double(probability))
+	return Random.chance(Biometrics.random_double(probability or 0.5))
 end
 
 function Biometrics.biometric_boolean(biometric: Biometric): boolean
@@ -176,24 +173,31 @@ function Biometrics.sleep_length(): number
 	return math.floor(value * 100 + 0.5) / 100
 end
 
-function Biometrics.sleep(minimum: number, maximum: number?, dir: Random.Dir?)
+local function durations(minimum: number, maximum: number?): (number, number?)
 	if maximum == nil then
-		sleep(math.max(0, Biometrics.random_integer(minimum)))
-		return
+		return math.max(0, Biometrics.random_integer(minimum)), nil
 	end
 	local a = math.max(0, Biometrics.random_mode_integer(minimum, minimum, maximum))
 	local b = math.max(0, Biometrics.random_mode_integer(maximum, minimum, maximum))
-	Random.sleep(a, b, dir or "mean")
+	return a, b
+end
+
+function Biometrics.sleep(minimum: number, maximum: number?, dir: Random.Dir?)
+	local a, b = durations(minimum, maximum)
+	if b == nil then
+		sleep(a)
+	else
+		Random.sleep(a, b, dir or "mean")
+	end
 end
 
 function Biometrics.sleep_async(minimum: number, maximum: number?, dir: Random.Dir?)
-	if maximum == nil then
-		sleep_async(math.max(0, Biometrics.random_integer(minimum)))
-		return
+	local a, b = durations(minimum, maximum)
+	if b == nil then
+		sleep_async(a)
+	else
+		Random.sleep_async(a, b, dir or "mean")
 	end
-	local a = math.max(0, Biometrics.random_mode_integer(minimum, minimum, maximum))
-	local b = math.max(0, Biometrics.random_mode_integer(maximum, minimum, maximum))
-	Random.sleep_async(a, b, dir or "mean")
 end
 
 function Biometrics.click(button: Mouse.Button?, clicks: number?, probability: number?)

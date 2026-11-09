@@ -28,6 +28,23 @@ function Point.distance(a: Point, b: Point): number
 	return math.sqrt((b.x - a.x) ^ 2 + (b.y - a.y) ^ 2)
 end
 
+local distance = Point.distance
+
+local function skew_toward(from: Point, to: Point, force: number?): Point
+	local r = distance(from, to) * (force or 0.35)
+	local angle = math.atan2(to.y - from.y, to.x - from.x)
+	return pt(from.x + round(math.cos(angle) * r), from.y + round(math.sin(angle) * r))
+end
+
+local function jitter(from: Point, spread_x: number, spread_y: number, weight: number): Point
+	return pt(from.x + round(Random.gauss(0, spread_x) / weight), from.y + round(Random.gauss(0, spread_y) / weight))
+end
+
+local function circle_point(c: Circle, r: number): Point
+	local theta = math.random() * 2 * math.pi
+	return pt(c.x + round(r * math.cos(theta)), c.y + round(r * math.sin(theta)))
+end
+
 function Point.angle_between(a: Point, b: Point): number
 	return (math.deg(math.atan2(b.y - a.y, b.x - a.x)) - 90) % 360
 end
@@ -49,16 +66,16 @@ local function nearest_on_line(p: Point, p1: Point, p2: Point): (Point, number)
 	local dx, dy = p2.x - p1.x, p2.y - p1.y
 	local d = dx * dx + dy * dy
 	if d == 0 then
-		return p1, math.sqrt((p.x - p1.x) ^ 2 + (p.y - p1.y) ^ 2)
+		return p1, distance(p, p1)
 	end
 	local f = ((p.x - p1.x) * dx + (p.y - p1.y) * dy) / d
 	if f < 0 then
-		return p1, math.sqrt((p.x - p1.x) ^ 2 + (p.y - p1.y) ^ 2)
+		return p1, distance(p, p1)
 	elseif f > 1 then
-		return p2, math.sqrt((p.x - p2.x) ^ 2 + (p.y - p2.y) ^ 2)
+		return p2, distance(p, p2)
 	end
 	local nearest = pt(round(p1.x + f * dx), round(p1.y + f * dy))
-	return nearest, math.sqrt((p.x - nearest.x) ^ 2 + (p.y - nearest.y) ^ 2)
+	return nearest, distance(p, nearest)
 end
 
 local function in_triangle(p: Point, a: Point, b: Point, c: Point): boolean
@@ -164,7 +181,7 @@ function Polygon.random_weighted_point(poly: Polygon, from: Point, weight: numbe
 		end
 		xr /= #poly
 		yr /= #poly
-		from = pt(from.x + round(Random.gauss(0, xr * b) / w), from.y + round(Random.gauss(0, yr * b) / w))
+		from = jitter(from, xr * b, yr * b, w)
 	end
 	if not Polygon.contains(poly, from) then
 		from = Polygon.nearest_edge(poly, from)
@@ -193,7 +210,7 @@ function Triangle.random_weighted_point(tri: Polygon, from: Point, weight: numbe
 	if b > 0 and w ~= 0 then
 		local xr = math.abs(a.x - from.x) + math.abs(bb.x - from.x) + math.abs(c.x - from.x)
 		local yr = math.abs(a.y - from.y) + math.abs(bb.y - from.y) + math.abs(c.y - from.y)
-		from = pt(from.x + round(Random.gauss(0, xr / 3 * b) / w), from.y + round(Random.gauss(0, yr / 3 * b) / w))
+		from = jitter(from, xr / 3 * b, yr / 3 * b, w)
 	end
 	if not in_triangle(from, a, bb, c) then
 		from = Polygon.nearest_edge(tri, from)
@@ -263,15 +280,10 @@ function Box.random_point_center(b: Box): Point
 end
 
 function Box.random_skewed_point(b: Box, from: Point, force: number?): Point
-	local f = force or 0.35
 	local fx = if from.x < b.x1 then b.x1 elseif from.x > b.x2 then b.x2 else from.x
 	local fy = if from.y < b.y1 then b.y1 elseif from.y > b.y2 then b.y2 else from.y
-	local c = Box.center(b)
-	local r = math.sqrt((fx - c.x) ^ 2 + (fy - c.y) ^ 2) * f
-	local angle = math.atan2(c.y - fy, c.x - fx)
-	fx += round(math.cos(angle) * r)
-	fy += round(math.sin(angle) * r)
-	return pt(round(Random.mode(fx, b.x1, b.x2, 4.0)), round(Random.mode(fy, b.y1, b.y2, 4.0)))
+	local skewed = skew_toward(pt(fx, fy), Box.center(b), force)
+	return pt(round(Random.mode(skewed.x, b.x1, b.x2, 4.0)), round(Random.mode(skewed.y, b.y1, b.y2, 4.0)))
 end
 
 function Box.random_weighted_point(b: Box, from: Point, weight: number?, bias: number?): Point
@@ -283,7 +295,7 @@ function Circle.new(x: number, y: number, radius: number): Circle
 end
 
 function Circle.contains(c: Circle, p: Point): boolean
-	return math.sqrt((p.x - c.x) ^ 2 + (p.y - c.y) ^ 2) <= c.radius
+	return distance(c, p) <= c.radius
 end
 
 function Circle.point_at_degrees(c: Circle, degrees: number): Point
@@ -292,15 +304,11 @@ function Circle.point_at_degrees(c: Circle, degrees: number): Point
 end
 
 function Circle.random_point(c: Circle): Point
-	local r = math.floor(c.radius * math.sqrt(math.random()))
-	local theta = math.random() * 2 * math.pi
-	return pt(c.x + round(r * math.cos(theta)), c.y + round(r * math.sin(theta)))
+	return circle_point(c, math.floor(c.radius * math.sqrt(math.random())))
 end
 
 function Circle.random_point_center(c: Circle): Point
-	local r = math.floor(c.radius * math.sqrt(Random.left(0.0, 1.0)))
-	local theta = math.random() * 2 * math.pi
-	return pt(c.x + round(r * math.cos(theta)), c.y + round(r * math.sin(theta)))
+	return circle_point(c, math.floor(c.radius * math.sqrt(Random.left(0.0, 1.0))))
 end
 
 function Circle.random_skewed_point(c: Circle, from: Point, force: number?): Point
@@ -309,10 +317,7 @@ function Circle.random_skewed_point(c: Circle, from: Point, force: number?): Poi
 		local angle = math.atan2(from.y - c.y, from.x - c.x)
 		from = pt(round(c.x + c.radius * math.cos(angle)), round(c.y + c.radius * math.sin(angle)))
 	end
-	local r = math.sqrt((from.x - c.x) ^ 2 + (from.y - c.y) ^ 2) * (force or 0.35)
-
-	local angle = math.atan2(c.y - from.y, c.x - from.x)
-	local skewed = pt(from.x + round(math.cos(angle) * r), from.y + round(math.sin(angle) * r))
+	local skewed = skew_toward(from, center, force)
 	local result = pt(round(Random.mode(skewed.x, from.x, c.x, 2.0)), round(Random.mode(skewed.y, from.y, c.y, 2.0)))
 
 	local degrees = Point.angle_between(from, center)
@@ -322,10 +327,7 @@ end
 function Circle.random_weighted_point(c: Circle, from: Point, weight: number?, bias: number?): Point
 	local w, b = weight or 10, bias or 1
 	if b > 0 and w ~= 0 then
-		from = pt(
-			from.x + round(Random.gauss(0, c.radius * b / 2) / w),
-			from.y + round(Random.gauss(0, c.radius * b / 2) / w)
-		)
+		from = jitter(from, c.radius * b / 2, c.radius * b / 2, w)
 	end
 	if not Circle.contains(c, from) then
 		from = Circle.point_at_degrees(c, Point.angle_between(from, pt(c.x, c.y)))
@@ -361,15 +363,7 @@ function Quad.contains(q: Quad, p: Point): boolean
 end
 
 function Quad.nearest_edge(q: Quad, p: Point): Point
-	local edges = { { q.top, q.left }, { q.left, q.bottom }, { q.bottom, q.right }, { q.right, q.top } }
-	local best, result = math.huge, q.top
-	for _, edge in edges do
-		local nearest, dist = nearest_on_line(p, edge[1], edge[2])
-		if dist < best then
-			best, result = dist, nearest
-		end
-	end
-	return result
+	return Polygon.nearest_edge({ q.top, q.left, q.bottom, q.right }, p)
 end
 
 local function quad_frame(q: Quad): (number, Point, number, number, number, number)
@@ -377,8 +371,8 @@ local function quad_frame(q: Quad): (number, Point, number, number, number, numb
 	local a = math.atan2(left.y - top.y, left.x - top.x)
 	local x = (top.x + q.right.x + bottom.x + left.x) / 4
 	local y = (top.y + q.right.y + bottom.y + left.y) / 4
-	local half_w = math.sqrt((left.y - top.y) ^ 2 + (left.x - top.x) ^ 2) / 2
-	local half_h = math.sqrt((left.y - bottom.y) ^ 2 + (left.x - bottom.x) ^ 2) / 2
+	local half_w = distance(top, left) / 2
+	local half_h = distance(bottom, left) / 2
 	local x1, y1, x2, y2 = x - half_w, y - half_h, x + half_w, y + half_h
 	local center = pt(round((x2 + x1) / 2 + (math.random() * 2 - 1)), round((y2 + y1) / 2 + (math.random() * 2 - 1)))
 	return a, center, x1, y1, x2, y2
@@ -400,12 +394,8 @@ function Quad.random_skewed_point(q: Quad, from: Point, force: number?): Point
 	if not Quad.contains(q, from) then
 		from = Quad.nearest_edge(q, from)
 	end
-	local c = Quad.mean(q)
-	local r = math.sqrt((from.x - c.x) ^ 2 + (from.y - c.y) ^ 2) * (force or 0.35)
-	local angle = math.atan2(c.y - from.y, c.x - from.x)
-	local skewed = pt(from.x + round(math.cos(angle) * r), from.y + round(math.sin(angle) * r))
-	local corners = Quad.corners(q)
-	local corner = corners[math.random(1, 4)]
+	local skewed = skew_toward(from, Quad.mean(q), force)
+	local corner = Quad.corners(q)[math.random(1, 4)]
 	return pt(round(Random.mode(skewed.x, from.x, corner.x, 4.0)), round(Random.mode(skewed.y, from.y, corner.y, 4.0)))
 end
 

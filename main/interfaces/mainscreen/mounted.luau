@@ -1,9 +1,6 @@
 --!strict
--- What a house has mounted on its walls: the amulet of glory, the mythical cape, Xeric's talisman and the digsite pendant. The trips are free.
--- The glory names its places as options and the cape's "Teleport" has one place. The talisman and the pendant list theirs under "Teleport menu" (group 187, the game's generic `menu` list), and their first options change with the "Configuration" the player set, so those aren't used. Their "Remove" option takes them out of the house, and nothing here can click it.
 local Host = require("@lib/host")
 local sleep = Host.sleep
-local time = Host.time
 local widget = Host.widget
 local widget_children = Host.widget_children
 type Widget = Host.Widget
@@ -13,27 +10,25 @@ local Mouse = require("@lib/utils/input/mouse")
 local Objects = require("@lib/main/entities/objects")
 local Random = require("@lib/utils/math/random")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Mounted = {}
 
 Mounted.GROUP = 187
 Mounted.LIST = 3
 Mounted.CLOSE = 4
--- The colour tag the game puts around a place you haven't unlocked.
 Mounted.LOCKED_COLOUR = "5f5f5f"
 Mounted.MENU_OPTION = "Teleport menu"
 Mounted.CAPE_OPTION = "Teleport"
 Mounted.OPEN_TIMEOUT_MS = 8000
 Mounted.CLOSE_TIMEOUT_MS = 3000
 Mounted.POLL_MS = 50
--- A pause (min, max in ms) after the list opens.
 Mounted.SETTLE_MS = { 250, 500 }
 
 export type Kind = "glory" | "cape" | "talisman" | "digsite"
 
 export type Destination = {
 	name: string,
-	-- false for a place you haven't unlocked
 	available: boolean,
 	row: Widget,
 }
@@ -42,7 +37,6 @@ function Mounted.is_open(): boolean
 	return Toplevel.is_open(Mounted.GROUP)
 end
 
--- The places of the open list ("Xeric's Glade"), top to bottom. Nil when it isn't open.
 function Mounted.destinations(): { Destination }?
 	if not Mounted.is_open() then
 		return nil
@@ -60,7 +54,6 @@ function Mounted.destinations(): { Destination }?
 	return found
 end
 
--- The place in the open list whose name contains `name`, ignoring case, when only one does.
 function Mounted.find(name: string): Destination?
 	local wanted = string.lower(name)
 	local match: Destination? = nil
@@ -75,21 +68,15 @@ function Mounted.find(name: string): Destination?
 	return match
 end
 
--- Clicks a place in the open list and waits for it to close. True once it has.
 function Mounted.select(name: string): boolean
 	local d = Mounted.find(name)
 	if d == nil or not d.available then
 		return false
 	end
 	Mouse.click(d.row)
-	local deadline = time() + Mounted.CLOSE_TIMEOUT_MS
-	while Mounted.is_open() do
-		if time() >= deadline then
-			return false
-		end
-		sleep(Mounted.POLL_MS)
-	end
-	return true
+	return Widgets.wait_for(function()
+		return not Mounted.is_open()
+	end, Mounted.CLOSE_TIMEOUT_MS, Mounted.POLL_MS)
 end
 
 function Mounted.close(): boolean
@@ -99,19 +86,13 @@ function Mounted.close(): boolean
 end
 
 local function wait_open(): boolean
-	local deadline = time() + Mounted.OPEN_TIMEOUT_MS
-	while not Mounted.is_open() do
-		if time() >= deadline then
-			return false
-		end
-		sleep(Mounted.POLL_MS)
+	if not Widgets.wait_for(Mounted.is_open, Mounted.OPEN_TIMEOUT_MS, Mounted.POLL_MS) then
+		return false
 	end
 	sleep(Random.int(Mounted.SETTLE_MS[1], Mounted.SETTLE_MS[2]))
 	return true
 end
 
--- Finds the piece in the house the player is in, goes to it and starts the teleport to `place`, which isn't waited for.
--- False with why when it didn't start, and true third when trying again is pointless: the piece or the place isn't there.
 function Mounted.teleport(kind: Kind, place: string): (boolean, string?, boolean?)
 	local names = House.FURNITURE[kind]
 	local loc = if names ~= nil then House.reach(names) else nil

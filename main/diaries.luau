@@ -1,9 +1,4 @@
 --!strict
--- Achievement diary progress from the client's cache and variables: which tiers of which regions are done, and how many tasks, with no tab to open and nothing hard-coded.
--- Two of the game's own scripts hold it, and they are read once and kept for the run:
---   `area_task_complete` (56): for each region number, the four varbits that say a tier is done (easy, medium, hard, elite) and the one that says the diary was started.
---   `diary_completion_info` (2200): for each region number, each tier's task-count varbit and its number of tasks.
--- The region's name comes from the client's own name for its varbits (`kandarin_diary_elite_complete`).
 local Cs2 = require("@lib/utils/cs2")
 local Host = require("@lib/host")
 local Log = require("@lib/utils/log")
@@ -13,19 +8,15 @@ local Diaries = {}
 Diaries.COMPLETE_SCRIPT = 56
 Diaries.INFO_SCRIPT = 2200
 Diaries.SCRIPT_INDEX = 12
--- the kind of the client's name table for varbits (`GameVal.VARBIT`)
 Diaries.VARBIT_NAMES = 4
 Diaries.TIERS = { "easy", "medium", "hard", "elite" }
 
--- cs2 opcodes read here: loading a local, and the "not equal" jump that opens each region's block
 local PUSH_LOCAL = 33
 local JUMP_NOT_EQUAL = 8
 
 type Tier = {
-	-- 1 once the tier is done (Karamja's first three hold 2)
 	done_varbit: number,
 	done_value: number,
-	-- the varbit counting the tier's finished tasks, and how many tasks it has
 	count_varbit: number?,
 	total: number?,
 }
@@ -51,7 +42,6 @@ local function script(id: number): Cs2.Script?
 	return Cs2.script(bytes)
 end
 
--- The varbits of each region number in `area_task_complete`: its block starts at "local 0 = N" and holds the four tier varbits, then the "started" one.
 local function read_complete(s: Cs2.Script): { [number]: Region }?
 	local found: { [number]: Region } = {}
 	local ins = s.instructions
@@ -82,7 +72,6 @@ local function read_complete(s: Cs2.Script): { [number]: Region }?
 			current = {}
 		elseif x.op == Cs2.GET_VARBIT and current ~= nil then
 			table.insert(current, x.value :: number)
-			-- a tier tested on its own against a value (`= 2`) says what "done" means for it
 			local after, jump = ins[i + 1], ins[i + 2]
 			if after ~= nil and jump ~= nil and after.op == Cs2.PUSH_INT and jump.op == JUMP_NOT_EQUAL then
 				values[x.value :: number] = after.value :: number
@@ -96,7 +85,6 @@ local function read_complete(s: Cs2.Script): { [number]: Region }?
 	return found
 end
 
--- Each region number's task-count varbit and task total for every tier, from the switch in `diary_completion_info`.
 local function read_info(s: Cs2.Script): { [number]: { { count: number, total: number } } }?
 	local at: number? = nil
 	for i, x in ipairs(s.instructions) do
@@ -117,7 +105,6 @@ local function read_info(s: Cs2.Script): { [number]: { { count: number, total: n
 		local first = at + 1 + jump
 		local tiers: { { count: number, total: number } } = {}
 		for tier = 1, 4 do
-			-- per tier: the count varbit, the number of tasks, and the reward varbit
 			local count, total, reward = s.instructions[first], s.instructions[first + 1], s.instructions[first + 2]
 			if
 				count == nil
@@ -137,7 +124,6 @@ local function read_info(s: Cs2.Script): { [number]: { { count: number, total: n
 	return info
 end
 
--- Reads the two scripts and names the regions. Done once; false (and not tried again) when the cache isn't shaped as expected.
 function Diaries.load(): boolean
 	if loaded then
 		return true
@@ -193,12 +179,14 @@ function Diaries.load(): boolean
 	return true
 end
 
--- The first word of a region's name, lowercase: "Kourend & Kebos" is "kourend", "Western Provinces" is "western".
 local function key_of(region: string): string
 	return (string.match(string.lower(region), "^%a+")) or ""
 end
 
--- The regions the cache lists, by key ("ardougne", "kourend", "western", ...), sorted.
+local function tier_index(tier: string): number?
+	return table.find(Diaries.TIERS, string.lower(tier))
+end
+
 function Diaries.regions(): { string }
 	if not Diaries.load() then
 		return {}
@@ -206,13 +194,12 @@ function Diaries.regions(): { string }
 	return table.clone(order)
 end
 
--- Whether a tier ("easy", "medium", "hard" or "elite") of a region is done; nil for an unknown region or tier, or when it can't be read.
 function Diaries.tier(region: string, tier: string): boolean?
 	if not Diaries.load() then
 		return nil
 	end
 	local r = regions[key_of(region)]
-	local index = table.find(Diaries.TIERS, string.lower(tier))
+	local index = tier_index(tier)
 	if r == nil or index == nil then
 		return nil
 	end
@@ -223,7 +210,6 @@ function Diaries.tier(region: string, tier: string): boolean?
 	return value >= r.tiers[index].done_value
 end
 
--- Whether all four tiers of a region are done; nil for an unknown region or when it can't be read.
 function Diaries.complete(region: string): boolean?
 	for _, tier in ipairs(Diaries.TIERS) do
 		local done = Diaries.tier(region, tier)
@@ -236,7 +222,6 @@ function Diaries.complete(region: string): boolean?
 	return true
 end
 
--- Whether the region's diary has been started.
 function Diaries.started(region: string): boolean?
 	if not Diaries.load() then
 		return nil
@@ -246,7 +231,6 @@ function Diaries.started(region: string): boolean?
 	return if value ~= nil then value > 0 else nil
 end
 
--- Tasks done and tasks in all, for a region or for one of its tiers; nil for an unknown region or tier, or when it can't be read.
 function Diaries.progress(region: string, tier: string?): Progress?
 	if not Diaries.load() then
 		return nil
@@ -257,7 +241,7 @@ function Diaries.progress(region: string, tier: string?): Progress?
 	end
 	local from, to = 1, 4
 	if tier ~= nil then
-		local index = table.find(Diaries.TIERS, string.lower(tier))
+		local index = tier_index(tier)
 		if index == nil then
 			return nil
 		end
@@ -276,7 +260,6 @@ function Diaries.progress(region: string, tier: string?): Progress?
 	return { done = done, total = total }
 end
 
--- Forgets what was read, so the next question reads the cache again.
 function Diaries.reload()
 	loaded = false
 	failed = false

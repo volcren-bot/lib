@@ -1,11 +1,8 @@
 --!strict
--- The jewellery box in a player's house (group 590, `poh_jewellery_box` in the cache): panels of teleports by the jewellery they copy, opened by "Teleport Menu" on the box. A bigger box has more panels.
--- Each destination is a line like `<col=ccccff>1:</col> Emir's Arena`, whose letter or digit is also its key; one the account can't use is struck through. The trip is free. The box's "Remove" option takes it out of the house, and nothing here can click it.
 local Host = require("@lib/host")
 local menu = Host.menu
 local widget_children = Host.widget_children
 local sleep = Host.sleep
-local time = Host.time
 type Widget = Host.Widget
 type Loc = Host.Loc
 local Biometrics = require("@lib/main/antiban/biometrics")
@@ -16,32 +13,27 @@ local Objects = require("@lib/main/entities/objects")
 local Player = require("@lib/main/player")
 local Random = require("@lib/utils/math/random")
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Jewellerybox = {}
 
 Jewellerybox.GROUP = 590
--- The frame holds the close button as its child 11, and these components are the panels.
 Jewellerybox.FRAME = 1
 Jewellerybox.CLOSE_INDEX = 11
 Jewellerybox.FIRST_PANEL = 2
 Jewellerybox.LAST_PANEL = 7
--- What the box objects are called (any size), and the option that opens the menu.
 Jewellerybox.OBJECT = "jewellery box"
 Jewellerybox.OPTION = "Teleport Menu"
 
--- The chance a biometric is rolled around for choosing a destination with its key rather than a click.
 Jewellerybox.KEY_CHANCE = 0.5
 
 Jewellerybox.OPEN_TIMEOUT_MS = 3000
 Jewellerybox.HOVER_TIMEOUT_MS = 800
 Jewellerybox.CONFIRM_TIMEOUT_MS = 4000
 Jewellerybox.POLL_MS = 50
--- The menu follows the mouse a frame or so late, and would still show the line before.
 Jewellerybox.HOVER_SETTLE_MS = 150
--- A pause (min, max in ms) after `open` finds the menu, before it returns: a key pressed in the first moments after a list appears can be ignored by the game.
 Jewellerybox.SETTLE_MS = { 250, 500 }
 
--- Every destination of the biggest box, as the game names them. Use these rather than typing a name: `Jewellerybox.select(Jewellerybox.Place.GrandExchange)`.
 export type Place =
 	"Emir's Arena"
 	| "Castle Wars"
@@ -131,13 +123,9 @@ Jewellerybox.Place = table.freeze({
 
 export type Destination = {
 	name: string,
-	-- the letter or digit before the name, which is also the key that picks it
 	key: string,
-	-- the jewellery its panel is titled with
 	jewellery: string,
-	-- false when it is struck through: the account can't use it
 	available: boolean,
-	-- the line: where to hover and click
 	area: Widget,
 }
 
@@ -145,21 +133,10 @@ function Jewellerybox.is_open(): boolean
 	return Toplevel.is_open(Jewellerybox.GROUP)
 end
 
--- Whether the menu is open, polled for up to `timeout_ms` (3 seconds by default).
 function Jewellerybox.wait_open(timeout_ms: number?): boolean
-	local deadline = time() + (timeout_ms or Jewellerybox.OPEN_TIMEOUT_MS)
-	while true do
-		if Jewellerybox.is_open() then
-			return true
-		end
-		if time() >= deadline then
-			return false
-		end
-		sleep(Jewellerybox.POLL_MS)
-	end
+	return Widgets.wait_for(Jewellerybox.is_open, timeout_ms or Jewellerybox.OPEN_TIMEOUT_MS, Jewellerybox.POLL_MS)
 end
 
--- The destinations in the menu's order, read from the widgets without hovering. Nil when the menu isn't open.
 function Jewellerybox.destinations(): { Destination }?
 	if not Jewellerybox.is_open() then
 		return nil
@@ -206,7 +183,6 @@ function Jewellerybox.names(): { string }?
 	return names
 end
 
--- The destination called `name`, ignoring case: an exact name, else one name containing the other ("Exchange" in "Grand Exchange") if only one fits.
 function Jewellerybox.find(name: string): Destination?
 	local all = Jewellerybox.destinations()
 	if all == nil then
@@ -227,40 +203,23 @@ function Jewellerybox.find(name: string): Destination?
 	return if loose_count == 1 then loose else nil
 end
 
-local function gone(timeout_ms: number): boolean
-	local deadline = time() + timeout_ms
-	while true do
-		if not Jewellerybox.is_open() then
-			return true
-		end
-		if time() >= deadline then
-			return false
-		end
-		sleep(Jewellerybox.POLL_MS)
-	end
+local function gone(): boolean
+	return Widgets.wait_for(function()
+		return not Jewellerybox.is_open()
+	end, Jewellerybox.CONFIRM_TIMEOUT_MS, Jewellerybox.POLL_MS)
 end
 
--- Whether the menu where the mouse is now offers this destination, waiting a moment for the game to show it.
 local function offers(name: string): boolean
-	local deadline = time() + Jewellerybox.HOVER_TIMEOUT_MS
-	while true do
+	return Widgets.wait_for(function(): boolean
 		for _, entry in ipairs(menu() or {}) do
 			if entry.option ~= "Cancel" then
-				if entry.option == name then
-					return true
-				end
-				break
+				return entry.option == name
 			end
 		end
-		if time() >= deadline then
-			return false
-		end
-		sleep(Jewellerybox.POLL_MS)
-	end
+		return false
+	end, Jewellerybox.HOVER_TIMEOUT_MS, Jewellerybox.POLL_MS)
 end
 
--- Chooses a destination by name and returns how it was done: "key" (its key; chance `key_probability`, nil or 0 is a biometric around KEY_CHANCE) or "click" on its line.
--- A key that leaves the menu open for CONFIRM_TIMEOUT_MS is followed by the click, which only happens once the menu under the mouse offers that destination. Nil when no destination has that name, it is struck through, or nothing worked. The trip itself is not waited for.
 function Jewellerybox.select(place: Place, key_probability: number?): string?
 	local name: string = place
 	local d = Jewellerybox.find(name)
@@ -276,7 +235,7 @@ function Jewellerybox.select(place: Place, key_probability: number?): string?
 		else Biometrics.random_double(Jewellerybox.KEY_CHANCE)
 	if Random.chance(probability) then
 		Keyboard.key_press(string.byte(string.upper(d.key)) :: number)
-		if gone(Jewellerybox.CONFIRM_TIMEOUT_MS) then
+		if gone() then
 			return "key"
 		end
 		Log.log("Jewellerybox", `key {d.key} to {d.name} left the menu open`)
@@ -292,14 +251,13 @@ function Jewellerybox.select(place: Place, key_probability: number?): string?
 		return nil
 	end
 	Mouse.click()
-	if gone(Jewellerybox.CONFIRM_TIMEOUT_MS) then
+	if gone() then
 		return "click"
 	end
 	Log.log("Jewellerybox", `clicking {d.name} left the menu open`)
 	return nil
 end
 
--- The close button, nil when the menu isn't open.
 function Jewellerybox.close_button(): Widget?
 	for _, k in ipairs(widget_children(Jewellerybox.GROUP, Jewellerybox.FRAME) or {}) do
 		if k.index == Jewellerybox.CLOSE_INDEX and not k.hidden then
@@ -309,7 +267,6 @@ function Jewellerybox.close_button(): Widget?
 	return nil
 end
 
--- Closes the menu: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
 function Jewellerybox.close(key_probability: number?): boolean
 	if not Jewellerybox.is_open() then
 		return true
@@ -321,7 +278,6 @@ function Jewellerybox.close(key_probability: number?): boolean
 	)
 end
 
--- The nearest jewellery box of any size, nil when there is none.
 function Jewellerybox.nearest(): Loc?
 	local me = Player.position()
 	if me == nil then
@@ -340,7 +296,6 @@ function Jewellerybox.nearest(): Loc?
 	return best
 end
 
--- Opens the menu from the nearest box (or `box`), walking closer first unless `walk` is false, and waits for it; true when it is open (also if it already was). When it didn't work the second result says why.
 function Jewellerybox.open(box: Loc?, walk: boolean?): (boolean, string?)
 	if Jewellerybox.is_open() then
 		return true, nil

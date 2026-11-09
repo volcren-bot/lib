@@ -3,7 +3,6 @@ local Host = require("@lib/host")
 local game_state = Host.game_state
 local connection = Host.connection
 local world_select = Host.world_select
-local sleep = Host.sleep
 type World = Host.World
 type WorldSelect = Host.WorldSelect
 local GameState = require("@lib/main/game_state")
@@ -11,6 +10,7 @@ local Geometry = require("@lib/utils/math/geometry")
 local Log = require("@lib/utils/log")
 local Mouse = require("@lib/utils/input/mouse")
 local Random = require("@lib/utils/math/random")
+local Widgets = require("@lib/main/interfaces/widgets")
 local Box = Geometry.Box
 type Box = Geometry.Box
 
@@ -90,7 +90,6 @@ local TOP_BAR = 23
 local ARROW_WIDTH = 43
 local ARROW_HEIGHT = 29
 
-local POLL_MS = 50
 local OPEN_TIMEOUT_MS = 5000
 local CLOSE_TIMEOUT_MS = 1500
 local PAGE_TIMEOUT_MS = 1500
@@ -131,20 +130,6 @@ local function scaled(s: Screen, x1: number, y1: number, x2: number, y2: number)
 	return Box.new(px(x1), px(y1), px(x2), px(y2))
 end
 
-local function wait_until(condition: () -> boolean, timeout_ms: number): boolean
-	local waited = 0
-	while true do
-		if condition() then
-			return true
-		end
-		if waited >= timeout_ms then
-			return false
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
-end
-
 function LoginWorldSwitcher.state(): WorldSelect?
 	local s = screen()
 	if s == nil then
@@ -155,14 +140,11 @@ end
 
 function LoginWorldSwitcher.is_open(): boolean
 	local select = LoginWorldSwitcher.state()
-	if select == nil then
-		return false
-	end
-	return select.open
+	return select ~= nil and select.open
 end
 
 function LoginWorldSwitcher.wait_open(timeout_ms: number?): boolean
-	return wait_until(function()
+	return Widgets.wait_until(function()
 		return LoginWorldSwitcher.is_open() == true
 	end, timeout_ms or OPEN_TIMEOUT_MS)
 end
@@ -357,7 +339,7 @@ function LoginWorldSwitcher.close(): boolean
 		return true
 	end
 	Mouse.click(cancel_button(s))
-	local closed = wait_until(function()
+	local closed = Widgets.wait_until(function()
 		return LoginWorldSwitcher.is_open() == false
 	end, CLOSE_TIMEOUT_MS)
 	if not closed then
@@ -384,7 +366,7 @@ local function scroll(step: number): boolean
 		return false
 	end
 	Mouse.click(if step < 0 then left_button(s, l) else right_button(s, l))
-	local moved = wait_until(function()
+	local moved = Widgets.wait_until(function()
 		local select = LoginWorldSwitcher.state()
 		return select ~= nil and select.offset ~= from
 	end, PAGE_TIMEOUT_MS)
@@ -405,8 +387,7 @@ function LoginWorldSwitcher.next_page(): boolean
 end
 
 function LoginWorldSwitcher.find(id: number): WorldBox?
-	local opened = LoginWorldSwitcher.open()
-	if not opened then
+	if not LoginWorldSwitcher.open() then
 		return nil
 	end
 	for _ = 1, MAX_COLUMNS * 4 do
@@ -432,14 +413,8 @@ function LoginWorldSwitcher.find(id: number): WorldBox?
 		end
 		local column = (index - 1) // l.rows
 		local offset = s.select.offset
-		if column < offset then
-			local scrolled = scroll(-1)
-			if not scrolled then
-				return nil
-			end
-		elseif column >= offset + l.columns then
-			local scrolled = scroll(1)
-			if not scrolled then
+		if column < offset or column >= offset + l.columns then
+			if not scroll(if column < offset then -1 else 1) then
 				return nil
 			end
 		else
@@ -459,7 +434,7 @@ function LoginWorldSwitcher.find(id: number): WorldBox?
 end
 
 local function hovering(index: number): boolean
-	return wait_until(function()
+	return Widgets.wait_until(function()
 		local select = LoginWorldSwitcher.state()
 		return select ~= nil and select.hovered == index - 1
 	end, HOVER_TIMEOUT_MS)
@@ -495,7 +470,7 @@ function LoginWorldSwitcher.switch(id: number): boolean
 		return false
 	end
 	Mouse.click()
-	local switched = wait_until(function()
+	local switched = Widgets.wait_until(function()
 		local select = LoginWorldSwitcher.state()
 		return select ~= nil and not select.open and select.current == id
 	end, SWITCH_TIMEOUT_MS)
@@ -518,8 +493,7 @@ function LoginWorldSwitcher.switch_random(ids: { number }): boolean
 		return true
 	end
 	for _ = 1, SWITCH_ATTEMPTS do
-		local switched = LoginWorldSwitcher.switch(ids[math.random(#ids)])
-		if switched then
+		if LoginWorldSwitcher.switch(ids[math.random(#ids)]) then
 			return true
 		end
 	end

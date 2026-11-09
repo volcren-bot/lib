@@ -19,7 +19,6 @@ function BankpinKeypad.is_open(): boolean
 	return Toplevel.is_open(BankpinKeypad.GROUP)
 end
 
--- Types the logged in account's PIN entirely inside the injector, returning "entered", "closed", "no_pin", "unavailable", "locked", "wrong" or "failed".
 function BankpinKeypad.enter(): string
 	return bank_pin_enter()
 end

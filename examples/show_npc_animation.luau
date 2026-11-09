@@ -1,13 +1,9 @@
 --!strict
--- Shows an NPC type's model a few tiles from you playing one of its animations, drawn as a wireframe over the game, so an
--- animation can be pointed at ("when Zulrah does this, stand there"). The client builds each frame (Host.npc_type_model);
--- nothing is added to the game. Defaults: Zulrah (green) doing its ranged/magic attack.
 local Draw = require("@lib/utils/draw")
 local Host = require("@lib/host")
 
 local NPC_ID = 2042
 local ANIMATION = 5069
--- where it stands, in tiles from you (east, north), and which way it faces (0 to 2047, 0 is south)
 local OFFSET = { x = 4, y = 0 }
 local ORIENTATION = 1536
 local FRAME_MS = 60

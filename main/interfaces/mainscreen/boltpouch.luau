@@ -1,12 +1,8 @@
 --!strict
--- The bolt pouch (group 433), opened by "Open" on the pouch in the inventory: four stored stacks of bolts, kept in client variables, and the worn ammo. The fourth stack is the extra ammo that the worn items tab offers as a second ammo slot.
--- The interface sits over the side panel, in a slot `Toplevel` doesn't track, so it has its own `is_open` and `close`.
 local Host = require("@lib/host")
 local enum_def = Host.enum_def
 local item_container = Host.item_container
-local sleep = Host.sleep
 local sub_interfaces = Host.sub_interfaces
-local time = Host.time
 local varbit = Host.varbit
 local widget = Host.widget
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
@@ -15,6 +11,7 @@ type Item = Item.Item
 local Log = require("@lib/utils/log")
 local Mouse = require("@lib/utils/input/mouse")
 local Random = require("@lib/utils/math/random")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Boltpouch = {}
 
@@ -28,32 +25,18 @@ Boltpouch.ITEM = 9433
 Boltpouch.GROUP = 433
 Boltpouch.CLOSE = 21
 Boltpouch.OPTION = "Open"
--- The interface's rows: the worn ammo, then the four stored stacks (the last is the extra ammo).
 Boltpouch.CURRENT = 0
 Boltpouch.EXTRA = 4
 Boltpouch.ROWS = table.freeze({ [0] = 20, [1] = 6, [2] = 9, [3] = 12, [4] = 16 })
--- The varbits of each stored stack's bolt (a number the enum below maps to an item id) and amount.
 Boltpouch.BOLT_VARBITS = table.freeze({ 2473, 2474, 2475, 2476 })
 Boltpouch.AMOUNT_VARBITS = table.freeze({ 2469, 2470, 2471, 2472 })
 Boltpouch.BOLTS_ENUM = 336
 Boltpouch.WORN_CONTAINER = 94
 Boltpouch.WORN_AMMO_SLOT = 13
 Boltpouch.TIMEOUT_MS = 2500
--- A row's drag only starts after 5 client cycles held: let go sooner and it is a click, which takes the stack out.
 Boltpouch.DRAG_HOLD_MS = table.freeze({ 130, 220 })
 Boltpouch.DRAG_DROP_MS = table.freeze({ 60, 130 })
 Boltpouch.POLL_MS = 50
-
-local function wait_until(check: () -> boolean): boolean
-	local deadline = time() + Boltpouch.TIMEOUT_MS
-	while time() < deadline do
-		if check() then
-			return true
-		end
-		sleep(Boltpouch.POLL_MS)
-	end
-	return false
-end
 
 local bolts_by_index: { [number]: number }? = nil
 
@@ -75,12 +58,10 @@ local function bolts(): { [number]: number }?
 	return by_index
 end
 
--- Whether the pouch is in the inventory.
 function Boltpouch.held(): boolean
 	return Inventory.contains(Boltpouch.ITEM)
 end
 
--- Whether the pouch can store the item. Nil when the game files can't be read.
 function Boltpouch.accepts(id: number): boolean?
 	local by_index = bolts()
 	if by_index == nil then
@@ -94,7 +75,6 @@ function Boltpouch.accepts(id: number): boolean?
 	return false
 end
 
--- What a row holds, from the client's variables, so the interface needn't be open. Nil when it is empty or can't be read.
 function Boltpouch.slot(slot: number): Bolt?
 	if slot == Boltpouch.CURRENT then
 		for _, item in ipairs(item_container(Boltpouch.WORN_CONTAINER) or {}) do
@@ -120,7 +100,6 @@ function Boltpouch.slot(slot: number): Bolt?
 	return { slot = slot, id = id, quantity = amount }
 end
 
--- The stored stacks that hold something, not the worn ammo.
 function Boltpouch.stored(): { Bolt }
 	local held: { Bolt } = {}
 	for slot = 1, Boltpouch.EXTRA do
@@ -141,7 +120,6 @@ function Boltpouch.is_open(): boolean
 	return false
 end
 
--- Opens the interface from the pouch in the inventory. True when it is open.
 function Boltpouch.open(): boolean
 	if Boltpouch.is_open() then
 		return true
@@ -149,7 +127,7 @@ function Boltpouch.open(): boolean
 	if not Inventory.interact(Boltpouch.ITEM, Boltpouch.OPTION) then
 		return false
 	end
-	return wait_until(Boltpouch.is_open)
+	return Widgets.wait_within(Boltpouch.is_open, Boltpouch.TIMEOUT_MS, Boltpouch.POLL_MS)
 end
 
 function Boltpouch.close(): boolean
@@ -161,38 +139,34 @@ function Boltpouch.close(): boolean
 		return false
 	end
 	Mouse.click(button)
-	return wait_until(function()
+	return Widgets.wait_within(function()
 		return not Boltpouch.is_open()
-	end)
+	end, Boltpouch.TIMEOUT_MS, Boltpouch.POLL_MS)
 end
 
--- Uses an item on the pouch, with the inventory showing. The client picks the stored stack: an empty extra ammo row fills before the others. True once the pouch took some.
 function Boltpouch.store(item: Item): boolean
 	local before = Inventory.quantity(item)
 	if before == nil or before <= 0 or not Inventory.combine(item, Boltpouch.ITEM) then
 		return false
 	end
-	return wait_until(function()
+	return Widgets.wait_within(function()
 		local now = Inventory.quantity(item)
 		return now ~= nil and now < before
-	end)
+	end, Boltpouch.TIMEOUT_MS, Boltpouch.POLL_MS)
 end
 
--- With the interface open, clicks a row to take its stack out: stored bolts or the worn ammo go to the inventory. True once the row is empty.
 function Boltpouch.remove(slot: number): boolean
 	local row = Boltpouch.ROWS[slot]
 	local w = if row then widget(Boltpouch.GROUP, row) else nil
 	if w == nil or Boltpouch.slot(slot) == nil then
 		return false
 	end
-	-- the row's only option carries the item's name, so it can't be matched by option
 	Mouse.click(w)
-	return wait_until(function()
+	return Widgets.wait_within(function()
 		return Boltpouch.slot(slot) == nil
-	end)
+	end, Boltpouch.TIMEOUT_MS, Boltpouch.POLL_MS)
 end
 
--- With the interface open, drags one row's stack onto another; the client swaps two stacks of different bolts. True once the stack is there; a stack the client won't put there just fails.
 function Boltpouch.move(from: number, to: number): boolean
 	local from_row, to_row = Boltpouch.ROWS[from], Boltpouch.ROWS[to]
 	local source = Boltpouch.slot(from)
@@ -207,10 +181,10 @@ function Boltpouch.move(from: number, to: number): boolean
 	Mouse.move(b)
 	Random.sleep(Boltpouch.DRAG_DROP_MS[1], Boltpouch.DRAG_DROP_MS[2], "left")
 	Mouse.release()
-	local moved = wait_until(function()
+	local moved = Widgets.wait_within(function()
 		local now = Boltpouch.slot(to)
 		return now ~= nil and now.id == source.id
-	end)
+	end, Boltpouch.TIMEOUT_MS, Boltpouch.POLL_MS)
 	if not moved then
 		Log.log("Boltpouch", `row {from} didn't move to row {to}`)
 	end

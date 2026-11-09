@@ -1,7 +1,5 @@
 --!strict
--- Gets the nearest NPC called NAME stuck where it can't reach you, without attacking it.
 local NAME = "Lesser demon"
--- how long to show the tiles for
 local SHOW_MS = 5000
 
 local Host = require("@lib/host")
@@ -33,7 +31,6 @@ end
 local stuck = how :: SafeSpot.Chaser
 print(`safe on {tile.x}, {tile.y}; the {NAME} is stuck on {stuck.x}, {stuck.y}`)
 
--- our tile in green, the NPC's in red, drawn as one overlay update
 for _ = 1, SHOW_MS // 100 do
 	Draw.batch(function()
 		Draw.clear()

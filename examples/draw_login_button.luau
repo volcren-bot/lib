@@ -46,7 +46,6 @@ while true do
 
 	if key ~= last then
 		last = key
-		-- the screen's buttons in one overlay update
 		Draw.batch(function()
 			Draw.clear()
 			draw()

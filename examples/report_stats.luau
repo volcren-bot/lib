@@ -1,5 +1,4 @@
 --!strict
--- Reports the experience gained to Volcren every 15 seconds and prints what was sent.
 local Host = require("@lib/host")
 local StatsReport = require("@lib/utils/stats_report")
 

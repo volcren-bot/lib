@@ -5,7 +5,6 @@ type SpotAnim = Host.SpotAnim
 type Tile = Host.Tile
 local SpotAnims = {}
 
--- the client cycle is 50 a second
 SpotAnims.CYCLE_MS = 20
 
 local function matches(spot: SpotAnim, what: number | { number }): boolean

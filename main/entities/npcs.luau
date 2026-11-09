@@ -26,11 +26,9 @@ local function matches(npc: Npc, what: string | number): boolean
 	return string.lower(Npcs.clean_name(npc.name)) == string.lower(what)
 end
 
--- The sprite archive of the prayer head icons (`headicons_prayer`), and the prayers its first sprites are.
 Npcs.PRAYER_ICONS = 440
 Npcs.PRAYER_SPRITES = table.freeze({ [0] = "melee", [1] = "ranged", [2] = "magic" })
 
--- The protection prayer over an NPC: "melee", "ranged" or "magic"; nil for none or another prayer icon (see `head_icons`).
 function Npcs.overhead(npc: Npc): string?
 	for _, icon in ipairs(npc.head_icons or {}) do
 		if icon.archive == Npcs.PRAYER_ICONS then
@@ -91,11 +89,7 @@ function Npcs.refresh(npc: Npc): Npc?
 end
 
 function Npcs.model(npc: Npc): NpcModel?
-	local model = npc_model(npc.index)
-	if model == nil then
-		return nil
-	end
-	return model
+	return (npc_model(npc.index))
 end
 
 function Npcs.clickbox(npc: Npc): Clickbox?
@@ -152,6 +146,12 @@ local function hovered_by(npc: Npc): () -> boolean
 	end
 end
 
+local function owned_by(npc: Npc): (MenuEntry) -> boolean
+	return function(entry)
+		return Npcs.owns(npc, entry)
+	end
+end
+
 local function tile_of(npc: Npc): () -> Tile?
 	return function()
 		local now = Npcs.refresh(npc)
@@ -177,15 +177,12 @@ function Npcs.interact(
 	walk_timeout_ms: (number | false)?,
 	spam: number?
 ): boolean
-	local function owns(entry: MenuEntry): boolean
-		return Npcs.owns(npc, entry)
-	end
 	return Clickbox.interact(
 		clickbox_of(npc),
 		hovered_by(npc),
 		npc.name,
 		option,
-		owns,
+		owned_by(npc),
 		tile_of(npc),
 		walk_timeout_ms,
 		spam
@@ -193,10 +190,7 @@ function Npcs.interact(
 end
 
 function Npcs.approach(npc: Npc, options: string | { string }, opts: Clickbox.Approach?): boolean
-	local function owns(entry: MenuEntry): boolean
-		return Npcs.owns(npc, entry)
-	end
-	return Clickbox.approach(clickbox_of(npc), hovered_by(npc), npc.name, options, owns, tile_of(npc), opts)
+	return Clickbox.approach(clickbox_of(npc), hovered_by(npc), npc.name, options, owned_by(npc), tile_of(npc), opts)
 end
 
 return Npcs

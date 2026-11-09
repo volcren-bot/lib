@@ -16,6 +16,7 @@ type Button = Mouse.Button
 local Interact = require("@lib/main/interact")
 local Log = require("@lib/utils/log")
 local Minimenu = require("@lib/main/interfaces/minimenu")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 export type Slot = {
 	slot: number,
@@ -28,7 +29,6 @@ export type View = {
 	open: () -> boolean,
 	boxes: () -> { [number]: Widget }?,
 	owns: (slot: number) -> (MenuEntry) -> boolean,
-	-- corrects what the container says it holds (the bank's placeholders read 1): the slot ids whose quantity is really 0
 	empty: (() -> { [number]: boolean }?)?,
 }
 
@@ -83,23 +83,6 @@ local Inv = {}
 local POLL_MS = 50
 local MOVE_TIMEOUT_MS = 1800
 
-local function poll(check: () -> boolean, timeout_ms: number, interval_ms: number?): boolean
-	local waited = 0
-	while true do
-		local done = check()
-		if done then
-			return true
-		end
-		if waited >= timeout_ms then
-			return false
-		end
-		local interval = interval_ms or POLL_MS
-		sleep(interval)
-		waited += interval
-	end
-end
-
--- Left-click options that lose the item: `click_slot` won't click a slot that offers one of these first.
 Inv.LOSES_ITEM = table.freeze({ Drop = true, Destroy = true, Release = true }) :: { [string]: boolean }
 
 function Inv.new(container: number, size: number?, view: View?): Inv
@@ -233,10 +216,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 
 	local function contains_any(items: { Item }): boolean
 		local n = count(items)
-		if n == nil then
-			return false
-		end
-		return n > 0
+		return n ~= nil and n > 0
 	end
 
 	local function contains_all(items: { Item }): boolean
@@ -277,10 +257,14 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 
 	local function contains_different(items: Item | { Item }): boolean
 		local different = find_different(items)
-		if different == nil then
-			return false
-		end
-		return #different > 0
+		return different ~= nil and #different > 0
+	end
+
+	local function wait_number(read: () -> number?, wanted: number, timeout_ms: number?, interval_ms: number?): boolean
+		return Widgets.wait_until(function()
+			local n = read()
+			return n ~= nil and n == wanted
+		end, timeout_ms or 600, interval_ms or Random.trunc(Random.mode(100, 50, 1500)))
 	end
 
 	local function wait_count(
@@ -289,13 +273,9 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 		timeout_ms: number?,
 		interval_ms: number?
 	): boolean
-		return poll(function()
-			local n = count(items)
-			if n == nil then
-				return false
-			end
-			return n == wanted
-		end, timeout_ms or 600, interval_ms or Random.trunc(Random.mode(100, 50, 1500)))
+		return wait_number(function()
+			return count(items)
+		end, wanted, timeout_ms, interval_ms)
 	end
 
 	local function used(): { number }?
@@ -328,8 +308,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 	end
 
 	local function is_used(slot: number): boolean
-		local s = item(slot)
-		return s ~= nil
+		return item(slot) ~= nil
 	end
 
 	local function count_used(): number?
@@ -349,36 +328,21 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 	end
 
 	local function wait_used(wanted: number, timeout_ms: number?, interval_ms: number?): boolean
-		return poll(function()
-			local n = count_used()
-			if n == nil then
-				return false
-			end
-			return n == wanted
-		end, timeout_ms or 600, interval_ms or Random.trunc(Random.mode(100, 50, 1500)))
-	end
-
-	local function view_of(): View?
-		if view == nil then
-			return nil
-		end
-		return view
+		return wait_number(count_used, wanted, timeout_ms, interval_ms)
 	end
 
 	local function open(): boolean
-		local v = view_of()
-		if v == nil then
+		if view == nil then
 			return false
 		end
-		return v.open()
+		return view.open()
 	end
 
 	local function boxes(wanted: { number }?): { [number]: Widget }?
-		local v = view_of()
-		if v == nil then
+		if view == nil then
 			return nil
 		end
-		local all = v.boxes()
+		local all = view.boxes()
 		if all == nil or wanted == nil then
 			return all
 		end
@@ -394,11 +358,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 		if all == nil then
 			return nil
 		end
-		local w = all[slot]
-		if w == nil then
-			return nil
-		end
-		return w
+		return all[slot]
 	end
 
 	local function slot_at(at: Point?): number?
@@ -411,7 +371,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 			return nil
 		end
 		for slot, w in pairs(all) do
-			if p.x >= w.x and p.y >= w.y and p.x < w.x + w.width and p.y < w.y + w.height then
+			if Widgets.contains(w, p.x, p.y) then
 				return slot
 			end
 		end
@@ -457,8 +417,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 	end
 
 	local function near(slot: number, list: { number }, max_dist: number?, remove_slot: boolean?): { number }?
-		local found = nearest(slot, list, max_dist or 60, remove_slot ~= false)
-		return found
+		return (nearest(slot, list, max_dist or 60, remove_slot ~= false))
 	end
 
 	local function random_near(
@@ -474,10 +433,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 			return list[1]
 		end
 		local found, distances = nearest(slot, list, max_dist or 800, remove_slot ~= false)
-		if found == nil or distances == nil then
-			return nil
-		end
-		if #found == 0 then
+		if found == nil or distances == nil or #found == 0 then
 			return nil
 		end
 		if distribution == "random" then
@@ -495,8 +451,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 	end
 
 	local function shown(slot: number): Widget?
-		local opened = open()
-		if not opened then
+		if not open() then
 			return nil
 		end
 		return box(slot)
@@ -528,8 +483,6 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 		end
 	end
 
-	-- A left click does what the slot's menu offers first: it is read before the click, and one that would lose the item
-	-- (Shift held with shift-click drop on, a placeholder's Release) isn't clicked. Dropping goes through `interact_slot`.
 	local function click_slot(slot: number, button: Button?): boolean
 		local w = shown(slot)
 		if w == nil then
@@ -598,13 +551,10 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 		Mouse.move(to)
 		Mouse.release()
 		Random.sleep(50, 100, "left")
-		local moved = poll(function()
+		local moved = Widgets.wait_until(function()
 			local now = item(destination)
 			return now ~= nil and now.id == s.id
 		end, MOVE_TIMEOUT_MS)
-		if moved == nil then
-			return false
-		end
 		if not moved then
 			Log.log("Inv", `the item in slot {slot} didn't move to slot {destination}`)
 			return false
@@ -612,16 +562,8 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 		return true
 	end
 
-	local function first(items: Item | { Item }): number?
-		local slot = index_of(items)
-		if slot == nil then
-			return nil
-		end
-		return slot
-	end
-
 	local function hover(items: Item | { Item }): boolean
-		local slot = first(items)
+		local slot = index_of(items)
 		if slot == nil then
 			return false
 		end
@@ -629,7 +571,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 	end
 
 	local function click(items: Item | { Item }, button: Button?): boolean
-		local slot = first(items)
+		local slot = index_of(items)
 		if slot == nil then
 			return false
 		end
@@ -637,7 +579,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 	end
 
 	local function interact(items: Item | { Item }, option: string?): boolean
-		local slot = first(items)
+		local slot = index_of(items)
 		if slot == nil then
 			return false
 		end
@@ -646,10 +588,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 
 	local function move(items: Item | { Item }, destination: number): boolean
 		local found = indices_of(items)
-		if found == nil then
-			return false
-		end
-		if #found == 0 then
+		if found == nil or #found == 0 then
 			return false
 		end
 		if table.find(found, destination) then
@@ -687,8 +626,7 @@ function Inv.new(container: number, size: number?, view: View?): Inv
 		empty = empty,
 		is_used = is_used,
 		is_empty = function(slot: number)
-			local u = is_used(slot)
-			return not u
+			return not is_used(slot)
 		end,
 		count_used = count_used,
 		count_empty = count_empty,

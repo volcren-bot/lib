@@ -15,18 +15,22 @@ local Mouse = require("@lib/utils/input/mouse")
 local Player = require("@lib/main/player")
 local Projection = require("@lib/main/projection/projection")
 local Random = require("@lib/utils/math/random")
+local Widgets = require("@lib/main/interfaces/widgets")
 type Clickbox = Clickbox.Clickbox
 
 local GroundItems = {}
 
 GroundItems.ITEM_PILE = 4
 
--- `what` is a lowercase name or an id
 local function matches(item: GroundItem, what: string | number): boolean
 	if type(what) == "number" then
 		return item.id == what
 	end
 	return item.name ~= nil and string.lower(item.name) == what
+end
+
+local function what(item: GroundItem): string
+	return item.name or tostring(item.id)
 end
 
 function GroundItems.distance(item: GroundItem, from: Tile): number
@@ -82,11 +86,7 @@ end
 
 function GroundItems.model(item: GroundItem): NpcModel?
 	local pile = { kind = GroundItems.ITEM_PILE, scene_x = item.scene_x, scene_y = item.scene_y, id = item.id }
-	local model = loc_model(pile :: any)
-	if model == nil then
-		return nil
-	end
-	return model
+	return (loc_model(pile :: any))
 end
 
 function GroundItems.clickbox(item: GroundItem): Clickbox?
@@ -94,7 +94,7 @@ function GroundItems.clickbox(item: GroundItem): Clickbox?
 	if model == nil then
 		return nil
 	end
-	return Clickbox.from_model(model, item.name or tostring(item.id))
+	return Clickbox.from_model(model, what(item))
 end
 
 local MENU_GROUND_ITEM = 4
@@ -124,7 +124,7 @@ local function clickbox_of(item: GroundItem): Clickbox.Aim
 		return GroundItems.clickbox(item)
 	end, function()
 		return anchor
-	end, item.name or tostring(item.id))
+	end, what(item))
 end
 
 local function hovered_by(item: GroundItem): () -> boolean
@@ -133,15 +133,17 @@ local function hovered_by(item: GroundItem): () -> boolean
 	end
 end
 
+local function owned_by(item: GroundItem): (MenuEntry) -> boolean
+	return function(entry)
+		return GroundItems.owns(item, entry)
+	end
+end
+
 local function tile_of(item: GroundItem): () -> Tile?
 	local tile = { x = item.x, y = item.y }
 	return function()
 		return tile
 	end
-end
-
-local function what(item: GroundItem): string
-	return item.name or tostring(item.id)
 end
 
 function GroundItems.hover(item: GroundItem): boolean
@@ -162,23 +164,18 @@ function GroundItems.interact(
 	walk_timeout_ms: (number | false)?,
 	spam: number?
 ): boolean
-	local function owns(entry: MenuEntry): boolean
-		return GroundItems.owns(item, entry)
-	end
 	return Clickbox.interact(
 		clickbox_of(item),
 		hovered_by(item),
 		what(item),
 		option,
-		owns,
+		owned_by(item),
 		tile_of(item),
 		walk_timeout_ms,
 		spam
 	)
 end
 
--- For `take_pile`: how long a clicked item gets to leave the pile, plus a tile's walk for each tile away it was clicked from;
--- the pause after one leaves before the next click; and how many clicks in a row may take nothing.
 GroundItems.PILE_TAKE_MS = 2400
 GroundItems.PILE_WALK_TILE_MS = 600
 GroundItems.PILE_REACTION_MS = { 60, 250 }
@@ -186,7 +183,6 @@ GroundItems.PILE_ATTEMPTS = 3
 
 local stackable: { [number]: boolean } = {}
 
--- Whether the item can be picked up: a free slot, or a stack of it already carried.
 function GroundItems.fits(item: GroundItem): boolean
 	if (Inventory.free_slots() or 0) > 0 then
 		return true
@@ -217,7 +213,6 @@ local function count_of(pile: { GroundItem }, id: number): number
 	return n
 end
 
--- The pile's item the left click takes now: the top menu row, when it is Take on one of them.
 local function left_click_item(pile: { GroundItem }): GroundItem?
 	local top = (menu() or {})[1]
 	if top == nil or string.lower(top.option) ~= "take" then
@@ -231,9 +226,6 @@ local function left_click_item(pile: { GroundItem }): GroundItem?
 	return nil
 end
 
--- Takes every item on the tile with left clicks on the pile, each the one the game puts on top of the menu, so the pile goes in the
--- game's order with no right clicks. Returns how many were taken and nil once the tile is empty, "full" when the next one doesn't
--- fit (`fits`), or "failed".
 function GroundItems.take_pile(tile: Tile): (number, string?)
 	local taken, misses = 0, 0
 	while true do
@@ -261,14 +253,9 @@ function GroundItems.take_pile(tile: Tile): (number, string?)
 		Mouse.click()
 		local left = false
 		if clicked == nil or Minimenu.wait_click(clicked) ~= nil then
-			local deadline = Host.time() + GroundItems.PILE_TAKE_MS + away * GroundItems.PILE_WALK_TILE_MS
-			while Host.time() < deadline do
-				if count_of(pile_at(tile), item.id) < before then
-					left = true
-					break
-				end
-				Host.sleep(50)
-			end
+			left = Widgets.wait_within(function(): boolean
+				return count_of(pile_at(tile), item.id) < before
+			end, GroundItems.PILE_TAKE_MS + away * GroundItems.PILE_WALK_TILE_MS, 50)
 		end
 		if left then
 			taken, misses = taken + 1, 0
@@ -283,12 +270,16 @@ function GroundItems.take_pile(tile: Tile): (number, string?)
 	end
 end
 
--- Walks to the item and picks the first of `options` its menu has, walking early on the way when it's close.
 function GroundItems.approach(item: GroundItem, options: string | { string }, opts: Clickbox.Approach?): boolean
-	local function owns(entry: MenuEntry): boolean
-		return GroundItems.owns(item, entry)
-	end
-	return Clickbox.approach(clickbox_of(item), hovered_by(item), what(item), options, owns, tile_of(item), opts)
+	return Clickbox.approach(
+		clickbox_of(item),
+		hovered_by(item),
+		what(item),
+		options,
+		owned_by(item),
+		tile_of(item),
+		opts
+	)
 end
 
 return GroundItems

@@ -4,27 +4,20 @@ local game_state = Host.game_state
 local Varbits = require("@lib/main/varbits")
 local Varps = require("@lib/main/varps")
 
--- A level the way `result` sees it: skills by name, plus "Run energy" and "Special attack" in percent (real 100).
 export type Level = { level: number, real: number }
 export type Levels = { [string]: Level }
 
 export type Change = {
 	stat: string,
 	flat: number,
-	-- of the real level (or of the current one with `of_current`), signed; the part is rounded toward zero
 	percent: number,
 	of_current: boolean?,
-	-- may raise the stat above its real level, by up to the amount
 	boost: boolean?,
-	-- the flat part is anywhere from `flat` to `up_to`
 	up_to: number?,
-	-- ticks after the rest of the item's changes
 	later: number?,
-	-- replaces `flat` and `percent`
 	amount: ((levels: Levels) -> number)?,
 }
 
--- A timed effect (`ticks` per dose when known) or a cure the item gives besides its changes.
 export type Special = { name: string, ticks: number? }
 
 export type Consumable = {
@@ -33,7 +26,6 @@ export type Consumable = {
 	option: string,
 	changes: { Change },
 	special: { Special },
-	-- ignores the eating delay of other food, like karambwan
 	combo: boolean,
 }
 
@@ -80,16 +72,14 @@ local function food(flat: number, percent: number?): Change
 	return restore("Hitpoints", flat, percent)
 end
 
-local function food_range(flat: number, up_to: number): Change
-	local c = food(flat)
-	c.up_to = up_to
-	return c
-end
-
 local function restore_range(stat: string, flat: number, up_to: number): Change
 	local c = restore(stat, flat)
 	c.up_to = up_to
 	return c
+end
+
+local function food_range(flat: number, up_to: number): Change
+	return restore_range("Hitpoints", flat, up_to)
 end
 
 local function later(flat: number): Change
@@ -105,7 +95,6 @@ local function custom(stat: string, raises_above_real: boolean, amount: (Levels)
 	return c
 end
 
--- a boost that stops `cap` above the real level, however much the amount (haddock, ancient brew's prayer)
 local function capped_boost(stat: string, flat: number, percent: number, cap: (real: number) -> number): Change
 	return custom(stat, true, function(levels)
 		local s = lv(levels, stat)
@@ -213,7 +202,6 @@ local function nettle_tea_energy(): Change
 	end)
 end
 
--- each stat takes the strongest potion the Herblore level allows
 local function moonlight_potion(): { Change }
 	local function tiered(stat: string, tiers: { { number } }): Change
 		return custom(stat, true, function(levels)
@@ -314,29 +302,6 @@ end
 local function drink(name: string, ids: { number }, changes: { Change | { Change } }, extra: Extra?)
 	use("Drink", name, ids, changes, extra)
 end
-
--- Most of the stat changes below are from RuneLite's item stats plugin (github.com/runelite/runelite), and the
--- timers' scales from its timers and buffs plugin, under this license:
---
--- Copyright (c) 2016-2018, Adam <Adam@sigterm.info>
--- Copyright (c) 2018, Jordan Atwood <jordan.atwood423@gmail.com>
--- All rights reserved.
---
--- Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
--- following conditions are met:
---
--- 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following
---    disclaimer.
--- 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following
---    disclaimer in the documentation and/or other materials provided with the distribution.
---
--- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
--- INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
--- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
--- SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
--- SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
--- WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
--- OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 eat("Poison karambwan", { 3146 }, { food(-5) })
 eat("Potato", { 1942 }, { food(1) })
@@ -1516,6 +1481,16 @@ end
 
 local VENOM = -38
 
+local function poisoned_below(threshold: number): () -> number?
+	return function()
+		local value = Varps.get(Varps.POISON)
+		if value == nil then
+			return nil
+		end
+		return if value < threshold then -(value - threshold) * 30 else 0
+	end
+end
+
 local REMAINING: { [string]: () -> number? } = {
 	stamina = function()
 		local on, left = Varbits.get(25), Varbits.get(24)
@@ -1526,20 +1501,8 @@ local REMAINING: { [string]: () -> number? } = {
 	end,
 	antifire = scaled(3981, 30),
 	super_antifire = scaled(6101, 20),
-	antipoison = function()
-		local value = Varps.get(Varps.POISON)
-		if value == nil then
-			return nil
-		end
-		return if value < 0 then -value * 30 else 0
-	end,
-	antivenom = function()
-		local value = Varps.get(Varps.POISON)
-		if value == nil then
-			return nil
-		end
-		return if value < VENOM then -(value - VENOM) * 30 else 0
-	end,
+	antipoison = poisoned_below(0),
+	antivenom = poisoned_below(VENOM),
 	divine_attack = scaled(8429, 1),
 	divine_strength = scaled(8430, 1),
 	divine_defence = scaled(8431, 1),

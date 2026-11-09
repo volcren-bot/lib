@@ -22,8 +22,7 @@ local Projection = {}
 Projection.TILE = 128
 
 function Projection.base(): Tile?
-	local state = game_state()
-	local p = state.position
+	local p = game_state().position
 	if p == nil then
 		return nil
 	end
@@ -32,8 +31,7 @@ end
 
 function Projection.arrival(at: Tile): FinePoint?
 	local state = game_state()
-	local p = state.position
-	local camera = state.camera
+	local p, camera = state.position, state.camera
 	if p == nil or camera == nil then
 		return nil
 	end
@@ -44,6 +42,10 @@ function Projection.arrival(at: Tile): FinePoint?
 		y = (at.y - base_y) * Projection.TILE + Projection.TILE / 2 - camera.focal_y,
 		z = 0,
 	}
+end
+
+local function tile_of(value: number, low: boolean): number
+	return math.floor((value + (if low then 1 else -1)) / Projection.TILE)
 end
 
 local function screen_points(points: { FinePoint }, shift: { x: number, y: number, plane: number? }?): { Point }?
@@ -58,18 +60,16 @@ local function screen_points(points: { FinePoint }, shift: { x: number, y: numbe
 	return out
 end
 
--- Projects `points` as the camera will show them after moving by `shift` (fine units).
 function Projection.shifted(points: { FinePoint }, shift: FinePoint, plane: number?): { Point }?
 	return screen_points(points, { x = math.round(shift.x), y = math.round(shift.y), plane = plane })
 end
 
 function Projection.points(points: { FinePoint }, at: Tile?): { Point }?
 	if at then
-		local shift = Projection.arrival(at :: Tile)
+		local shift = Projection.arrival(at)
 		if shift == nil then
 			return nil
 		end
-		-- an `at` table may carry the `plane` the player will stand on (a climb or a drop), which the camera's height follows
 		return Projection.shifted(points, shift, (at :: any).plane)
 	end
 	return screen_points(points)
@@ -111,9 +111,6 @@ function Projection.cuboid(
 ): Cuboid?
 	local half = (size or 1) * Projection.TILE / 2
 	local up = -(height or 200)
-	local function tile_of(value: number, low: boolean): number
-		return math.floor((value + (if low then 1 else -1)) / Projection.TILE)
-	end
 	local corners = {
 		{ x = fine_x - half, y = fine_y - half, low_x = true, low_y = true },
 		{ x = fine_x - half, y = fine_y + half, low_x = true, low_y = false },
@@ -129,12 +126,7 @@ function Projection.cuboid(
 			)
 		end
 	end
-	local screen
-	if shift then
-		screen = Projection.shifted(points, shift)
-	else
-		screen = Projection.points(points, at)
-	end
+	local screen = if shift then Projection.shifted(points, shift) else Projection.points(points, at)
 	if screen == nil then
 		return nil
 	end

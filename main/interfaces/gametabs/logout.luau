@@ -4,7 +4,6 @@ local game_state = Host.game_state
 local widget = Host.widget
 local sub_interfaces = Host.sub_interfaces
 local varp = Host.varp
-local sleep = Host.sleep
 type Widget = Host.Widget
 local Biometrics = require("@lib/main/antiban/biometrics")
 local GameState = require("@lib/main/game_state")
@@ -12,6 +11,7 @@ local Log = require("@lib/utils/log")
 local Mouse = require("@lib/utils/input/mouse")
 local Random = require("@lib/utils/math/random")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
+local Widgets = require("@lib/main/interfaces/widgets")
 
 local Logout = {
 	GROUP = 182,
@@ -32,17 +32,7 @@ local LOGOUT_ATTEMPTS = 5
 local LOGOUT_TIME_MS = 20000
 
 local function wait_until(condition: () -> boolean, timeout_ms: number): boolean
-	local waited = 0
-	while true do
-		if condition() then
-			return true
-		end
-		if waited >= timeout_ms then
-			return false
-		end
-		sleep(POLL_MS)
-		waited += POLL_MS
-	end
+	return Widgets.wait_until(condition, timeout_ms, POLL_MS)
 end
 
 local function logged_in(): boolean
@@ -55,9 +45,8 @@ function Logout.is_open(): boolean
 end
 
 function Logout.shows_world_switcher(): boolean
-	local open = Logout.is_open()
-	if not open then
-		return open
+	if not Logout.is_open() then
+		return false
 	end
 	local list = sub_interfaces()
 	if list == nil then
@@ -72,11 +61,7 @@ function Logout.shows_world_switcher(): boolean
 end
 
 local function component(child: number): Widget?
-	local w = widget(Logout.GROUP, child)
-	if w == nil then
-		return nil
-	end
-	return w
+	return (widget(Logout.GROUP, child))
 end
 
 local function click_switcher(child: number): boolean
@@ -89,20 +74,14 @@ local function click_switcher(child: number): boolean
 end
 
 function Logout.open(): boolean
-	local opened = SidePanels.open(SidePanels.LOGOUT)
-	if not opened then
-		return opened
-	end
-	local switcher = Logout.shows_world_switcher()
-	if switcher == nil then
+	if not SidePanels.open(SidePanels.LOGOUT) then
 		return false
 	end
-	if not switcher then
+	if not Logout.shows_world_switcher() then
 		return true
 	end
-	local clicked = click_switcher(Logout.SWITCHER_CLOSE)
-	if not clicked then
-		return clicked
+	if not click_switcher(Logout.SWITCHER_CLOSE) then
+		return false
 	end
 	if not wait_until(function()
 		return Logout.shows_world_switcher() == false
@@ -149,10 +128,7 @@ end
 
 function Logout.is_rated(): boolean
 	local rating = Logout.rating()
-	if rating == nil then
-		return false
-	end
-	return rating > 0
+	return rating ~= nil and rating > 0
 end
 
 function Logout.rate(stars: number): boolean
@@ -166,9 +142,8 @@ function Logout.rate(stars: number): boolean
 	if current == stars then
 		return true
 	end
-	local opened = Logout.open()
-	if not opened then
-		return opened
+	if not Logout.open() then
+		return false
 	end
 	local star = component(Logout.FIRST_STAR + stars - 1)
 	if star == nil then
@@ -187,9 +162,8 @@ end
 local function press_until_logged_out(click: () -> boolean, attempts: number, time_ms: number): boolean
 	local interval = time_ms // attempts
 	for _ = 1, attempts do
-		local clicked = click()
-		if not clicked then
-			return clicked
+		if not click() then
+			return false
 		end
 		if
 			wait_until(function()
@@ -204,9 +178,8 @@ local function press_until_logged_out(click: () -> boolean, attempts: number, ti
 end
 
 function Logout.logout_from_world_switcher(attempts: number?, time_ms: number?): boolean
-	local switcher = Logout.shows_world_switcher()
-	if not switcher then
-		return switcher
+	if not Logout.shows_world_switcher() then
+		return false
 	end
 	return press_until_logged_out(function()
 		return click_switcher(Logout.SWITCHER_LOGOUT)
@@ -217,9 +190,8 @@ function Logout.logout(attempts: number?, time_ms: number?): boolean
 	if not logged_in() then
 		return true
 	end
-	local opened = SidePanels.open(SidePanels.LOGOUT)
-	if not opened then
-		return opened
+	if not SidePanels.open(SidePanels.LOGOUT) then
+		return false
 	end
 	attempts = attempts or LOGOUT_ATTEMPTS
 	time_ms = time_ms or LOGOUT_TIME_MS

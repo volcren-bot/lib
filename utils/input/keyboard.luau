@@ -218,6 +218,10 @@ local MODIFIERS: { [number]: string } = {
 local held_modifiers: { [string]: boolean } = {}
 local held: { [number]: boolean } = {}
 
+local function press_ms(): number
+	return Random.trunc(Random.left(Keyboard.press_min, Keyboard.press_max))
+end
+
 function Keyboard.interval_min(): number
 	return Keyboard.press_min + 10
 end
@@ -256,7 +260,7 @@ end
 
 function Keyboard.key_press(key: number)
 	Keyboard.key_down(key)
-	sleep(Random.trunc(Random.left(Keyboard.press_min, Keyboard.press_max)))
+	sleep(press_ms())
 	Keyboard.key_up(key)
 end
 
@@ -268,7 +272,18 @@ local function key_of(char: string): number
 	return 0
 end
 
--- Async versions queue the input and return at once; held keys are released on cancel or script end.
+local function type_chars(text: string, type_char: (string, number) -> (), pause: (number) -> ())
+	local last = ""
+	for char in string.gmatch(text, "[%z\1-\127\194-\244][\128-\191]*") do
+		type_char(char, press_ms())
+		pause(Random.int(Keyboard.interval_min(), Keyboard.interval_max()))
+		last = char
+	end
+	if last ~= "" then
+		Keyboard.last_key = key_of(last)
+	end
+end
+
 function Keyboard.key_down_async(key: number)
 	key_down_async(key)
 	Keyboard.last_key = key
@@ -280,20 +295,12 @@ end
 
 function Keyboard.key_press_async(key: number)
 	Keyboard.key_down_async(key)
-	sleep_async(Random.trunc(Random.left(Keyboard.press_min, Keyboard.press_max)))
+	sleep_async(press_ms())
 	key_up_async(key)
 end
 
 function Keyboard.send_async(text: string, key_after: number?)
-	local last = ""
-	for char in string.gmatch(text, "[%z\1-\127\194-\244][\128-\191]*") do
-		type_text_async(char, Random.trunc(Random.left(Keyboard.press_min, Keyboard.press_max)))
-		sleep_async(Random.int(Keyboard.interval_min(), Keyboard.interval_max()))
-		last = char
-	end
-	if last ~= "" then
-		Keyboard.last_key = key_of(last)
-	end
+	type_chars(text, type_text_async, sleep_async)
 
 	if key_after ~= nil then
 		sleep_async(Random.int(30, 120))
@@ -301,12 +308,10 @@ function Keyboard.send_async(text: string, key_after: number?)
 	end
 end
 
--- Whether async keyboard (and mouse) input is still running or queued.
 function Keyboard.busy(): boolean
 	return input_busy()
 end
 
--- Waits for async input to finish. False if one failed (the reason is printed).
 function Keyboard.wait(): boolean
 	local err = input_wait()
 	if err then
@@ -316,7 +321,6 @@ function Keyboard.wait(): boolean
 	return true
 end
 
--- Stops async input, releasing the keys and buttons it holds, and drops what was queued.
 function Keyboard.cancel()
 	input_cancel()
 end
@@ -332,15 +336,7 @@ function Keyboard.send(text: string, key_after: number?)
 		end
 	end
 
-	local last = ""
-	for char in string.gmatch(text, "[%z\1-\127\194-\244][\128-\191]*") do
-		type_text(char, Random.trunc(Random.left(Keyboard.press_min, Keyboard.press_max)))
-		sleep(Random.int(Keyboard.interval_min(), Keyboard.interval_max()))
-		last = char
-	end
-	if last ~= "" then
-		Keyboard.last_key = key_of(last)
-	end
+	type_chars(text, type_text, sleep)
 
 	if key_after ~= nil then
 		Random.sleep(30, 120, "left")

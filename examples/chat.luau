@@ -1,6 +1,4 @@
 --!strict
--- Prints the last chat messages, the displayed rows, the input line, the account type and the tabs; then switches tabs, changes the
--- trade filter and back, and hides and shows the chatbox.
 local Chat = require("@lib/main/interfaces/chatbox/chat")
 local ChatTabs = require("@lib/main/interfaces/chatbox/chat_tabs")
 
