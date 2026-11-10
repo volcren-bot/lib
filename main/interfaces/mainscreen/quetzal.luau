@@ -7,6 +7,7 @@ local sleep = Host.sleep
 local time = Host.time
 type Widget = Host.Widget
 type Npc = Host.Npc
+local Chat = require("@lib/main/interfaces/chatbox/chat")
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 local Log = require("@lib/utils/log")
 local Minimenu = require("@lib/main/interfaces/minimenu")
@@ -31,10 +32,14 @@ Quetzal.WHISTLE_OPTION = "Signal"
 Quetzal.INVENTORY = 93
 Quetzal.LAST_OPTION = "Last-destination"
 Quetzal.LAST_VARBIT = 9950
+Quetzal.CHARGES_PATTERN = "^Your quetzal whistle has (%d+) charges? remaining"
+Quetzal.EMPTY_MESSAGE = "Your whistle has no charges."
+Quetzal.CHECK_OPTION = "Check"
 
 Quetzal.OPEN_TIMEOUT_MS = 3000
 Quetzal.HOVER_TIMEOUT_MS = 800
 Quetzal.CONFIRM_TIMEOUT_MS = 4000
+Quetzal.CHECK_TIMEOUT_MS = 2400
 Quetzal.POLL_MS = 50
 Quetzal.SETTLE_MS = 150
 Quetzal.OPEN_SETTLE_MS = { 250, 500 }
@@ -109,6 +114,14 @@ export type Marker = {
 	area: Widget,
 	here: boolean,
 }
+
+local tracked: { charges: number?, time: number, uid: number } = { charges = nil, time = -1, uid = -1 }
+
+local function spend()
+	if tracked.charges ~= nil then
+		tracked.charges = math.max(tracked.charges - 1, 0)
+	end
+end
 
 local function open_group(): number?
 	local open = Toplevel.interfaces()
@@ -287,8 +300,12 @@ function Quetzal.select(site: Site): boolean
 	if expected == nil or menu_name() ~= expected then
 		return false
 	end
+	local whistle = open_group() == Quetzal.WHISTLE_GROUP
 	Mouse.click()
 	if gone() then
+		if whistle then
+			spend()
+		end
 		return true
 	end
 	Log.log("Quetzal", `clicking {expected} left the map open`)
@@ -436,6 +453,58 @@ function Quetzal.whistle_slot(): number?
 	return nil
 end
 
+local function charges_of(text: string): number?
+	if text == Quetzal.EMPTY_MESSAGE then
+		return 0
+	end
+	return tonumber(string.match(text, Quetzal.CHARGES_PATTERN))
+end
+
+local function track(): boolean
+	local found = false
+	for _, m in ipairs(Chat.messages({ Chat.MessageType.GAME }) or {}) do
+		if m.time > tracked.time or (m.time == tracked.time and m.uid > tracked.uid) then
+			tracked.time, tracked.uid = m.time, m.uid
+			local count = charges_of(m.text)
+			if count ~= nil then
+				tracked.charges = count
+				found = true
+			end
+		end
+	end
+	return found
+end
+
+local function check(): number?
+	local slot = Quetzal.whistle_slot()
+	if slot == nil then
+		return nil
+	end
+	track()
+	if not Inventory.interact_slot(slot, Quetzal.CHECK_OPTION) then
+		return nil
+	end
+	local deadline = time() + Quetzal.CHECK_TIMEOUT_MS
+	repeat
+		if track() then
+			return tracked.charges
+		end
+		sleep(Quetzal.POLL_MS)
+	until time() >= deadline
+	return nil
+end
+
+function Quetzal.charges(cached: boolean?): number?
+	if not cached then
+		return check()
+	end
+	track()
+	if tracked.charges ~= nil then
+		return tracked.charges
+	end
+	return check()
+end
+
 function Quetzal.signal(): (boolean, string?)
 	if Quetzal.is_open() then
 		return true, nil
@@ -462,7 +531,11 @@ function Quetzal.signal_last(): boolean
 	if slot == nil or not Toplevel.escape_clear() then
 		return false
 	end
-	return Inventory.interact_slot(slot, Quetzal.LAST_OPTION)
+	if not Inventory.interact_slot(slot, Quetzal.LAST_OPTION) then
+		return false
+	end
+	spend()
+	return true
 end
 
 return Quetzal

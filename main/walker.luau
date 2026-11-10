@@ -755,6 +755,7 @@ Walker.MINIMAP_TILES = 20
 
 Walker.CLIMB_PAUSE_MIN_MS = 0
 Walker.CLIMB_PAUSE_MAX_MS = 900
+Walker.SHORTCUT_PAUSE_MS = 1200
 
 Walker.CAMERA_SETTLE_MS = 600
 
@@ -942,7 +943,14 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 					`climbed to {here.x}, {here.y} on plane {here.plane} {math.floor(now - u.clicked_at)} ms after the click`
 				)
 				using, plan = nil, nil
-				resume_at = now + Random.int(Walker.CLIMB_PAUSE_MIN_MS, Walker.CLIMB_PAUSE_MAX_MS)
+				local kept = here.plane == u.from.plane
+					and (here.y >= Walker.UNDERGROUND) == (u.from.y >= Walker.UNDERGROUND)
+				resume_at = now
+					+ (
+						if kept
+							then Walker.SHORTCUT_PAUSE_MS
+							else Random.int(Walker.CLIMB_PAUSE_MIN_MS, Walker.CLIMB_PAUSE_MAX_MS)
+					)
 				camera_settle()
 				return
 			end
@@ -1061,7 +1069,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 
 		local pause = math.floor(resume_at - time())
 		if using == nil and plan ~= nil and pause > 0 then
-			debug(`pausing {pause} ms after the plane change`)
+			debug(`pausing {pause} ms after the climb`)
 			sleep(pause)
 		end
 

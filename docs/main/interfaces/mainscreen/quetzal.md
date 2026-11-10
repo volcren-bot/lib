@@ -10,7 +10,7 @@ The map has no keyboard shortcuts: digits, letters, space and enter were all tri
 
 A marker has `index` (its place among the map's children), `area` (the model: where to hover and click) and `here` (the site you are at, which the game marks with a second model).
 
-An empty whistle says "Your whistle has no charges." in the chat and does nothing else. No game variable was found to hold the charges, so an empty whistle can only be told by that.
+The game never sends the whistle's charges to the client: no varp, varbit or varc holds them (checked live by name across the cache and by comparing every varp around a flight), and the server sends no packet for them but a chat line. Every flight and every "Check" prints "Your quetzal whistle has N charges remaining.", and an empty whistle says "Your whistle has no charges." and does nothing else, so `Quetzal.charges` reads the count from those lines and keeps it.
 
 Renu and the whistle also offer "Last-destination", which flies straight to the last site. The game keeps that site itself (varbit 9950, `quetzal_last_destination`, 1 for the map's first marker and so on), so it stays right after a flight made by hand, by another script or before a restart. Moving by anything but a quetzal doesn't change it. Eight of the fourteen values were seen live: Civitas illa Fortis, Sunset Coast, Hunter Guild, Cam Torum Entrance, Aldarin, Salvager Overlook, Auburnvale and Kastori. The rest follow the map's order.
 
@@ -30,9 +30,13 @@ Quetzal.WHISTLE_OPTION = "Signal"
 Quetzal.INVENTORY = 93
 Quetzal.LAST_OPTION = "Last-destination"
 Quetzal.LAST_VARBIT = 9950
+Quetzal.CHARGES_PATTERN = "^Your quetzal whistle has (%d+) charges? remaining"
+Quetzal.EMPTY_MESSAGE = "Your whistle has no charges."
+Quetzal.CHECK_OPTION = "Check"
 Quetzal.OPEN_TIMEOUT_MS = 3000
 Quetzal.HOVER_TIMEOUT_MS = 800
 Quetzal.CONFIRM_TIMEOUT_MS = 4000
+Quetzal.CHECK_TIMEOUT_MS = 2400
 Quetzal.POLL_MS = 50
 Quetzal.SETTLE_MS = 150
 Quetzal.OPEN_SETTLE_MS = { 250, 500 }
@@ -40,7 +44,7 @@ Quetzal.ASK_LIMIT = 6
 Quetzal.ASK_RANGE = 12
 Quetzal.HOVER_MS = 350
 ```
-The interface piece numbers, the NPC and the option that open the map, the whistles and their option that do the same, the inventory's container, the option and the varbit for the last site, and the waits: for `wait_open`, for a hover to show the menu, for the map to go after a click, between looks, for the menu to follow the mouse, and the pause `open` makes once the map shows. The last three are for finding Renu: how many nameless NPCs are asked at most, how far to look, and how long to wait after hovering one.
+The interface piece numbers, the NPC and the option that open the map, the whistles and their option that do the same, the inventory's container, the option and the varbit for the last site, the chat lines that give the charges and the option that prints them, and the waits: for `wait_open`, for a hover to show the menu, for the map to go after a click, for "Check" to print the charges, between looks, for the menu to follow the mouse, and the pause `open` makes once the map shows. The last three are for finding Renu: how many nameless NPCs are asked at most, how far to look, and how long to wait after hovering one.
 
 ## Quetzal.is_open
 
@@ -105,7 +109,7 @@ Definition:
 ```luau
 function Quetzal.select(site: Site): boolean
 ```
-Clicks the site's marker, which sends the quetzal, and waits for the map to go. The click only happens once the menu under the mouse offers the site that was asked for, so a marker that was misread costs nothing. `site` is one of `Quetzal.Site` (see below), so no free text is typed. False when no site has that name, the menu didn't offer it, or the map stayed open. The trip itself is not waited for.
+Clicks the site's marker, which sends the quetzal, and waits for the map to go. On the whistle's map that spends a charge, which comes off the count `Quetzal.charges` tracks. The click only happens once the menu under the mouse offers the site that was asked for, so a marker that was misread costs nothing. `site` is one of `Quetzal.Site` (see below), so no free text is typed. False when no site has that name, the menu didn't offer it, or the map stayed open. The trip itself is not waited for.
 
 Example:
 ```luau
@@ -208,6 +212,27 @@ function Quetzal.whistle_slot(): number?
 ```
 The inventory slot of a quetzal whistle, nil when none is held.
 
+## Quetzal.charges
+
+Definition:
+```luau
+function Quetzal.charges(cached: boolean?): number?
+```
+The whistle's charges. By default it uses "Check" on the whistle in the inventory and reads the line that prints (up to `CHECK_TIMEOUT_MS`). With `cached`, it returns the count the module tracks, with no mouse movement, and only uses "Check" when it has none yet.
+
+The module tracks the count from the chat: every call reads the game messages it hasn't seen yet, so "Your quetzal whistle has N charges remaining." after any flight or "Check" (by the script, by hand or by `Transports`) updates it, and "Your whistle has no charges." makes it 0. A flight this module sends with the whistle (`Quetzal.signal_last`, or `Quetzal.select` on the whistle's map) takes one off a tracked count straight away, before the line arrives; the line then sets the exact count. A line in the chat from before the script started counts too. Messages are told apart by their time and then their uid, so the uids starting again after a relog don't hide new lines. The count is as of the last such line: charges added since, another whistle picked up, or a line that scrolled out of the chat between two calls only show after the next flight or "Check". The count lasts until the script ends.
+
+Nil when no whistle is held, or "Check" didn't print the charges in time; with `cached`, only when that happens with nothing tracked yet.
+
+Example:
+```luau
+local Quetzal = require("@lib/main/interfaces/mainscreen/quetzal")
+
+if (Quetzal.charges(true) or 0) > 0 then
+	Quetzal.signal_last()
+end
+```
+
 ## Quetzal.signal
 
 Definition:
@@ -231,4 +256,4 @@ Definition:
 ```luau
 function Quetzal.signal_last(): boolean
 ```
-Flies to the last site with the whistle in the inventory, from anywhere. True when the option was clicked. The flight is not waited for, and an empty whistle only says so in the chat, so check the position to know it worked.
+Flies to the last site with the whistle in the inventory, from anywhere. True when the option was clicked. A click takes a charge off the count `Quetzal.charges` tracks. The flight is not waited for, and an empty whistle only says so in the chat, so check the position to know it worked.
