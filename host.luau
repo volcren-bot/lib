@@ -260,6 +260,7 @@ export type FormField = {
 	items: { { id: string, label: string?, default: boolean? } }?,
 	enabled_by: string?,
 	row: string?,
+	box_first: boolean?,
 	heading: number?,
 	required: { LayoutRequirement }?,
 	locked: { string }?,

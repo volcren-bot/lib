@@ -1,6 +1,6 @@
 # Main.Interfaces.Gametabs.Combat
 
-The combat options tab: the wielded weapon's category and its autocast, chosen through the tab's spell picker.
+The combat options tab: the wielded weapon's category, the combat style its selected button attacks with, and its autocast, chosen through the tab's spell picker.
 
 ```luau
 local Combat = require("@lib/main/interfaces/gametabs/combat")
@@ -31,8 +31,28 @@ Combat.DEFENSIVE_VARBIT = 2668
 Combat.WEAPON_CATEGORY_VARBIT = 357
 Combat.AUTOCAST_CATEGORIES = { 18, 21, 22 }
 Combat.AUTOCAST_ENUM = 1986
+Combat.BUTTONS_ENUM = 3908
+Combat.BUTTON_STYLES = {
+	[3722] = "melee",
+	[3723] = "melee",
+	[3724] = "melee",
+	[3726] = "ranged",
+	[3727] = "ranged",
+	[3728] = "magic",
+}
+Combat.DEFENSIVE_BUTTON = 3725
 ```
 The tab's interface and its two "Choose spell" buttons (autocast, the lower one, and defensive autocast, the upper one; the defensive setting proved which is which); the picker's interface, the layer whose dynamic children are the spells (by autocast number) and the Cancel child; the settings holding the autocast number (0 for none), whether it is defensive and the weapon's category; the categories whose tab offers autocast (staves, powered staves and the staves that cast their own spell); and the game's autocast list.
+
+`BUTTONS_ENUM` is the game's list of each category's style buttons: weapon category to an enum of button number (the attack style setting, `Varps.ATTACK_STYLE`) to the button's struct. The structs are Accurate (3722), Aggressive (3723), Controlled (3724), Defensive (3725), Ranging (3726), Longrange (3727), Casting (3728) and Other (3721, an empty or non-attacking slot). `BUTTON_STYLES` is the combat style of each struct that has one of its own. Defensive takes the weapon's: it is melee on a melee weapon and magic on a powered staff.
+
+## Combat.Style
+
+Definition:
+```luau
+export type Style = "melee" | "ranged" | "magic"
+```
+A combat style.
 
 ## Combat.is_open / Combat.open
 
@@ -67,6 +87,23 @@ function Combat.autocast_index(): number
 function Combat.is_defensive(): boolean
 ```
 The autocast number set now (0 for none), and whether autocast is defensive.
+
+## Combat.style
+
+Definition:
+```luau
+function Combat.style(): Style?
+```
+The combat style the wielded weapon attacks with now: "magic" while autocasting, otherwise the style of the selected button, looked up by the weapon's category in `BUTTONS_ENUM`. A Defensive button takes the style of the weapon's first button that has one. The answer follows the button, so a salamander is melee, ranged or magic by the one picked, and a staff is melee until it autocasts. It is read from settings, so the combat tab doesn't need to be open. Nil when the settings can't be read, and for a category or button without a style (the "Other" slots, or a category missing from the list).
+
+Example:
+```luau
+local Combat = require("@lib/main/interfaces/gametabs/combat")
+
+if Combat.style() == "melee" then
+	print("attacking with melee")
+end
+```
 
 ## Combat.spell
 

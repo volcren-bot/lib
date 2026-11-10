@@ -12,8 +12,11 @@ local Magic = require("@lib/main/interfaces/gametabs/magic")
 local Mouse = require("@lib/utils/input/mouse")
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 local Varbits = require("@lib/main/varbits")
+local Varps = require("@lib/main/varps")
 
 local Combat = {}
+
+export type Style = "melee" | "ranged" | "magic"
 
 Combat.GROUP = 593
 Combat.CHOOSE_SPELL = 28
@@ -26,6 +29,16 @@ Combat.DEFENSIVE_VARBIT = 2668
 Combat.WEAPON_CATEGORY_VARBIT = 357
 Combat.AUTOCAST_CATEGORIES = table.freeze({ 18, 21, 22 })
 Combat.AUTOCAST_ENUM = 1986
+Combat.BUTTONS_ENUM = 3908
+Combat.BUTTON_STYLES = table.freeze({
+	[3722] = "melee",
+	[3723] = "melee",
+	[3724] = "melee",
+	[3726] = "ranged",
+	[3727] = "ranged",
+	[3728] = "magic",
+} :: { [number]: Style })
+Combat.DEFENSIVE_BUTTON = 3725
 
 local POLL_MS = 50
 local PICKER_TIMEOUT_MS = 2000
@@ -54,6 +67,65 @@ end
 
 function Combat.is_defensive(): boolean
 	return Varbits.get(Combat.DEFENSIVE_VARBIT) == 1
+end
+
+local buttons_by_category: { [number]: { [number]: number } } = {}
+
+local function category_buttons(category: number): { [number]: number }?
+	local cached = buttons_by_category[category]
+	if cached then
+		return cached
+	end
+	local categories = enum_def(Combat.BUTTONS_ENUM)
+	if categories == nil then
+		return nil
+	end
+	for _, entry in ipairs(categories.entries) do
+		if entry.key == category and type(entry.value) == "number" then
+			local def = enum_def(entry.value)
+			if def == nil then
+				return nil
+			end
+			local buttons: { [number]: number } = {}
+			for _, button in ipairs(def.entries) do
+				if type(button.value) == "number" then
+					buttons[button.key] = button.value
+				end
+			end
+			buttons_by_category[category] = buttons
+			return buttons
+		end
+	end
+	return nil
+end
+
+local function button_style(buttons: { [number]: number }, index: number): Style?
+	local id = buttons[index]
+	return if id then Combat.BUTTON_STYLES[id] else nil
+end
+
+function Combat.style(): Style?
+	if Combat.can_autocast() and Combat.autocast_index() > 0 then
+		return "magic"
+	end
+	local category, index = Combat.weapon_category(), Varps.get(Varps.ATTACK_STYLE)
+	if category == nil or index == nil then
+		return nil
+	end
+	local buttons = category_buttons(category)
+	if buttons == nil then
+		return nil
+	end
+	if buttons[index] ~= Combat.DEFENSIVE_BUTTON then
+		return button_style(buttons, index)
+	end
+	for other = 0, 3 do
+		local style = button_style(buttons, other)
+		if style then
+			return style
+		end
+	end
+	return nil
 end
 
 local numbers: { [number]: number }? = nil
