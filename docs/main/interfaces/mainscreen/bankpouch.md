@@ -124,3 +124,55 @@ if BankPouch.open() then
 	BankPouch.close()
 end
 ```
+
+## BankPouch.open
+
+Definition:
+```luau
+function BankPouch.open(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## BankPouch.close
+
+Definition:
+```luau
+function BankPouch.close(timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## BankPouch.deposit_runes
+
+Definition:
+```luau
+function BankPouch.deposit_runes(): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## BankPouch.deposit
+
+Definition:
+```luau
+function BankPouch.deposit(rune: Item, amount: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
