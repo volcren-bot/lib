@@ -17,7 +17,7 @@ The bank's container id and its interface group.
 
 ## Functions from Inv
 
-`slots`, `items`, `indices_of`, `index_of`, `find`, `contains`, `contains_any`, `contains_all`, `count`, `count_ex` and `wait_count` work as described in [Inv](../inv.md), on the bank's contents. A placeholder's container slot reads quantity 1 (its own id, named like the item, e.g. 31108 for Confliction gauntlets 31106), so while the bank is open its quantity is taken from its grid cell, which shows 0 (`Widget.item_quantity`, `HOST_API` 16): placeholders count as none and aren't withdrawn. With the bank closed only the container is read, and they count as 1.
+`slots`, `items`, `indices_of`, `index_of`, `find`, `contains`, `contains_any`, `contains_all`, `count`, `count_ex` and `wait_count` work as described in [Inv](../inv.md), on the bank's contents. `Bankmain.inventory` is the same for the inventory the bank shows beside it (container 93 in the bank's side interface), the one deposits click; the rune pouch's panel that takes its place is [BankPouch](bankpouch.md). A placeholder's container slot reads quantity 1 (its own id, named like the item, e.g. 31108 for Confliction gauntlets 31106), so while the bank is open its quantity is taken from its grid cell, which shows 0 (`Widget.item_quantity`, `HOST_API` 16): placeholders count as none and aren't withdrawn. With the bank closed only the container is read, and they count as 1.
 
 ## Bankmain.is_open
 

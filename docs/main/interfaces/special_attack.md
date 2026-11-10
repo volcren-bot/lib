@@ -8,7 +8,7 @@ local SpecialAttack = require("@lib/main/interfaces/special_attack")
 
 The orb is hidden while the weapon has no special attack, and so is the bar, so `available` also tells you whether the weapon has one. The bar only shows while the Combat tab is open, and the orb not at all when the minimap orbs are turned off in the game's settings. The energy and the switch are read from the game (`Player.special_attack`, `Player.special_attack_enabled`), so they work with any tab open.
 
-**Learned costs.** The lib doesn't know what each weapon's special attack costs: it learns it. A weapon it hasn't seen is taken to cost `FULL` (100), so `enable` waits for a full bar. Once `enable` has switched it on, the next drop of the energy while that weapon is in hand is kept as its cost (`update` each loop, or `wait_used` to block until it happens), rounded to a whole percent, so the next `enable` with that weapon needs only what it really drains (anything that changes what it drains is learned as it is). The costs live for the run: a new run starts from `FULL` again.
+**Costs.** A weapon's special attack cost comes from a table in the game's cache, enum `COST_ENUM`: item id to the energy it drains in tenths of a percent (Dragon claws 500, the Crystal halberd 300, the Saradomin sword 1000). It is read once and kept, so the cost is known before the weapon is ever wielded, with nothing learned or assumed. A weapon the table leaves out has no special attack, and `cost` gives nil for it. Every wieldable variant checked (those of the Granite maul and the Abyssal tentacle) has its own entry, and every item with a special attack description (enum 1739) has a cost; noted copies and placeholders have none. A handful of entries aren't a plain drain: shields that spend charges are 0, and a few weapons with special attacks that work differently have small values (the Soulreaper axe 1, the Lithic sceptre 5, the Sunlight spear 7, the Rondache 10), which `cost` passes on as 0.1% to 1%.
 
 ## Constants
 
@@ -22,12 +22,12 @@ SpecialAttack.BAR_GROUP = 593
 SpecialAttack.BAR = 41
 SpecialAttack.BAR_OPTION = "Use Special Attack"
 SpecialAttack.BAR_CHANCE = 0.5
-SpecialAttack.FULL = 100
-SpecialAttack.USE_TIMEOUT_MS = 3000
 SpecialAttack.WORN = 94
 SpecialAttack.WEAPON_SLOT = 3
+SpecialAttack.COST_ENUM = 906
+SpecialAttack.COST_SCALE = 10
 ```
-The orb's interface, the children that can be its button (the first showing one is clicked), the menu option it has and how long `set` waits for the switch to change; the Combat tab's interface, the bar's button and its menu option, and how often `set` uses the bar instead of the orb (through `Biometrics.random_boolean`); the cost taken for a weapon not learned yet, how long `wait_used` waits for the energy to drop, and the worn items container and slot the weapon is read from.
+The orb's interface, the children that can be its button (the first showing one is clicked), the menu option it has and how long `set` waits for the switch to change; the Combat tab's interface, the bar's button and its menu option, and how often `set` uses the bar instead of the orb (through `Biometrics.random_boolean`); the worn items container and slot the weapon is read from, and the cache table of special attack costs with the scale of its values (300 is 30%).
 
 ## SpecialAttack.orb
 
@@ -108,30 +108,15 @@ print("weapon:", SpecialAttack.weapon())
 
 Definition:
 ```luau
-function SpecialAttack.cost(weapon: number?): number
+function SpecialAttack.cost(weapon: number?): number?
 ```
-What a weapon's special attack costs, in percent: the learned cost of `weapon` (the one in hand when `nil`), or `FULL` when it hasn't been learned.
+What a weapon's special attack costs, in percent, from the cache table: `weapon`, or the one in hand when `nil`. Nil for a weapon without a special attack, with no weapon in hand, or when the cache can't be read.
 
 Example:
 ```luau
 local SpecialAttack = require("@lib/main/interfaces/special_attack")
 
 print("costs:", SpecialAttack.cost())
-```
-
-## SpecialAttack.known
-
-Definition:
-```luau
-function SpecialAttack.known(weapon: number?): boolean
-```
-Whether the cost of `weapon` (the one in hand when `nil`) has been learned this run.
-
-Example:
-```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
-print("learned:", SpecialAttack.known())
 ```
 
 ## SpecialAttack.is_enabled
@@ -170,7 +155,7 @@ Definition:
 ```luau
 function SpecialAttack.enable(cost: number?): boolean
 ```
-Switches the special attack on when there is at least `cost` energy, by default the weapon's `cost()`: what it was learned to drain, or `FULL` before that. Returns `true` when it is on, and from then on watches the energy for `update` and `wait_used` to learn the cost from.
+Switches the special attack on when there is at least `cost` energy, by default the cost of the weapon in hand (`cost()`). Returns `true` when it is on, and `false` without clicking when there isn't enough energy or the weapon has no special attack.
 
 Example:
 ```luau
@@ -178,41 +163,5 @@ local SpecialAttack = require("@lib/main/interfaces/special_attack")
 
 if SpecialAttack.enable() then
 	print("the next attack is a special attack")
-end
-```
-
-## SpecialAttack.update
-
-Definition:
-```luau
-function SpecialAttack.update(): boolean
-```
-Checks, without waiting, whether the special attack `enable` switched on has been used: when the energy has dropped while the same weapon is in hand, keeps the drop as its cost and returns `true`. Energy that comes back meanwhile raises the mark it is measured from. Call it once per loop when the attack can go off ticks after the switch (a weapon swap delays it). Returns `false` while nothing is being watched or the energy hasn't dropped.
-
-Example:
-```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
-if SpecialAttack.update() then
-	print("used it: it costs", SpecialAttack.cost())
-end
-```
-
-## SpecialAttack.wait_used
-
-Definition:
-```luau
-function SpecialAttack.wait_used(timeout_ms: number?): boolean
-```
-Waits up to `timeout_ms` (default `USE_TIMEOUT_MS`) for `update` to see the special attack used. When `enable` didn't switch it on, the energy is read when it starts. Returns `false`, learning nothing, when the energy didn't drop in time.
-
-Example:
-```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
-if SpecialAttack.enable() then
-	-- click Attack on the target here
-	SpecialAttack.wait_used()
-	print("it costs", SpecialAttack.cost())
 end
 ```

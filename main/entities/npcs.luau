@@ -105,7 +105,7 @@ function Npcs.target(npc: Npc): Point?
 	if box == nil then
 		return nil
 	end
-	return Clickbox.target(box, npc.name)
+	return (Clickbox.target(box, npc.name))
 end
 
 local MENU_NPC = 2

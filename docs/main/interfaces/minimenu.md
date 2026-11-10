@@ -93,7 +93,7 @@ Definition:
 ```luau
 function Minimenu.find(option: string, target: Target?): (number?, { MenuEntry }?)
 ```
-Finds the position of an option in the menu. Returns the position, followed by all lines.
+Finds the position of an option in the menu. Returns the position, nil when no line offers it, followed by all lines, nil only when the menu can't be read. So a nil position with lines means "not there yet", which `Interact.wait_option` keeps polling for.
 
 Example:
 ```luau
@@ -357,7 +357,7 @@ Definition:
 ```luau
 function Minimenu.find_submenu(option: string, target: Target?): (number?, { MenuEntry }?)
 ```
-The position of an option in the open submenu (the deepest one), followed by all its lines.
+The position of an option in the open submenu (the deepest one), nil when no line offers it, followed by all its lines, nil when no submenu is open.
 
 Example:
 ```luau

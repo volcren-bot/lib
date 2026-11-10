@@ -1,5 +1,6 @@
 --!strict
 local Host = require("@lib/host")
+local enum_def = Host.enum_def
 local widget = Host.widget
 type MenuEntry = Host.MenuEntry
 type Widget = Host.Widget
@@ -20,18 +21,12 @@ SpecialAttack.BAR_GROUP = 593
 SpecialAttack.BAR = 41
 SpecialAttack.BAR_OPTION = "Use Special Attack"
 SpecialAttack.BAR_CHANCE = 0.5
-SpecialAttack.FULL = 100
-SpecialAttack.USE_TIMEOUT_MS = 3000
 SpecialAttack.WORN = 94
 SpecialAttack.WEAPON_SLOT = 3
+SpecialAttack.COST_ENUM = 906
+SpecialAttack.COST_SCALE = 10
 
-local costs: { [number]: number } = {}
-local pending: { weapon: number, energy: number }? = nil
-
-local function watch()
-	local weapon, energy = SpecialAttack.weapon(), SpecialAttack.energy()
-	pending = if weapon ~= nil and energy ~= nil then { weapon = weapon, energy = energy } else nil
-end
+local listed: { [number]: number }? = nil
 
 function SpecialAttack.weapon(): number?
 	for _, item in ipairs(Host.item_container(SpecialAttack.WORN) or {}) do
@@ -42,14 +37,28 @@ function SpecialAttack.weapon(): number?
 	return nil
 end
 
-function SpecialAttack.cost(weapon: number?): number
-	local id = weapon or SpecialAttack.weapon()
-	return if id ~= nil then costs[id] or SpecialAttack.FULL else SpecialAttack.FULL
+local function costs(): { [number]: number }?
+	if listed then
+		return listed
+	end
+	local def = enum_def(SpecialAttack.COST_ENUM)
+	if def == nil then
+		return nil
+	end
+	local by_item: { [number]: number } = {}
+	for _, entry in ipairs(def.entries) do
+		if type(entry.value) == "number" and entry.value >= 0 then
+			by_item[entry.key] = entry.value / SpecialAttack.COST_SCALE
+		end
+	end
+	listed = by_item
+	return by_item
 end
 
-function SpecialAttack.known(weapon: number?): boolean
+function SpecialAttack.cost(weapon: number?): number?
 	local id = weapon or SpecialAttack.weapon()
-	return id ~= nil and costs[id] ~= nil
+	local list = costs()
+	return if id ~= nil and list ~= nil then list[id] else nil
 end
 
 function SpecialAttack.orb(): (Widget?, number?)
@@ -130,51 +139,11 @@ function SpecialAttack.set(enabled: boolean): boolean
 end
 
 function SpecialAttack.enable(cost: number?): boolean
-	local energy = SpecialAttack.energy()
-	if energy == nil or energy < (cost or SpecialAttack.cost()) then
+	local energy, need = SpecialAttack.energy(), cost or SpecialAttack.cost()
+	if energy == nil or need == nil or energy < need then
 		return false
 	end
-	if not SpecialAttack.set(true) then
-		return false
-	end
-	watch()
-	return true
-end
-
-function SpecialAttack.update(): boolean
-	local p = pending
-	local energy = SpecialAttack.energy()
-	if p == nil or energy == nil or SpecialAttack.weapon() ~= p.weapon then
-		return false
-	end
-	if energy > p.energy then
-		p.energy = energy
-		return false
-	end
-	if energy == p.energy then
-		return false
-	end
-	pending = nil
-	local drained = math.floor(p.energy - energy + 0.5)
-	if costs[p.weapon] ~= drained then
-		costs[p.weapon] = drained
-		Log.log("SpecialAttack", `weapon {p.weapon}'s special attack costs {drained}%`)
-	end
-	return true
-end
-
-function SpecialAttack.wait_used(timeout_ms: number?): boolean
-	if pending == nil then
-		watch()
-	end
-	if pending == nil then
-		return false
-	end
-	if Widgets.wait_within(SpecialAttack.update, timeout_ms or SpecialAttack.USE_TIMEOUT_MS, 50) then
-		return true
-	end
-	Log.log("SpecialAttack", "the special attack wasn't used")
-	return false
+	return SpecialAttack.set(true)
 end
 
 return SpecialAttack

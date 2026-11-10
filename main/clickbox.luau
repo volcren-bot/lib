@@ -97,7 +97,10 @@ function Clickbox.from_cuboid(cuboid: { bottom: Quad, top: Quad }): Clickbox
 end
 
 Clickbox.MIN_TRIANGLE_AREA = 4
-Clickbox.MOUSE_FALLOFF = 0.25
+Clickbox.CENTER_SPREAD = 0.45
+Clickbox.MOUSE_PULL = 2
+
+type Center = { x: number, y: number, sx: number, sy: number }
 
 local function aimable_area(box: Clickbox, t: Polygon, visible: (Point) -> boolean): number?
 	local area = Triangle.area(t)
@@ -110,31 +113,55 @@ local function aimable_area(box: Clickbox, t: Polygon, visible: (Point) -> boole
 	return nil
 end
 
-local function nearest_to<T>(candidates: { T }, center: (T) -> Point, from: Point): T?
-	local distances: { [T]: number } = {}
-	local closest, farthest = math.huge, 0
-	for _, c in ipairs(candidates) do
-		local d = Point.distance(center(c), from)
-		distances[c] = d
-		closest, farthest = math.min(closest, d), math.max(farthest, d)
+local function center_of(list: { Polygon }, indices: { number }): Center?
+	local total, x, y = 0, 0, 0
+	for _, i in ipairs(indices) do
+		local area, c = Triangle.area(list[i]), Triangle.centroid(list[i])
+		total += area
+		x += area * c.x
+		y += area * c.y
 	end
-	local falloff = math.max((farthest - closest) * Clickbox.MOUSE_FALLOFF, 1)
-	return Random.nearest_weighted(candidates, function(c)
-		return distances[c]
-	end, falloff)
+	if total <= 0 then
+		return nil
+	end
+	x, y = x / total, y / total
+	local vx, vy = 0, 0
+	for _, i in ipairs(indices) do
+		local area, c = Triangle.area(list[i]), Triangle.centroid(list[i])
+		vx += area * (c.x - x) ^ 2
+		vy += area * (c.y - y) ^ 2
+	end
+	return { x = x, y = y, sx = math.max(math.sqrt(vx / total), 1), sy = math.max(math.sqrt(vy / total), 1) }
+end
+
+local function centered_index(list: { Polygon }, indices: { number }, center: Center, from: Point?): number?
+	local sx, sy = center.sx * Clickbox.CENTER_SPREAD, center.sy * Clickbox.CENTER_SPREAD
+	local reach = Clickbox.MOUSE_PULL * math.max(center.sx, center.sy)
+	return Random.weighted(indices, function(i: number): number
+		local c = Triangle.centroid(list[i])
+		local weight = Triangle.area(list[i])
+			* math.exp(-0.5 * (((c.x - center.x) / sx) ^ 2 + ((c.y - center.y) / sy) ^ 2))
+		if from then
+			weight *= math.exp(-Point.distance(c, from) / reach)
+		end
+		return weight
+	end)
 end
 
 local function pick_triangle(box: Clickbox, from: Point?, visible: (Point) -> boolean): Polygon?
-	local candidates: { Polygon } = {}
-	for _, t in ipairs(box.triangles or {}) do
+	local list = box.triangles or {}
+	local aimable: { number } = {}
+	for i, t in ipairs(list) do
 		if aimable_area(box, t, visible) then
-			table.insert(candidates, t)
+			table.insert(aimable, i)
 		end
 	end
-	if from == nil then
-		return candidates[math.random(1, math.max(#candidates, 1))]
+	local center = center_of(list, aimable)
+	if center == nil then
+		return nil
 	end
-	return nearest_to(candidates, Triangle.centroid, from)
+	local index = centered_index(list, aimable, center, from)
+	return if index then list[index] else nil
 end
 
 local function stable_triangles(box: Clickbox): { Polygon }?
@@ -157,10 +184,11 @@ end
 Clickbox.FOLLOW_AREA = 25
 
 local function pick_index(box: Clickbox, list: { Polygon }, from: Point?, visible: (Point) -> boolean): number?
-	local candidates: { number }, small: { number } = {}, {}
+	local candidates: { number }, small: { number }, aimable: { number } = {}, {}, {}
 	for i, t in ipairs(list) do
 		local area = aimable_area(box, t, visible)
 		if area then
+			table.insert(aimable, i)
 			table.insert(if area >= Clickbox.FOLLOW_AREA then candidates else small, i)
 		end
 	end
@@ -173,15 +201,11 @@ local function pick_index(box: Clickbox, list: { Polygon }, from: Point?, visibl
 	for i = #candidates, math.max(1, math.ceil(#candidates / 2)) + 1, -1 do
 		candidates[i] = nil
 	end
-	if #candidates == 0 then
+	local center = center_of(list, aimable)
+	if #candidates == 0 or center == nil then
 		return nil
 	end
-	if from == nil then
-		return candidates[math.random(1, #candidates)]
-	end
-	return nearest_to(candidates, function(i: number): Point
-		return Triangle.centroid(list[i])
-	end, from)
+	return centered_index(list, candidates, center, from)
 end
 
 local function visibility(keep: ((Point) -> boolean)?, ignore_windows: boolean?): ((Point) -> boolean)?
@@ -196,16 +220,22 @@ local function visibility(keep: ((Point) -> boolean)?, ignore_windows: boolean?)
 	end
 end
 
-function Clickbox.target(box: Clickbox, what: string, keep: ((Point) -> boolean)?, ignore_windows: boolean?): Point?
+function Clickbox.target(
+	box: Clickbox,
+	what: string,
+	keep: ((Point) -> boolean)?,
+	ignore_windows: boolean?
+): (Point?, Polygon?)
 	local visible = visibility(keep, ignore_windows)
 	if visible == nil then
-		return nil
+		return nil, nil
 	end
 	local from = Mouse.position()
 	for _ = 1, Clickbox.TARGET_TRIES do
 		local p: Point?
+		local t: Polygon? = nil
 		if box.triangles then
-			local t = pick_triangle(box, from, visible)
+			t = pick_triangle(box, from, visible)
 			if t == nil then
 				break
 			end
@@ -214,10 +244,10 @@ function Clickbox.target(box: Clickbox, what: string, keep: ((Point) -> boolean)
 			p = Polygon.random_weighted_point(box.polygon, from or Quad.mean((box.box :: any).top))
 		end
 		if p and Polygon.contains(box.polygon, p) and visible(p) then
-			return p
+			return p, t
 		end
 	end
-	return nil
+	return nil, nil
 end
 
 Clickbox.ANCHOR_HEIGHT = 200

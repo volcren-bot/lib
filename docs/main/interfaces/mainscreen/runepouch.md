@@ -6,7 +6,7 @@ The rune pouch: its runes, plus the interface that moves them (group 190), opene
 local Runepouch = require("@lib/main/interfaces/mainscreen/runepouch")
 ```
 
-The runes are in client variables, so reading doesn't need the interface. The interface takes the inventory away while it is open, and the inventory comes back a moment after it closes, so `close` waits for that. To fill the pouch from the bank see [InventoryLayout](../../inventory_layout.md).
+The runes are in client variables, so reading doesn't need the interface. The interface takes the inventory away while it is open, and the inventory comes back a moment after it closes, so `close` waits for that. To fill the pouch from the bank see [BankPouch](bankpouch.md), the pouch's panel in the bank, and [InventoryLayout](../../inventory_layout.md).
 
 ## Constants
 

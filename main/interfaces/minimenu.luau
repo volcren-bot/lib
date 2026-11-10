@@ -56,7 +56,7 @@ function Minimenu.find(option: string, target: Target?): (number?, { MenuEntry }
 			return i, entries
 		end
 	end
-	return nil, nil
+	return nil, entries
 end
 
 function Minimenu.has(option: string, target: Target?): boolean
@@ -433,7 +433,7 @@ local function find_in(sub: Host.MenuSubmenu, option: string, target: Target?): 
 			return i, sub.entries
 		end
 	end
-	return nil, nil
+	return nil, sub.entries
 end
 
 function Minimenu.find_submenu(option: string, target: Target?): (number?, { MenuEntry }?)

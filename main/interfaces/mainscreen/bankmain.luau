@@ -208,6 +208,8 @@ local Bankmain = {
 	wait_count = items.wait_count,
 }
 
+Bankmain.inventory = inventory
+
 function Bankmain.is_open(): boolean
 	if BankpinKeypad.is_open() then
 		local entered = BankpinKeypad.enter()

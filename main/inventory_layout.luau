@@ -3,6 +3,7 @@ local Host = require("@lib/host")
 type InventoryLayout = Host.InventoryLayout
 type InventoryLayoutSlot = Host.InventoryLayoutSlot
 type LayoutItem = Host.LayoutItem
+local BankPouch = require("@lib/main/interfaces/mainscreen/bankpouch")
 local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 local Inv = require("@lib/main/interfaces/inv")
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
@@ -241,37 +242,36 @@ local function fill_pouch(layout: Layout): boolean
 			return false
 		end
 	end
-	for id, need in pairs(missing) do
-		if not Bankmain.withdraw(id, need, false) then
-			Log.log("InventoryLayout", `withdraw: couldn't take {need} of rune {id}`)
-			return false
-		end
-	end
-	if not Bankmain.close() then
+	if not BankPouch.open() then
+		Log.log("InventoryLayout", "withdraw: couldn't open the rune pouch in the bank")
 		return false
 	end
-	for id in pairs(missing) do
-		if not Inventory.combine(id, Runepouch.POUCHES) then
-			Log.log("InventoryLayout", `withdraw: couldn't use rune {id} on the pouch`)
-			Bankmain.open()
-			return false
-		end
-		local taken = Widgets.wait_within(function(): boolean
-			local left = pouch_missing(layout)
-			return left ~= nil and left[id] == nil
-		end, InventoryLayout.POUCH_TIMEOUT_MS, InventoryLayout.POLL_MS)
-		if not taken then
-			Log.log("InventoryLayout", `withdraw: the pouch didn't take rune {id}`)
-			Bankmain.open()
+	for id, need in pairs(missing) do
+		if not BankPouch.withdraw(id, need) then
+			Log.log("InventoryLayout", `withdraw: couldn't take {need} of rune {id}`)
+			BankPouch.close()
 			return false
 		end
 	end
-	return Bankmain.open()
+	local filled = Widgets.wait_within(function(): boolean
+		local left = pouch_missing(layout)
+		return left ~= nil and next(left) == nil
+	end, InventoryLayout.POUCH_TIMEOUT_MS, InventoryLayout.POLL_MS)
+	if not BankPouch.close() then
+		return false
+	end
+	if not filled then
+		Log.log("InventoryLayout", "withdraw: the pouch didn't take every rune")
+	end
+	return filled
 end
 
 function InventoryLayout.withdraw(layout: Layout): boolean
 	if not Bankmain.is_open() then
 		Log.log("InventoryLayout", "withdraw: the bank isn't open")
+		return false
+	end
+	if not BankPouch.close() then
 		return false
 	end
 	if InventoryLayout.matches(layout) then

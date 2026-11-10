@@ -15,7 +15,8 @@ Definition:
 Clickbox.TARGET_TRIES = 30
 Clickbox.MIN_TRIANGLE_AREA = 4
 Clickbox.FOLLOW_AREA = 25
-Clickbox.MOUSE_FALLOFF = 0.25
+Clickbox.CENTER_SPREAD = 0.45
+Clickbox.MOUSE_PULL = 2
 Clickbox.CAMERA_RANGE = 15
 Clickbox.ATTEMPTS = 5
 Clickbox.MISCLICK_ATTEMPTS = 3
@@ -28,7 +29,8 @@ Clickbox.WALK_LEAD_TOLERANCE = 40
 - `TARGET_TRIES`: how many times to try finding a free spot.
 - `MIN_TRIANGLE_AREA`: parts of the shape smaller than this (in pixels) are ignored.
 - `FOLLOW_AREA`: `hover` follows a part of the shape at least this big (in pixels) when there is one.
-- `MOUSE_FALLOFF`: how strongly spots near the current mouse position are preferred.
+- `CENTER_SPREAD`: how tightly a model's triangles are picked around its middle, as a share of how far the shape spreads from it (smaller is tighter; see `Clickbox.target`).
+- `MOUSE_PULL`: how weakly the pick leans towards the current mouse position, in the same spreads (bigger is weaker).
 - `CAMERA_RANGE`: things closer than this many tiles that aren't on the screen may get the camera zoomed out to show them. Set to `nil` to never zoom out for them. Turning towards things is `Camera.face`, with its own settings.
 - `ATTEMPTS`: how many times to aim (a triangle picked and followed) before giving up; the game's confirmation that the mouse is on the thing is waited for by [Track](../utils/input/track.md) (`Track.CONFIRM_MS`).
 - `MISCLICK_ATTEMPTS`: how many times to retry when the game did something else.
@@ -65,9 +67,9 @@ end
 
 Definition:
 ```luau
-function Clickbox.target(box: Clickbox, what: string, keep: ((Point) -> boolean)?): Point?
+function Clickbox.target(box: Clickbox, what: string, keep: ((Point) -> boolean)?, ignore_windows: boolean?): (Point?, Polygon?)
 ```
-Picks a spot inside the clickbox that isn't covered by any interface, leaning towards where the mouse already is. `keep` can turn down spots (for example ones that won't stay in the box). Returns `nil` and a message if nothing is visible.
+Picks a spot inside the clickbox that isn't covered by any interface. On a model it picks one of the triangles whose middle is inside the outline and visible (at least `MIN_TRIANGLE_AREA` pixels), then a spot near that triangle's middle. The pick leans towards the middle of the whole shape, since a spot near the edge misses once the thing moves or animates before the click lands: it finds the shape's middle as the triangles' centres weighted by their area, and how far the shape spreads from it across and down, then weights each triangle by its area times a bell curve around that middle, `CENTER_SPREAD` of the spread wide each way (so a tall shape gets a tall one), times a weak pull towards the mouse, `exp(-distance / (MOUSE_PULL * spread))`. A drawn box without triangles leans towards where the mouse already is. `keep` can turn down spots (for example ones that won't stay in the box), and `ignore_windows` counts only the side panels as covering. Returns the spot and, for a model's clickbox, the triangle it was picked in (nil for a box without triangles), or `nil` when nothing is visible.
 
 Example:
 ```luau
@@ -119,7 +121,7 @@ function Clickbox.hover(
 	tile: (() -> Tile?)?
 ): boolean
 ```
-Moves the mouse onto the thing and waits until the game confirms (through `hovered`) that the mouse is really on it. It picks one triangle of the shape (a model's face, or for a drawn box one of its top and bottom halves): one of the bigger half of those at least `FOLLOW_AREA` pixels (a model's small faces are mostly its thin, moving parts), near the mouse more likely. It follows it with [Track](../utils/input/track.md) while the mouse goes, so a thing that moves (an NPC swaying, the scene sliding while you walk) is still under the mouse when it gets there. The mouse counts as there once it is anywhere on the shape after a move and the game agrees (`hovered`); when the game doesn't, the corrections go on to the chosen spot. A triangle that can't be followed (gone off screen, behind the interface) is logged and another is tried, `ATTEMPTS` times in all. Passing `tile` lets it first turn the camera so the thing shows in the upper half of the screen (`Camera.face`), and bring it on screen (`Clickbox.reveal`).
+Moves the mouse onto the thing and waits until the game confirms (through `hovered`) that the mouse is really on it. It picks one triangle of the shape (a model's face, or for a drawn box one of its top and bottom halves): one of the bigger half of those at least `FOLLOW_AREA` pixels (a model's small faces are mostly its thin, moving parts), picked with the same lean towards the middle as `Clickbox.target`. It follows it with [Track](../utils/input/track.md) while the mouse goes, so a thing that moves (an NPC swaying, the scene sliding while you walk) is still under the mouse when it gets there. The mouse counts as there once it is anywhere on the shape after a move and the game agrees (`hovered`); when the game doesn't, the corrections go on to the chosen spot. A triangle that can't be followed (gone off screen, behind the interface) is logged and another is tried, `ATTEMPTS` times in all. Passing `tile` lets it first turn the camera so the thing shows in the upper half of the screen (`Camera.face`), and bring it on screen (`Clickbox.reveal`).
 
 Example:
 ```luau
