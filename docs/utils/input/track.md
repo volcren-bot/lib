@@ -24,6 +24,11 @@ Track.SETTLE_MS = 60
 Track.CONFIRM_MS = 80
 Track.SPEED_WINDOW_MS = 120
 Track.MAX_LEAD_PX = 60
+Track.HEAT_CELL = 6
+Track.HEAT_CAP = 60
+Track.WARM = 8
+Track.CENTER_SPREAD = 0.45
+Track.MOUSE_PULL = 2
 Track.debug = false
 ```
 - `TIMEOUT_MS` / `MOVES`: how long a hover may take and how many moves it makes at most (the first one and the corrections).
@@ -34,6 +39,10 @@ Track.debug = false
 - `SETTLE_MS`: how long a finished move gets for the client to report the mouse where it went.
 - `CONFIRM_MS`: with `confirm`, how long the mouse stays put waiting for it once a move ends on the target.
 - `SPEED_WINDOW_MS` / `MAX_LEAD_PX`: the spot's speed is measured over the reads of this window (frames come about every 20 ms, so close reads are noisy), and the lead it gives a move is capped at this many pixels.
+- `HEAT_CELL`: with `hover_heat`, the size (pixels) of a heat map cell.
+- `HEAT_CAP`: with `hover_heat`, after how many reads in a row a covered cell is as hot as it gets.
+- `WARM`: with `hover_heat`, after how many reads in a row a cell counts as warm, so a stop on it is allowed; while no cell is that warm, any covered cell is.
+- `CENTER_SPREAD` / `MOUSE_PULL`: with `hover_heat`, how tightly the target cell is picked around the heat's middle (a share of how far the heat spreads), and how strongly towards the mouse (the reach is this many spreads).
 - `debug`: logs every move (the spot, its speed, where the move goes, where the mouse was) and every jump.
 
 ## Types
@@ -43,6 +52,11 @@ Definition:
 export type Spot = { u: number, v: number }
 ```
 Where in a triangle the mouse goes, as barycentric weights (the third is `1 - u - v`), so it is the same part of the triangle in every frame.
+
+```luau
+export type Shape = { triangles: { Polygon }, anchor: Point? }
+```
+What `hover_heat` reads: the target's triangles on screen now, and where its anchor is on screen (the heat map is kept relative to it, so the thing or the camera moving doesn't cool it; without one, cells stay where they are on screen).
 
 ## Track.spot
 
@@ -89,7 +103,7 @@ function Track.hover(
 	spot: Spot?
 ): (boolean, string?)
 ```
-Moves the mouse onto triangle `index` of what `triangles` reads. `triangles` gives the target's triangles on screen now, in the same order every time (a model's faces are), or nil when they can't be read. `visible` can turn down a spot, for one covered by the interface. With `anywhere`, the mouse also counts as there once it is on any of the triangles after at least one move, while the spot is about still (`STILL_PX_S`) or within `NEAR_PX` of it; where it happened to be before moving doesn't count. With `confirm` (the game showing the thing under the mouse, a menu read), it is asked while the mouse stays put once a move ends on the target, for up to `CONFIRM_MS`; when it doesn't agree, the corrections go on to the spot itself and `anywhere` no longer counts, and when the mouse is on the spot itself and the game still doesn't agree, the triangle is given up (`"unconfirmed"`: a face the game doesn't pick, such as a hidden one). Returns true once it is there (and confirmed), or false with why: `"changed"` when the number of triangles changed since the first read (the thing was given another model, as an NPC changing form does, so the index is another face now); `"gone"` when the triangle can't be read, is smaller than `MIN_AREA` or isn't visible; `"unconfirmed"` when `confirm` doesn't agree with the mouse on the spot; `"missed"` after `MOVES` moves; `"timeout"` after `TIMEOUT_MS`. It doesn't click.
+Moves the mouse onto triangle `index` of what `triangles` reads. `triangles` gives the target's triangles on screen now, in the same order every time (a model's faces are), or nil when they can't be read. `visible` can turn down a spot, for one covered by the interface. With `anywhere`, the mouse also counts as there once it is on any of the triangles after at least one move, while the spot is about still (`STILL_PX_S`) or within `NEAR_PX` of it; where it happened to be before moving doesn't count. With `confirm` (the game showing the thing under the mouse, a menu read), it is also asked during every move while the mouse is on any of the triangles; once it agrees the move stops and, if it still agrees, the hover is done where the mouse is. It is asked while the mouse stays put once a move ends on the target, for up to `CONFIRM_MS`; when it doesn't agree, the corrections go on to the spot itself and `anywhere` no longer counts, and when the mouse is on the spot itself and the game still doesn't agree, the triangle is given up (`"unconfirmed"`: a face the game doesn't pick, such as a hidden one). Returns true once it is there (and confirmed), or false with why: `"changed"` when the number of triangles changed since the first read (the thing was given another model, as an NPC changing form does, so the index is another face now); `"gone"` when the triangle can't be read, is smaller than `MIN_AREA` or isn't visible; `"unconfirmed"` when `confirm` doesn't agree with the mouse on the spot; `"missed"` after `MOVES` moves; `"timeout"` after `TIMEOUT_MS`. It doesn't click.
 
 Example:
 ```luau
@@ -102,4 +116,30 @@ local function faces()
 	return box and box.triangles
 end
 print(Track.hover(faces, 1, nil, true))
+```
+
+## Track.hover_heat
+
+Definition:
+```luau
+function Track.hover_heat(
+	read: () -> Shape?,
+	visible: ((Point) -> boolean)?,
+	confirm: (() -> boolean)?
+): (boolean, string?)
+```
+Moves the mouse onto a model by heat rather than by one face. Every read (`POLL_MS`) cuts the area around `read`'s triangles into `HEAT_CELL` cells relative to its anchor and marks the ones whose middle a triangle covers and `visible` allows; a covered cell's heat is how many reads in a row it has been covered, so a cell an animation keeps uncovering stays cold. The target is a covered cell picked by its heat (squared, up to `HEAT_CAP`), leaning towards the heat's middle (`CENTER_SPREAD`) and a little towards the mouse (`MOUSE_PULL`), and picked again as soon as it is uncovered. The mouse moves towards it, led by the anchor's speed as in `hover`, and a move is cancelled and aimed again when the target drifts away from where it is going (`JUMP_PX`, `JUMP_SHARE`). With `confirm`, it is asked whenever the mouse is on a warm cell (`WARM`; any covered cell while none is), during a move as well: once it agrees the move stops and, if it still agrees, it returns true where the mouse is. Without `confirm` it returns true once the mouse is within a cell of the target. Returns false with why: `"gone"` when nothing can be read or no cell is covered, `"unconfirmed"` when the mouse reached the target and `confirm` didn't agree within `CONFIRM_MS`, `"missed"` after `MOVES` moves, `"timeout"` after `TIMEOUT_MS`.
+
+Example:
+```luau
+local Npcs = require("@lib/main/entities/npcs")
+local Track = require("@lib/utils/input/track")
+
+local npc = assert(Npcs.find("Banker"))[1]
+print(Track.hover_heat(function()
+	local box = Npcs.clickbox(npc)
+	return if box and box.triangles then { triangles = box.triangles } else nil
+end, nil, function()
+	return Npcs.hovered(npc)
+end))
 ```

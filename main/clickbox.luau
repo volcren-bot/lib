@@ -30,6 +30,7 @@ export type Clickbox = {
 	bounding_box: boolean,
 	box: { bottom: Quad, top: Quad }?,
 	triangles: { Polygon }?,
+	anchor: Point?,
 }
 
 export type Aim = (lead_ms: number?) -> Clickbox?
@@ -307,19 +308,28 @@ local function shifted(box: Clickbox, anchor: Anchor, shift: Host.FinePoint): Cl
 	}
 end
 
+local function anchor_point(at: Anchor, shift: Host.FinePoint?): Point?
+	local ref: { Host.FinePoint } = { { x = at.x, y = at.y, z = 0 } }
+	local projected = if shift then Projection.shifted(ref, shift) else Projection.points(ref)
+	local p = projected and projected[1]
+	return if p then Point.new(math.round(p.x), math.round(p.y)) else nil
+end
+
 function Clickbox.walking(model: () -> Clickbox?, anchor: () -> Anchor?, what: string): Aim
 	return function(lead_ms: number?)
 		local box = model()
-		if lead_ms == nil or lead_ms <= 0 then
-			return box
-		end
-		local shift = Walker.ahead(lead_ms)
 		local at = anchor()
+		local shift = if lead_ms and lead_ms > 0 then Walker.ahead(lead_ms) else nil
 		if shift == nil or (shift.x == 0 and shift.y == 0) or at == nil then
+			if box and at then
+				box.anchor = anchor_point(at)
+			end
 			return box
 		end
 		if box then
-			return shifted(box, at, shift) or box
+			local moved = shifted(box, at, shift) or box
+			moved.anchor = anchor_point(at, shift)
+			return moved
 		end
 		local cuboid = Projection.cuboid(at.x, at.y, at.size, at.height, nil, shift)
 		if cuboid == nil then
@@ -471,6 +481,17 @@ function Clickbox.hover(clickbox: Aim, hovered: () -> boolean, what: string, til
 			box = clickbox()
 		end
 		local visible = visibility()
+		if box and box.triangles and visible then
+			local ok, why = Track.hover_heat(function(): Track.Shape?
+				local now = clickbox()
+				return if now and now.triangles then { triangles = now.triangles, anchor = now.anchor } else nil
+			end, visible, hovered)
+			if ok then
+				return true
+			end
+			Log.log("Clickbox", `couldn't keep the mouse on {what} ({why})`)
+			continue
+		end
 		local list = if box then stable_triangles(box) else nil
 		local index = if box and list and visible then pick_index(box, list, Mouse.position(), visible) else nil
 		if index == nil then

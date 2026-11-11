@@ -5,6 +5,7 @@ type Widget = Host.Widget
 local Item = require("@lib/utils/item")
 type Item = Item.Item
 local BankpinKeypad = require("@lib/main/interfaces/mainscreen/bankpin_keypad")
+local Biometrics = require("@lib/main/antiban/biometrics")
 local Chat = require("@lib/main/interfaces/chatbox/chat")
 local Clickbox = require("@lib/main/clickbox")
 local Interact = require("@lib/main/interact")
@@ -742,6 +743,29 @@ function Bankmain.show_slot(slot: number): boolean
 end
 
 Bankmain.ALL_BUT_ONE = -1
+Bankmain.CUSTOM_BUTTON_CHANCE = 0.005
+
+local function enable_custom(amount: number): (boolean, boolean)
+	local custom = QUANTITY_VALUES.CUSTOM
+	if Host.varbit(QUANTITY_VARBIT) == custom then
+		return true, false
+	end
+	local w = quantity_button("CUSTOM")
+	if w == nil then
+		return false, false
+	end
+	Mouse.click(w)
+	local prompted = false
+	local selected = Widgets.wait_within(function(): boolean
+		prompted = Chat.find_query(CUSTOM_QUANTITY_QUERY)
+		return prompted or Host.varbit(QUANTITY_VARBIT) == custom
+	end, SETTING_TIMEOUT_MS, POLL_MS)
+	if prompted then
+		local typed = Chat.answer_query(CUSTOM_QUANTITY_QUERY, tostring(math.floor(amount)), ENTER_AMOUNT_TIMEOUT_MS)
+		return typed and wait_varbit(CUSTOM_QUANTITY_VARBIT, math.floor(amount), SETTING_TIMEOUT_MS), true
+	end
+	return selected, false
+end
 
 local function stocked_slot(item: Item | { Item }): (number?, number?)
 	local matcher = Item.matcher(item)
@@ -790,7 +814,37 @@ function Bankmain.withdraw(
 		return false
 	end
 	local before = items.count_ex(item) or 0
-	if use_quantity_buttons ~= false and wanted ~= Bankmain.ALL_BUT_ONE then
+	local new_x = wanted > 0 and Bankmain.quantity_of(wanted) == "CUSTOM" and Bankmain.custom_quantity() ~= wanted
+	if use_quantity_buttons ~= false and new_x and not Biometrics.random_boolean(Bankmain.CUSTOM_BUTTON_CHANCE) then
+		local selected, prompted = enable_custom(wanted)
+		if not selected then
+			Log.log("Bankmain", "withdraw: couldn't select the X quantity button")
+			return false
+		end
+		local current = stocked_slot(item)
+		if current ~= nil then
+			slot = current
+		end
+		if not Bankmain.show_slot(slot) then
+			Log.log("Bankmain", `withdraw: couldn't show bank slot {slot}`)
+			return false
+		end
+		if prompted then
+			if not items.click_slot(slot) then
+				Log.log("Bankmain", `withdraw: couldn't click bank slot {slot}`)
+				return false
+			end
+		else
+			if not items.interact_slot(slot, "Withdraw-X") then
+				Log.log("Bankmain", `withdraw: couldn't pick Withdraw-X on bank slot {slot}`)
+				return false
+			end
+			if not Chat.answer_query(CUSTOM_QUANTITY_QUERY, tostring(math.floor(wanted)), ENTER_AMOUNT_TIMEOUT_MS) then
+				Log.log("Bankmain", `withdraw: couldn't type {wanted} for Withdraw-X`)
+				return false
+			end
+		end
+	elseif use_quantity_buttons ~= false and wanted ~= Bankmain.ALL_BUT_ONE then
 		if not Bankmain.set_quantity(wanted) then
 			Log.log("Bankmain", `withdraw: couldn't set the quantity to {wanted}`)
 			return false
@@ -835,6 +889,45 @@ function Bankmain.withdraw(
 		`withdraw: the bank still held {items.count_ex(item) or "?"} of it after {WITHDRAW_TIMEOUT_MS} ms (had {before})`
 	)
 	return false
+end
+
+function Bankmain.selected_amount(): number?
+	local quantity = Bankmain.quantity()
+	if quantity == "ONE" then
+		return 1
+	elseif quantity == "FIVE" then
+		return 5
+	elseif quantity == "TEN" then
+		return 10
+	elseif quantity == "CUSTOM" then
+		return Bankmain.custom_quantity()
+	elseif quantity == "ALL" then
+		return math.huge
+	end
+	return nil
+end
+
+function Bankmain.withdraw_selected(item: Item | { Item }): boolean
+	if not Bankmain.is_open() then
+		return false
+	end
+	local slot = stocked_slot(item)
+	if slot == nil then
+		Log.log("Bankmain", "withdraw_selected: the bank has none of it")
+		return false
+	end
+	local before = items.count_ex(item) or 0
+	if not Bankmain.show_slot(slot) then
+		Log.log("Bankmain", `withdraw_selected: couldn't show bank slot {slot}`)
+		return false
+	end
+	if not items.click_slot(slot) then
+		Log.log("Bankmain", `withdraw_selected: couldn't click bank slot {slot}`)
+		return false
+	end
+	return Widgets.wait_within(function()
+		return (items.count_ex(item) or before) < before
+	end, WITHDRAW_TIMEOUT_MS, POLL_MS)
 end
 
 export type Deposit = { item: Item | { Item }, quantity: number? }

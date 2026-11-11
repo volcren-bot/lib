@@ -216,9 +216,10 @@ end
 Definition:
 ```luau
 Bankmain.ALL_BUT_ONE = -1
+Bankmain.CUSTOM_BUTTON_CHANCE = 0.005
 function Bankmain.withdraw(item: Item | { Item }, amount: number?, noted: boolean?, use_quantity_buttons: boolean?): boolean
 ```
-Takes an item out of the bank. `amount` is how many (1 by default; 0 or less is all; `Bankmain.ALL_BUT_ONE` is all but one); asking for the whole stack or more takes all of it. `noted` withdraws as notes (`true`) or items (`false`); `nil` leaves the setting as it is. Placeholders are skipped. By default it selects the quantity button that gives the amount (`set_quantity`, so X is set first for other amounts), shows the item and clicks it; with `use_quantity_buttons` false it takes the option from the item's menu instead (`Withdraw-1/5/10/All/All-but-1`, the amount X holds, or `Withdraw-X` and types the amount). Returns `true` once the bank holds less of the item, `false` if the bank is closed, has none of it, or nothing was taken.
+Takes an item out of the bank. `amount` is how many (1 by default; 0 or less is all; `Bankmain.ALL_BUT_ONE` is all but one); asking for the whole stack or more takes all of it. `noted` withdraws as notes (`true`) or items (`false`); `nil` leaves the setting as it is. Placeholders are skipped. By default it selects the quantity button that gives the amount, shows the item and clicks it. For an amount X doesn't hold yet it left-clicks the X button, then takes `Withdraw-X` from the item's menu and types the amount, which also makes it X's amount (when the X button itself asks for an amount, it answers that and clicks the item instead); only with the rare biometric chance `CUSTOM_BUTTON_CHANCE` does it set X from the button's own menu (`set_quantity`) and click the item; with `use_quantity_buttons` false it takes the option from the item's menu instead (`Withdraw-1/5/10/All/All-but-1`, the amount X holds, or `Withdraw-X` and types the amount). Returns `true` once the bank holds less of the item, `false` if the bank is closed, has none of it, or nothing was taken.
 
 It leaves the quantity, X and notes settings as it set them. Save them first (`quantity`, `custom_quantity`, `notes`) if the script needs them back.
 
@@ -232,6 +233,15 @@ Bankmain.withdraw("Charcoal", 0, true, false) -- all of it, as notes, through th
 ```
 
 Not covered: the incinerator button and the Jagex account advert (neither is shown in the bank this was written against), and the settings button (the client's top bar has no such button).
+
+### Bankmain.selected_amount / Bankmain.withdraw_selected
+
+Definition:
+```luau
+function Bankmain.selected_amount(): number?
+function Bankmain.withdraw_selected(item: Item | { Item }): boolean
+```
+`selected_amount` is how many a left click on an item withdraws with the quantity button selected now: 1, 5, 10, the amount X holds, or `math.huge` for All (nil when it can't be read). `withdraw_selected` shows the item and left-clicks it with whatever is selected, without touching the buttons or the menu; `true` once the bank holds less of it. [InventoryLayout.withdraw](../../inventory_layout.md#inventorylayoutwithdraw) uses it for a last item that fills the inventory.
 
 ## Bankmain.close
 

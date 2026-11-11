@@ -49,6 +49,8 @@ Mouse.miss_chance = 0
 Mouse.can_idle = true
 Mouse.idle_interval = 0
 Mouse.use_teleport = false
+Mouse.settle_timeout = 150
+Mouse.settle_ms = 30
 
 local idle_progress = 0
 local idle_goal = 0
@@ -289,9 +291,26 @@ function Mouse.cancel()
 	input_cancel()
 end
 
+local function settle(at: Point)
+	local x, y = math.round(at.x), math.round(at.y)
+	local started = time()
+	while time() - started < Mouse.settle_timeout do
+		local now = Mouse.position()
+		if now and now.x == x and now.y == y then
+			sleep(Mouse.settle_ms)
+			return
+		end
+		sleep(10)
+	end
+end
+
 function Mouse.click(target: Target?, button: Button?, forced: boolean?, distribution: Distribution?)
 	if target ~= nil then
-		Mouse.move(target, forced, distribution)
+		local p = pick(target, forced, distribution)
+		if p then
+			move_to(p)
+			settle(p)
+		end
 	end
 	mouse_down(button)
 	sleep(press_ms())

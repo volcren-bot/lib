@@ -34,6 +34,8 @@ Mouse.miss_chance = 0
 Mouse.can_idle = true
 Mouse.idle_interval = 0
 Mouse.use_teleport = false
+Mouse.settle_timeout = 150
+Mouse.settle_ms = 30
 ```
 - `speed`, `wind`, `gravity`: how fast and how wobbly the mouse moves. `speed` only shortens the part of a move's time that grows with its distance.
 - `pace`: how many times faster every move runs along the same path (`HOST_API` 12): 1.5, the default, takes a third less time than 1. Biometrics set `speed`, not this; raise it for a moment where a person hurries (equipment and prayer layout swaps multiply it), then put it back.
@@ -43,6 +45,7 @@ Mouse.use_teleport = false
 - `miss_chance`: chance (0 to 1) of first moving to a wrong spot nearby and correcting.
 - `can_idle` and `idle_interval`: now and then pause the mouse for a few seconds, once the mouse has travelled about `idle_interval` screens. 0 turns it off.
 - `use_teleport`: jump instead of moving smoothly. Mostly for testing.
+- `settle_timeout` / `settle_ms`: before `click` presses after a move, it waits up to `settle_timeout` ms for the client to report the mouse where the move ended, then `settle_ms` more. The client can handle a press that comes with the last step of a move at where the mouse was a frame earlier, so without the wait a menu row clicked from above picks the row over it.
 
 ## Mouse.position
 
@@ -321,7 +324,7 @@ Definition:
 ```luau
 function Mouse.click(target: Target?, button: Button?, forced: boolean?, distribution: Distribution?)
 ```
-Clicks. With a target it moves there first; without one it clicks where the mouse is.
+Clicks. With a target it moves there first and waits for the client to have the mouse there (`settle_timeout`, `settle_ms`) before pressing; without one it clicks where the mouse is.
 
 Example:
 ```luau

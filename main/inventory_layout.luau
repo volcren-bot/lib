@@ -194,10 +194,10 @@ function InventoryLayout.deposit_diff(layout: Layout): boolean
 	return true
 end
 
-local function take(entry: Entry): boolean
+local function take(entry: Entry, buttons: boolean): boolean
 	if entry.stackable then
 		local amount = LayoutItems.top_up(entry, Inventory.count_ex(entry.items) or 0)
-		return amount == nil or Bankmain.withdraw(entry.items, amount, false)
+		return amount == nil or Bankmain.withdraw(entry.items, amount, false, buttons)
 	end
 	local need = entry.copies - (Inventory.count(entry.items) or 0)
 	for _, item in ipairs(entry.items) do
@@ -206,13 +206,84 @@ local function take(entry: Entry): boolean
 		end
 		local stock = Bankmain.count_ex(item) or 0
 		if stock > 0 then
-			if not Bankmain.withdraw(item, math.min(need, stock), false) then
+			if not Bankmain.withdraw(item, math.min(need, stock), false, buttons) then
 				return false
 			end
 			need = entry.copies - (Inventory.count(entry.items) or 0)
 		end
 	end
 	return need <= 0
+end
+
+local function custom_amount(entry: Entry): number?
+	local amount: number?
+	if entry.stackable then
+		amount = LayoutItems.top_up(entry, Inventory.count_ex(entry.items) or 0)
+	else
+		amount = entry.copies - (Inventory.count(entry.items) or 0)
+	end
+	if amount == nil or amount <= 0 or Bankmain.quantity_of(amount) ~= "CUSTOM" then
+		return nil
+	end
+	return if amount < (Bankmain.count_ex(entry.items) or 0) then amount else nil
+end
+
+local function withdraw_plan(entries: { Entry }): { { entry: Entry, shared: boolean } }
+	local amounts: { [number]: number } = {}
+	local uses: { [number]: number } = {}
+	for i, entry in ipairs(entries) do
+		local amount = custom_amount(entry)
+		if amount then
+			amounts[i] = amount
+			uses[amount] = (uses[amount] or 0) + 1
+		end
+	end
+	local groups: { { number } } = {}
+	local group_of: { [number]: number } = {}
+	local rest: { number } = {}
+	for i in ipairs(entries) do
+		local amount = amounts[i]
+		if amount and uses[amount] > 1 then
+			if group_of[amount] == nil then
+				table.insert(groups, {})
+				group_of[amount] = #groups
+			end
+			table.insert(groups[group_of[amount]], i)
+		else
+			table.insert(rest, i)
+		end
+	end
+	local plan: { { entry: Entry, shared: boolean } } = {}
+	for _, group in ipairs(groups) do
+		for _, i in ipairs(group) do
+			table.insert(plan, { entry = entries[i], shared = true })
+		end
+	end
+	for _, i in ipairs(rest) do
+		table.insert(plan, { entry = entries[i], shared = false })
+	end
+	return plan
+end
+
+local function missing(entry: Entry): boolean
+	if entry.stackable then
+		return LayoutItems.top_up(entry, Inventory.count_ex(entry.items) or 0) ~= nil
+	end
+	return entry.copies > (Inventory.count(entry.items) or 0)
+end
+
+local function fills_with_click(entry: Entry): boolean
+	if entry.stackable or Bankmain.notes() ~= false then
+		return false
+	end
+	local free = InventoryLayout.SIZE - (Inventory.count_used() or InventoryLayout.SIZE)
+	local need = entry.copies - (Inventory.count(entry.items) or 0)
+	local selected = Bankmain.selected_amount()
+	return free > 0
+		and need >= free
+		and selected ~= nil
+		and selected >= free
+		and (Bankmain.count_ex(entry.items) or 0) >= free
 end
 
 local function pouch_slot(layout: Layout): Slot?
@@ -282,9 +353,25 @@ function InventoryLayout.withdraw(layout: Layout): boolean
 	if not fill_pouch(layout) then
 		return false
 	end
-	for _, entry in ipairs(InventoryLayout.entries(layout)) do
-		if not take(entry) then
-			Log.log("InventoryLayout", `withdraw: couldn't take {entry.label}`)
+	local plan = withdraw_plan(InventoryLayout.entries(layout))
+	local last = 0
+	for i, step in ipairs(plan) do
+		if missing(step.entry) then
+			last = i
+		end
+	end
+	for i, step in ipairs(plan) do
+		if i == last and fills_with_click(step.entry) then
+			if not Bankmain.withdraw_selected(step.entry.items) then
+				Log.log("InventoryLayout", `withdraw: couldn't take {step.entry.label}`)
+				return false
+			end
+			continue
+		end
+		local amount = custom_amount(step.entry)
+		local buttons = step.shared or amount == nil or Bankmain.custom_quantity() == amount
+		if not take(step.entry, buttons) then
+			Log.log("InventoryLayout", `withdraw: couldn't take {step.entry.label}`)
 			return false
 		end
 	end

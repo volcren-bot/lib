@@ -26,9 +26,16 @@ Track.SETTLE_MS = 60
 Track.CONFIRM_MS = 80
 Track.SPEED_WINDOW_MS = 120
 Track.MAX_LEAD_PX = 60
+Track.HEAT_CELL = 6
+Track.HEAT_CAP = 60
+Track.WARM = 8
+Track.CENTER_SPREAD = 0.45
+Track.MOUSE_PULL = 2
 Track.debug = false
 
 export type Spot = { u: number, v: number }
+
+export type Shape = { triangles: { Polygon }, anchor: Point? }
 
 function Track.spot(): Spot
 	for _ = 1, Triangle.CENTER_TRIES do
@@ -168,12 +175,19 @@ function Track.hover(
 		Mouse.move_async(dest, true)
 		while Mouse.busy() and time() < deadline do
 			sleep(Track.POLL_MS)
-			local q = read()
-			if q == nil then
+			local q, _, now_list = read()
+			if q == nil or now_list == nil then
 				return lost()
 			end
 			observe(q)
 			local mouse_now = Mouse.position()
+			if confirm and mouse_now and Track.on_any(now_list, mouse_now) and confirm() then
+				Mouse.cancel()
+				sleep(Track.POLL_MS)
+				if confirm() then
+					return true, nil
+				end
+			end
 			local left = if mouse_now then Mouse.travel_ms(dest, mouse_now) else 0
 			local to_go = if mouse_now then Point.distance(mouse_now, dest) else 0
 			if Point.distance(ahead(q, left), dest) > math.max(Track.JUMP_PX, to_go * Track.JUMP_SHARE) then
@@ -188,6 +202,227 @@ function Track.hover(
 			local now_at = Mouse.position()
 			return now_at ~= nil and Point.distance(now_at, dest) <= 1
 		end, Track.SETTLE_MS, Track.POLL_MS)
+	end
+	Mouse.cancel()
+	return false, "timeout"
+end
+
+local function cell_key(cx: number, cy: number): number
+	return (cx + 32768) * 65536 + (cy + 32768)
+end
+
+local function cell_center(key: number, origin: Point): Point
+	local size = Track.HEAT_CELL
+	local cx, cy = key // 65536 - 32768, key % 65536 - 32768
+	return Point.new(origin.x + cx * size + size // 2, origin.y + cy * size + size // 2)
+end
+
+local function covered_cells(
+	triangles: { Polygon },
+	origin: Point,
+	visible: ((Point) -> boolean)?
+): { [number]: boolean }
+	local size = Track.HEAT_CELL
+	local cells: { [number]: boolean } = {}
+	for _, t in ipairs(triangles) do
+		if #t >= 3 and Triangle.area(t) >= 1 then
+			local x1 = math.floor((math.min(t[1].x, t[2].x, t[3].x) - origin.x) / size)
+			local x2 = math.floor((math.max(t[1].x, t[2].x, t[3].x) - origin.x) / size)
+			local y1 = math.floor((math.min(t[1].y, t[2].y, t[3].y) - origin.y) / size)
+			local y2 = math.floor((math.max(t[1].y, t[2].y, t[3].y) - origin.y) / size)
+			for cx = x1, x2 do
+				for cy = y1, y2 do
+					local key = cell_key(cx, cy)
+					if not cells[key] then
+						local p = cell_center(key, origin)
+						if Triangle.contains(t, p) and (visible == nil or visible(p)) then
+							cells[key] = true
+						end
+					end
+				end
+			end
+		end
+	end
+	return cells
+end
+
+local function heat_weight(n: number): number
+	local h = math.min(n, Track.HEAT_CAP) / Track.HEAT_CAP
+	return h * h
+end
+
+local function pick_cell(heat: { [number]: number }, origin: Point, mouse: Point?): number?
+	local keys: { number } = {}
+	local total, x, y = 0, 0, 0
+	for key, n in heat do
+		local p, w = cell_center(key, origin), heat_weight(n)
+		table.insert(keys, key)
+		total += w
+		x += w * p.x
+		y += w * p.y
+	end
+	if total <= 0 then
+		return nil
+	end
+	x, y = x / total, y / total
+	local vx, vy = 0, 0
+	for _, key in keys do
+		local p, w = cell_center(key, origin), heat_weight(heat[key])
+		vx += w * (p.x - x) ^ 2
+		vy += w * (p.y - y) ^ 2
+	end
+	local sx, sy = math.max(math.sqrt(vx / total), 1), math.max(math.sqrt(vy / total), 1)
+	local reach = Track.MOUSE_PULL * math.max(sx, sy)
+	sx, sy = sx * Track.CENTER_SPREAD, sy * Track.CENTER_SPREAD
+	return Random.weighted(keys, function(key: number): number
+		local p = cell_center(key, origin)
+		local w = heat_weight(heat[key]) * math.exp(-0.5 * (((p.x - x) / sx) ^ 2 + ((p.y - y) / sy) ^ 2))
+		if mouse then
+			w *= math.exp(-Point.distance(p, mouse) / reach)
+		end
+		return w
+	end)
+end
+
+function Track.hover_heat(
+	read: () -> Shape?,
+	visible: ((Point) -> boolean)?,
+	confirm: (() -> boolean)?
+): (boolean, string?)
+	local size = Track.HEAT_CELL
+	local heat: { [number]: number } = {}
+	local any_warm = false
+	local target: number? = nil
+	local dest: Point? = nil
+	local moves = 0
+	local finished_at = -math.huge
+	local vx, vy = 0, 0
+	local reads: { { p: Point, at: number } } = {}
+
+	local function observe(p: Point)
+		local now = time()
+		table.insert(reads, { p = p, at = now })
+		while #reads > 2 and now - reads[2].at >= Track.SPEED_WINDOW_MS do
+			table.remove(reads, 1)
+		end
+		local first = reads[1]
+		local dt = now - first.at
+		if dt >= Track.SPEED_WINDOW_MS / 2 then
+			vx, vy = (p.x - first.p.x) / dt, (p.y - first.p.y) / dt
+		end
+	end
+
+	local function ahead(p: Point, ms: number): Point
+		local dx, dy = vx * ms, vy * ms
+		local len = math.sqrt(dx * dx + dy * dy)
+		if len > Track.MAX_LEAD_PX then
+			dx, dy = dx / len * Track.MAX_LEAD_PX, dy / len * Track.MAX_LEAD_PX
+		end
+		return Point.new(math.round(p.x + dx), math.round(p.y + dy))
+	end
+
+	local function update(): Point?
+		local shape = read()
+		if shape == nil or #shape.triangles == 0 then
+			return nil
+		end
+		local origin = shape.anchor or Point.new(0, 0)
+		local next_heat: { [number]: number } = {}
+		any_warm = false
+		for key in covered_cells(shape.triangles, origin, visible) do
+			local n = (heat[key] or 0) + 1
+			next_heat[key] = n
+			any_warm = any_warm or n >= Track.WARM
+		end
+		heat = next_heat
+		observe(origin)
+		return origin
+	end
+
+	local function warm_at(origin: Point, p: Point): boolean
+		local n = heat[cell_key(math.floor((p.x - origin.x) / size), math.floor((p.y - origin.y) / size))]
+		return n ~= nil and (n >= Track.WARM or not any_warm)
+	end
+
+	local deadline = time() + Track.TIMEOUT_MS
+	while time() < deadline do
+		local origin = update()
+		if origin == nil or next(heat) == nil then
+			Mouse.cancel()
+			return false, "gone"
+		end
+		local mouse = Mouse.position()
+		if target == nil or heat[target] == nil then
+			target = pick_cell(heat, origin, mouse)
+			if target == nil then
+				Mouse.cancel()
+				return false, "gone"
+			end
+			if Mouse.busy() then
+				Mouse.cancel()
+				finished_at = -math.huge
+			end
+		end
+		local goal = cell_center(target :: number, origin)
+		if confirm and mouse and warm_at(origin, mouse) and confirm() then
+			if not Mouse.busy() then
+				return true, nil
+			end
+			Mouse.cancel()
+			sleep(Track.POLL_MS)
+			if confirm() then
+				return true, nil
+			end
+		end
+		if Mouse.busy() then
+			local going = dest
+			if going and mouse then
+				local left = Mouse.travel_ms(going, mouse)
+				if
+					Point.distance(ahead(goal, left), going)
+					> math.max(Track.JUMP_PX, Point.distance(mouse, going) * Track.JUMP_SHARE)
+				then
+					if Track.debug then
+						Log.log("Track", `the target moved to {goal.x},{goal.y}: aiming again`)
+					end
+					Mouse.cancel()
+				end
+			end
+			finished_at = if Mouse.busy() then time() else -math.huge
+		elseif
+			time() - finished_at < Track.SETTLE_MS
+			and dest
+			and mouse
+			and Point.distance(mouse, dest :: Point) > 1
+		then
+			sleep(Track.POLL_MS)
+			continue
+		elseif mouse and Point.distance(mouse, goal) <= size then
+			if confirm == nil then
+				return true, nil
+			end
+			local until_at = time() + Track.CONFIRM_MS
+			repeat
+				if confirm() then
+					return true, nil
+				end
+				sleep(Track.POLL_MS)
+			until time() >= until_at
+			return false, "unconfirmed"
+		else
+			if moves >= Track.MOVES then
+				return false, "missed"
+			end
+			moves += 1
+			dest = ahead(goal, Mouse.travel_ms(goal))
+			if Track.debug then
+				local d = dest :: Point
+				Log.log("Track", `heat move {moves}: target {goal.x},{goal.y}, to {d.x},{d.y}`)
+			end
+			Mouse.move_async(dest :: Point, true)
+			finished_at = time()
+		end
+		sleep(Track.POLL_MS)
 	end
 	Mouse.cancel()
 	return false, "timeout"
