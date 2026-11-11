@@ -75,7 +75,7 @@ Definition:
 ```luau
 function BankPouch.withdraw(rune: Item, amount: number?): boolean
 ```
-Takes a rune from the bank into the pouch (`Bankmain.withdraw`, which puts it in the pouch while the panel shows). True once the pouch holds more of it.
+Takes a rune from the bank into the pouch (`Bankmain.withdraw`, which puts it in the pouch while the panel shows). True once the pouch holds more of it. When the bank can't give it or the pouch doesn't take it, it logs which, with the rune's name, and returns false.
 
 Example:
 ```luau

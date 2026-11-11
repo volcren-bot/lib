@@ -717,6 +717,20 @@ export type HttpResponse = {
 	body: string,
 }
 
+export type ItemPrice = {
+	id: number,
+	name: string,
+	members: boolean,
+	value: number?,
+	high_alch: number?,
+	low_alch: number?,
+	limit: number?,
+	high: number?,
+	high_time: number?,
+	low: number?,
+	low_time: number?,
+}
+
 local g = _G :: any
 
 return {
@@ -821,6 +835,7 @@ return {
 	bank_pin_enter = g.bank_pin_enter :: () -> string,
 	lamp_skill = g.lamp_skill :: () -> (string?, string?),
 	http_request = g.http_request :: (options: HttpRequest) -> (HttpResponse?, string?),
+	item_prices = g.item_prices :: (items: { number | string }) -> ({ ItemPrice? }?, string?),
 	draw_rect = g.draw_rect :: (
 		x1: number,
 		y1: number,

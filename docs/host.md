@@ -49,6 +49,7 @@ The data the functions below hand back. Each one is a plain table, so you read i
 | `LayoutRequirement` | An item of a layout field's `required` list (host API 15): `ids`, `slot` (needed for equipment), `min`, `max` and `doses`. |
 | `WindMouseOptions` | Tuning for human-like mouse movement. |
 | `HttpRequest` / `HttpResponse` | What `Host.http_request` takes and returns. |
+| `ItemPrice` | A Grand Exchange item's prices and values (`Host.item_prices`): `id`, `name`, `members`, `value`, `high_alch`, `low_alch`, buy `limit`, and the latest instant-buy `high` and instant-sell `low` with their Unix times `high_time` and `low_time`. |
 
 ## Host.game_state
 
@@ -263,7 +264,7 @@ Definition:
 ```luau
 Host.form: (spec: FormSpec) -> { [string]: any }?
 ```
-Shows a settings window and waits until the user presses the button. Returns the chosen values by field id, or `nil, "cancelled"`. Field kinds are `label`, `check`, `number`, `text`, `choice`, `list` (a scrolling list of ticked rows, `items = { { id = "a", label = "A", default = true } }`, giving `{ a = true }`), `equipment`, `inventory` and `prayer`. The last three (host API 10) add an Equipment, Inventory or Prayer tab to the script's page in the loader, where the user reads layouts from the client, edits them (the range of a stack, the doses or charges that count for an item such as a potion and which are taken first, what an empty equipment slot means, the inventory's order; prayers are clicked together in the prayer book, which keeps out the ones that can't be on at once) and keeps them per script; the field shows a dropdown of those layouts and its value is the chosen one, an `EquipmentLayout`, `InventoryLayout` or `PrayerLayout`, or `nil` when none is chosen. An `equipment` or `inventory` field can set `required`, a list of `LayoutRequirement`s (`{ ids = { 2434 }, slot = 0, doses = { 4, 3 } }`; host API 15), items every layout holds, padlocked in the loader so the user can move but not remove or change them; and a `prayer` field can set `locked`, prayer keys the script controls itself, padlocked with every prayer they can't be on with and left out of the layouts. [EquipmentLayout](main/equipment_layout.md), [InventoryLayout](main/inventory_layout.md) and [PrayerLayout](main/prayer_layout.md) act on them. Any field can set `enabled_by` to the id of a check, and is greyed out while that check is off. Fields next to each other in the list that set the same `row` name share a line, left to right, each as wide as it needs and the form's `row_gap` points apart (24 when it sets none, at most 500), and are stacked again while the line doesn't fit the window; a loader older than this option stacks them. A `number` field can set `box_first = true` to show its edit box before its label. A `label` can set `heading = 1` to show as a title, or `2` as a section heading, to group the fields under it. A field can also set `visible_when = { id = "collect", equals = "Eclipse red" }` (`equals` may be a list of values) to be shown only while the field `id` has that value; `visible_when` may also be a list of such rules, all of which must hold; a hidden field keeps its value and is still returned.
+Shows a settings window and waits until the user presses the button. Returns the chosen values by field id, or `nil, "cancelled"`. The `title` isn't shown: the loader already shows the script's name, and keeps the remembered values and layouts per title, so give each script its own. Field kinds are `label`, `check`, `number`, `text`, `choice`, `list` (a scrolling list of ticked rows, `items = { { id = "a", label = "A", default = true } }`, giving `{ a = true }`), `equipment`, `inventory` and `prayer`. The last three (host API 10) add an Equipment, Inventory or Prayer tab to the script's page in the loader, where the user reads layouts from the client, edits them (the range of a stack, the doses or charges that count for an item such as a potion and which are taken first, what an empty equipment slot means, the inventory's order; prayers are clicked together in the prayer book, which keeps out the ones that can't be on at once) and keeps them per script; the field shows a dropdown of those layouts and its value is the chosen one, an `EquipmentLayout`, `InventoryLayout` or `PrayerLayout`, or `nil` when none is chosen. An `equipment` or `inventory` field can set `required`, a list of `LayoutRequirement`s (`{ ids = { 2434 }, slot = 0, doses = { 4, 3 } }`; host API 15), items every layout holds, padlocked in the loader so the user can move but not remove or change them; and a `prayer` field can set `locked`, prayer keys the script controls itself, padlocked with every prayer they can't be on with and left out of the layouts. [EquipmentLayout](main/equipment_layout.md), [InventoryLayout](main/inventory_layout.md) and [PrayerLayout](main/prayer_layout.md) act on them. Any field can set `enabled_by` to the id of a check, and is greyed out while that check is off. Fields next to each other in the list that set the same `row` name share a line, left to right, each as wide as it needs and the form's `row_gap` points apart (24 when it sets none, at most 500), and are stacked again while the line doesn't fit the window; a loader older than this option stacks them. A `number` field can set `box_first = true` to show its edit box before its label. A `label` can set `heading = 1` to show as a title, or `2` as a section heading, to group the fields under it. A field can also set `visible_when = { id = "collect", equals = "Eclipse red" }` (`equals` may be a list of values) to be shown only while the field `id` has that value; `visible_when` may also be a list of such rules, all of which must hold; a hidden field keeps its value and is still returned.
 
 Example:
 ```luau
@@ -1539,7 +1540,7 @@ Host.http_request: (options: HttpRequest) -> (HttpResponse?, string?)
 ```
 Makes an HTTP request and returns the response, or `nil` and why not. `options` has a `url`, and optionally a `method` (`"GET"` by default), `headers` (a table of names to values), a text `body` (up to 1 MB) and a `timeout` in milliseconds (15000 by default, 60000 at most, redirects included). The response has `ok` (a status from 200 to 299), `status`, `headers` (lowercase names, a repeated header joined with `", "`) and `body` as text (up to 8 MB). A status like 404 is still a response: check `ok`, only a request that could not be made returns an error.
 
-The loader makes the request, and only to hosts on the whitelist in its Settings (the Volcren hosts are always on it, the user adds others). A redirect is followed only while every host on the way is whitelisted, and an `Authorization` or `Cookie` header isn't sent to a different host than the first. Blocks the script until the response is in, and needs no client.
+The loader makes the request, and only to hosts on the whitelist in its Settings (the Volcren hosts and `prices.runescape.wiki` are always on it, the user adds others). A redirect is followed only while every host on the way is whitelisted, and an `Authorization` or `Cookie` header isn't sent to a different host than the first. Blocks the script until the response is in, and needs no client.
 
 Example:
 ```luau
@@ -1550,6 +1551,28 @@ if not response then
 	print("request failed:", err)
 elseif response.ok then
 	print(response.status, response.body)
+end
+```
+
+## Host.item_prices
+
+Definition:
+```luau
+Host.item_prices: (items: { number | string }) -> ({ ItemPrice? }?, string?)
+```
+The Grand Exchange prices of items, in the order of `items`, from the game wiki's real-time prices API (`prices.runescape.wiki`, built into the loader's HTTP whitelist). Host API 17. An item is an id or a name in any case. An id the API doesn't list, like a noted or placeholder id, is looked up by its name in the client, so it gives the tradeable item of that name (without a client it stays `nil`). `nil` for an item that isn't traded on the Grand Exchange. `high`, `low` and their times are `nil` when the item was never seen bought or sold, and `value`, `high_alch`, `low_alch` and `limit` when the wiki doesn't know them.
+
+The injector downloads the item list and the latest prices on the first call and keeps them in memory, so asking often costs nothing: a call downloads the latest prices again once they are 10 minutes old, and the item list once it is a day old. Each run keeps its own. A failed download keeps the prices it had and tries again a minute later; only a run that has none yet gets the error. The first call blocks for the download (about a megabyte), and it needs the loader, like `Host.http_request`. Use [ItemData](utils/item_data.md).
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+local prices, err = Host.item_prices({ 4151, "Rune scimitar" })
+if not prices then
+	print("no prices:", err)
+elseif prices[1] then
+	print(prices[1].name, prices[1].high, prices[1].low)
 end
 ```
 

@@ -248,7 +248,6 @@ local function fill_pouch(layout: Layout): boolean
 	end
 	for id, need in pairs(missing) do
 		if not BankPouch.withdraw(id, need) then
-			Log.log("InventoryLayout", `withdraw: couldn't take {need} of rune {id}`)
 			BankPouch.close()
 			return false
 		end

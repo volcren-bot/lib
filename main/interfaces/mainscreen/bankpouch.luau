@@ -181,17 +181,30 @@ function BankPouch.deposit(rune: Item, amount: number?): boolean
 	end)
 end
 
+local function rune_name(rune: Item): string
+	if type(rune) == "string" then
+		return rune
+	end
+	return Item.name(rune) or `rune {rune}`
+end
+
 function BankPouch.withdraw(rune: Item, amount: number?): boolean
 	if not require_open("withdraw") then
 		return false
 	end
 	local before = Runepouch.quantity(rune)
+	local wanted = if amount == nil then "1" elseif amount <= 0 then "all" else tostring(amount)
 	if not Bankmain.withdraw(rune, amount, false) then
+		Log.log("BankPouch", `withdraw: couldn't take {wanted} of {rune_name(rune)} from the bank`)
 		return false
 	end
-	return wait(function()
+	local taken = wait(function()
 		return Runepouch.quantity(rune) > before
 	end)
+	if not taken then
+		Log.log("BankPouch", `withdraw: the pouch didn't take {rune_name(rune)}`)
+	end
+	return taken
 end
 
 function BankPouch.loadouts(): { Loadout }?
