@@ -789,3 +789,29 @@ Example:
 ```luau
 
 ```
+
+## Bankmain.selected_amount
+
+Definition:
+```luau
+function Bankmain.selected_amount(): number?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Bankmain.withdraw_selected
+
+Definition:
+```luau
+function Bankmain.withdraw_selected(item: Item | { Item }): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
