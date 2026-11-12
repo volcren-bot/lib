@@ -273,6 +273,7 @@ export type FormSpec = {
 	submit: string?,
 	columns: boolean?,
 	row_gap: number?,
+	heading_gap: number?,
 	fields: { FormField },
 }
 
