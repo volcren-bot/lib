@@ -33,6 +33,7 @@ Camera.tolerance = 64
 Camera.zoom_tolerance = 12
 
 Camera.FACE_LIMIT = 70
+Camera.LOOK_SPREAD = 12
 Camera.FACE_PITCH_SLACK = 200
 Camera.FACE_CHANCES = { { 2, 0.1 }, { 12, 0.8 }, { 20, 1 } }
 Camera.FACE_TASK_CHANCE = 0.05
@@ -428,12 +429,22 @@ local function facing_yaw(camera: CameraState, tile: Tile, me: Tile): number?
 	return Camera.degrees_to_yaw(facing + ahead - sign * left_off)
 end
 
-function Camera.face(tile: Tile, force: boolean?): boolean
+function Camera.look_at(tile: Tile, from: Tile?): boolean
+	local me = from or game_state().position
+	if me == nil or (tile.x == me.x and tile.y == me.y) then
+		return false
+	end
+	local bearing = math.deg(math.atan2(tile.x - me.x, tile.y - me.y))
+	local spread = Camera.LOOK_SPREAD
+	return Camera.set_yaw(Camera.degrees_to_yaw(bearing + Random.mean(-spread, spread)))
+end
+
+function Camera.face(tile: Tile, force: boolean?, from: Tile?): boolean
 	if not Camera.face_enabled then
 		return false
 	end
 	local state = game_state()
-	local me, camera = state.position, state.camera
+	local me, camera = from or state.position, state.camera
 	if me == nil or camera == nil then
 		return false
 	end

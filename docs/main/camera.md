@@ -43,6 +43,7 @@ Definition:
 
 ```luau
 Camera.FACE_LIMIT = 70
+Camera.LOOK_SPREAD = 12
 Camera.FACE_PITCH_SLACK = 200
 Camera.FACE_CHANCES = { { 2, 0.1 }, { 12, 0.8 }, { 20, 1 } }
 Camera.FACE_TASK_CHANCE = 0.05
@@ -52,6 +53,7 @@ Camera.face_enabled = true
 
 Settings for `Camera.face`:
 - `FACE_LIMIT`: how many degrees off the camera's direction a thing can be and still count as in the upper half of the screen (90 would be the middle line).
+- `LOOK_SPREAD`: how many degrees either side of straight ahead `Camera.look_at` may leave the tile.
 - `FACE_PITCH_SLACK`: how far below `PITCH_MAX` the pitch can be and still count as the highest.
 - `FACE_CHANCES`: how likely it turns at all, by how many tiles away the thing is: `{ tiles, chance }` points in order, with straight lines between them (see `Camera.face_chance`). The default is 10% at 2 tiles or closer, 80% at 12 and always at 20 or more, so close things rarely turn the camera. Chances below 1 are varied per account by the biometrics.
 - `FACE_TASK_CHANCE` / `face_task`: the chance (also biometric) to run `face_task` after turning, instead of raising the pitch. Loading the [antiban tasks](antiban/antiban_tasks.md) sets it to `Tasks.adjust_camera`.
@@ -443,15 +445,34 @@ local Camera = require("@lib/main/camera")
 print(Camera.face_chance(2), Camera.face_chance(7), Camera.face_chance(12), Camera.face_chance(25)) -- 0.1 0.45 0.8 1
 ```
 
+## Camera.look_at
+
+Definition:
+
+```luau
+function Camera.look_at(tile: Tile, from: Tile?): boolean
+```
+
+Turns the camera so `tile` is straight ahead, give or take `LOOK_SPREAD` degrees, keeping the pitch. `from` is where the player will stand when it matters (the landing of an obstacle under way, say); it defaults to where you are now. Unlike `Camera.face`, it always turns and aims at the tile rather than just near it. `Clickbox.reveal` uses it when facing and zooming out didn't bring a thing on screen. Returns whether the camera turned; false when `from` is the tile.
+
+Example:
+
+```luau
+local Camera = require("@lib/main/camera")
+local Walker = require("@lib/main/walker")
+
+print(Camera.look_at(assert(Walker.relative(4, 6))))
+```
+
 ## Camera.face
 
 Definition:
 
 ```luau
-function Camera.face(tile: Tile): boolean
+function Camera.face(tile: Tile, force: boolean?, from: Tile?): boolean
 ```
 
-Turns the camera so `tile` shows in the upper half of the game screen. The chatbox and game tabs cover less there, and you can see farther. It turns the short way, just enough that the tile ends up at most `FACE_LIMIT` degrees off the camera's direction, on the side it came from: usually close to that limit, sometimes closer to straight ahead. It doesn't aim the camera straight at the tile. In the same drag it raises the pitch to the highest. Sometimes it runs `face_task` instead (the antiban zoom and pitch task). Nothing happens when the tile is already in the upper half, when the player is standing on it, or when the `face_chance` roll for its distance fails. Returns whether the camera turned.
+Turns the camera so `tile` shows in the upper half of the game screen. The chatbox and game tabs cover less there, and you can see farther. It turns the short way, just enough that the tile ends up at most `FACE_LIMIT` degrees off the camera's direction, on the side it came from: usually close to that limit, sometimes closer to straight ahead. It doesn't aim the camera straight at the tile. In the same drag it raises the pitch to the highest. Sometimes it runs `face_task` instead (the antiban zoom and pitch task). Nothing happens when the tile is already in the upper half, when the player is standing on it, or when the `face_chance` roll for its distance fails (`force` skips the roll). `from` measures all of that from another tile instead of the player's, so the camera can be turned for where the player is about to be, such as the end of an obstacle. Returns whether the camera turned.
 
 The entities (through `Clickbox.hover`, `click`, `interact` and `approach`) and the `Walker` tile clicks call it before acting, so scripts don't need to.
 
