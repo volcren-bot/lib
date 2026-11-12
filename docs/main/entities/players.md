@@ -1,41 +1,41 @@
 # Main.Entities.Players
 
-Finding and interacting with other players: follow them, trade with them or just look at who is around.
+Finding and interacting with players. A `PlayerInfo` has `index`, `name`, world `x`, `y` and scene `local_x`, `local_y`. Names match case-insensitively.
 
 ```luau
 local Players = require("@lib/main/entities/players")
 ```
-
-A player is a table with `index`, `name`, `x`, `y` (world tile) and `local_x`, `local_y`. Names are matched ignoring upper/lower case.
 
 ## Players.distance
 
 Definition:
+
 ```luau
 function Players.distance(a: Tile, b: Tile): number
 ```
-How many tiles apart two tiles are (diagonal steps count as one).
+
+Chebyshev tile distance (diagonals count as one).
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
 
+```luau
 print(Players.distance({ x = 10, y = 10 }, { x = 14, y = 12 })) -- 4
 ```
 
 ## Players.find
 
 Definition:
+
 ```luau
 function Players.find(name: string?): { PlayerInfo }?
 ```
-Lists the players around you, or only those with the given name.
+
+All loaded players including yourself, or those named `name`. Nil when unreadable.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
 
-for _, p in ipairs(Players.find() or {}) do
+```luau
+for _, p in Players.find() or {} do
 	print(p.name, p.x, p.y)
 end
 ```
@@ -43,89 +43,81 @@ end
 ## Players.me
 
 Definition:
+
 ```luau
 function Players.me(): PlayerInfo?
 ```
-Your own character in the list of players.
+
+Your own entry in the player list, or nil.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
 
+```luau
 local me = Players.me()
-print(me and me.name)
 ```
 
 ## Players.nearest
 
 Definition:
+
 ```luau
 function Players.nearest(from: Tile): PlayerInfo?
 ```
-The closest other player to a tile (never yourself).
+
+The other player closest to `from` (never yourself), or nil.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
-local Walker = require("@lib/main/walker")
 
+```luau
 local other = Players.nearest(assert(Walker.position()))
-print(if other then other.name else "nobody else around")
 ```
 
 ## Players.refresh
 
 Definition:
+
 ```luau
 function Players.refresh(player: PlayerInfo): PlayerInfo?
 ```
-Gets the up-to-date version of a player you found earlier. Returns `nil` if they left.
+
+The current state of the player with the same `index`, or nil if gone.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
-local Walker = require("@lib/main/walker")
 
-local other = Players.nearest(assert(Walker.position()))
-if other then
-	print(Players.refresh(other))
-end
+```luau
+local now = Players.refresh(other)
 ```
 
 ## Players.model
 
 Definition:
+
 ```luau
 function Players.model(player: PlayerInfo): NpcModel?
 ```
-The shape of the player as drawn on screen right now.
+
+The player's model as drawn now, or nil.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
-local Walker = require("@lib/main/walker")
 
-local other = Players.nearest(assert(Walker.position()))
-local model = other and Players.model(other)
-print(model and #model.faces)
+```luau
+local model = Players.model(other)
 ```
 
 ## Players.clickbox
 
 Definition:
+
 ```luau
 function Players.clickbox(player: PlayerInfo): Clickbox?
 ```
-The area on screen where a click lands on the player. See [Clickbox](../clickbox.md).
+
+The on-screen [Clickbox](../clickbox.md) of the player, or nil when not drawn.
 
 Example:
-```luau
-local Clickbox = require("@lib/main/clickbox")
-local Players = require("@lib/main/entities/players")
-local Walker = require("@lib/main/walker")
 
-local other = Players.nearest(assert(Walker.position()))
-local box = other and Players.clickbox(other)
+```luau
+local box = Players.clickbox(other)
 if box then
 	Clickbox.draw(box)
 end
@@ -134,117 +126,97 @@ end
 ## Players.owns
 
 Definition:
+
 ```luau
 function Players.owns(player: PlayerInfo, entry: MenuEntry): boolean
 ```
-Whether a right-click menu line belongs to this player (its text starts with their name).
+
+Whether a non-NPC, non-loc menu entry's target starts with the player's name (followed by nothing or a space).
 
 Example:
-```luau
-local Host = require("@lib/host")
-local Players = require("@lib/main/entities/players")
-local Walker = require("@lib/main/walker")
 
-local other = Players.nearest(assert(Walker.position()))
-if other then
-	for _, entry in ipairs(Host.menu() or {}) do
-		print(entry.option, Players.owns(other, entry))
-	end
+```luau
+for _, entry in Host.menu() or {} do
+	print(entry.option, Players.owns(other, entry))
 end
 ```
 
 ## Players.hovered
 
 Definition:
+
 ```luau
 function Players.hovered(player: PlayerInfo): boolean
 ```
-Whether the game currently has the mouse on this player.
+
+Whether the current menu lists this player, i.e. the mouse is on them.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
-local Walker = require("@lib/main/walker")
 
-local other = Players.nearest(assert(Walker.position()))
-if other then
-	print("mouse is on them:", Players.hovered(other))
-end
+```luau
+print(Players.hovered(other))
 ```
 
 ## Players.hover
 
 Definition:
+
 ```luau
 function Players.hover(player: PlayerInfo): boolean
 ```
-Moves the mouse onto the player, aiming again if they move, until the game confirms the mouse is on them.
+
+Moves the mouse onto the player, re-aiming as they move, until the menu lists them. Turns and zooms the camera first if they're nearby but off screen.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
-local Walker = require("@lib/main/walker")
 
-local other = Players.nearest(assert(Walker.position()))
-if other then
-	print(Players.hover(other))
-end
+```luau
+Players.hover(other)
 ```
 
 ## Players.hover_async
 
 Definition:
+
 ```luau
 function Players.hover_async(player: PlayerInfo): boolean
 ```
-Like `Players.hover`, but queues the move as async input and returns at once, without turning the camera or checking that the game lists it under the mouse. Returns `false` if the player isn't on screen.
+
+Queues the move as async input and returns at once, without turning the camera or checking the menu. False if the player isn't on screen.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
 
-local found = Players.find()
-if found and #found > 0 then
-	Players.hover_async(found[1])
-end
+```luau
+Players.hover_async(other)
 ```
 
 ## Players.click
 
 Definition:
+
 ```luau
 function Players.click(player: PlayerInfo, button: Mouse.Button?, spam: number?): boolean
 ```
-Hovers the player and clicks them (left button by default). `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](../interact.md#interactspam_click).
+
+Hovers and clicks the player (left by default). `spam` is the chance of extra clicks, see [Interact.spam_click](../interact.md#interactspam_click).
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
-local Walker = require("@lib/main/walker")
 
-local other = Players.nearest(assert(Walker.position()))
-if other then
-	print(Players.click(other))
-end
+```luau
+Players.click(other)
 ```
 
 ## Players.interact
 
 Definition:
+
 ```luau
 function Players.interact(player: PlayerInfo, option: string, walk_timeout_ms: (number | false)?, spam: number?): boolean
 ```
-`spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](../interact.md#interactspam_click).
 
-Picks an option (such as `"Trade with"` or `"Follow"`) on the player. Retries if the wrong thing got clicked. It doesn't wait for you to stop walking after `"Follow"`, since following never really stops; pass a timeout to change that, or `false` to never wait.
+Picks `option` (e.g. `"Trade with"`) on the player, retrying on a misclick and waiting for the walk it caused. `"Follow"` never waits unless `walk_timeout_ms` is given; `false` skips the wait for any option. `spam` as in `click`.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
-local Walker = require("@lib/main/walker")
 
-local other = Players.nearest(assert(Walker.position()))
-if other then
-	print(Players.interact(other, "Follow"))
-end
+```luau
+Players.interact(other, "Follow")
 ```

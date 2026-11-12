@@ -1,14 +1,10 @@
 # Main.Interfaces.Chatbox.ChatOptions
 
-Talking to NPCs: the "Select an option" menus that show up in the chatbox, "Click here to continue", who is talking and what they say, and the level up messages.
+Dialogues in the chatbox: option menus, "Click here to continue", speech, and level-up messages. Options are picked with their number key (space for continue) or a click that waits for the menu to show the right line first; the key/click choice is random. After picking or continuing, functions wait for the dialogue to move on, so calls chain. Dialogue lines are also in the chat history (`Chat.MessageType.DIALOG`). Text matching is a case-insensitive substring match unless `match_case` is set.
 
 ```luau
 local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
 ```
-
-The options, the title and the speech are the texts of the dialogue's interface, so nothing depends on the screen's colours or on reading letters. Options are picked with their number key or with a click; the click waits until the mouse is on the right line before clicking. After picking or continuing, the functions wait until the next box of the dialogue is up (or the dialogue ended), so you can chain them. Everything said in a dialogue is also saved in the chat history (`Chat.messages`, type `DIALOG`).
-
-Option texts are compared ignoring case unless you pass `match_case`, and a part of the text is enough.
 
 ## Constants
 
@@ -23,8 +19,9 @@ ChatOptions.SPEECH = {
 }
 ChatOptions.CONTINUE_TEXT = "Click here to continue"
 ChatOptions.WAIT_TEXT = "Please wait..."
+ChatOptions.LEVEL_UP_TEXT = "Congratulations, you've just advanced"
 ```
-The option menu interface and the part holding its lines, the dark red colour of its title, the speech boxes (an NPC talking on the left, you on the right) with the parts holding the name and the text, and the texts of the continue line before and after it's pressed.
+The option menu interface and its lines component, the title's text colour, the speech boxes (NPC left, player right) with their name and text components, the continue line before and after pressing, and the start of the level-up game message.
 
 ## Types
 
@@ -37,8 +34,9 @@ export type Option = {
 	key: number,
 	widget: Widget,
 }
+export type LevelUp = { skill: string, level: number }
 ```
-A line of the option menu: its plain `text` (`raw_text` keeps the tags), its number from the top (`index`), the key that picks it, and its line on screen.
+An option line: cleaned `text`, tagged `raw_text`, 1-based `index`, the `key` that picks it and its `widget`. `LevelUp` is a parsed level-up.
 
 ## ChatOptions.get
 
@@ -46,12 +44,10 @@ Definition:
 ```luau
 function ChatOptions.get(): { Option }?
 ```
-The options of the open option menu, top to bottom, without the title. Empty when no option menu is open.
+The open menu's options, top to bottom, without the title. Empty when no menu is open.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 for _, option in ipairs(ChatOptions.get() or {}) do
 	print(option.index, option.text)
 end
@@ -63,12 +59,10 @@ Definition:
 ```luau
 function ChatOptions.to_string(options: { Option }?): string?
 ```
-The options (`options`, or the open menu's) as text, one per line.
+`options` (default: the open menu's) as text, one per line.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.to_string())
 ```
 
@@ -78,12 +72,10 @@ Definition:
 ```luau
 function ChatOptions.find(text: string, match_case: boolean?): Option?
 ```
-The first option that contains `text`, or nil.
+The first option containing `text`, or `nil`.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 local option = ChatOptions.find("access my bank")
 print(option and option.index)
 ```
@@ -94,12 +86,10 @@ Definition:
 ```luau
 function ChatOptions.index_of(text: string, match_case: boolean?): number?
 ```
-The number of the first option that contains `text`, or 0 when there is none.
+The index of the first option containing `text`, or 0 when none matches.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.index_of("Goodbye"))
 ```
 
@@ -109,12 +99,10 @@ Definition:
 ```luau
 function ChatOptions.contains(text: string, match_case: boolean?): boolean
 ```
-True when an option contains `text`.
+Whether an option contains `text`.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.contains("access my bank"))
 ```
 
@@ -124,12 +112,10 @@ Definition:
 ```luau
 function ChatOptions.wait_option(text: string, match_case: boolean?, timeout_ms: number?): boolean
 ```
-Waits up to `timeout_ms` (600 ms by default) for an option that contains `text`.
+Waits up to `timeout_ms` (default 600) for an option containing `text`.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.wait_option("access my bank", false, 3000))
 ```
 
@@ -139,12 +125,10 @@ Definition:
 ```luau
 function ChatOptions.select(text: string, match_case: boolean?, key_probability: number?): boolean
 ```
-Picks the first option that contains `text`, with its number key or with a click, then waits for the dialogue to move on. `key_probability` is the chance of using the key (0 always clicks, 1 always uses the key); by default it's about half, a bit different for each account. False when there is no such option.
+Picks the first option containing `text` by key or click, then waits up to 3 seconds for the dialogue to change. `key_probability` is the chance of using the key (default about 0.5, varied per account by biometrics). `false` when there's no such option or nothing changed.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.select("access my bank"))
 ```
 
@@ -154,12 +138,10 @@ Definition:
 ```luau
 function ChatOptions.continue_widget(): Widget?
 ```
-The "Click here to continue" line of the dialogue open in the chatbox (or the "Please wait..." it turns into once pressed), or nil when there is none.
+The open dialogue's "Click here to continue" line (or the "Please wait..." it becomes), or `nil`.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 local w = ChatOptions.continue_widget()
 print(w and w.text)
 ```
@@ -170,12 +152,10 @@ Definition:
 ```luau
 function ChatOptions.contains_continue(): boolean
 ```
-True when the dialogue shows "Click here to continue" (or "Please wait...").
+Whether a continue (or "Please wait...") line is showing.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.contains_continue())
 ```
 
@@ -185,12 +165,10 @@ Definition:
 ```luau
 function ChatOptions.continue_chat(key_probability: number?): boolean
 ```
-Presses "Click here to continue" (the space bar, or a click; `key_probability` as in `select`) and waits for the next box of the dialogue, or for it to end. False when there is nothing to continue.
+Presses continue (space or click, `key_probability` as in `select`) and waits for the dialogue to change. On "Please wait..." it only waits. `false` when there's nothing to continue.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 while ChatOptions.contains_continue() do
 	ChatOptions.continue_chat()
 end
@@ -202,13 +180,10 @@ Definition:
 ```luau
 function ChatOptions.continue_until_option(text: string, timeout_ms: number?, match_case: boolean?): boolean
 ```
-Continues the dialogue until an option that contains `text` shows up, then picks it. Gives up after `timeout_ms` (10 seconds by default).
+Continues the dialogue, with random human pauses, until an option containing `text` appears, then selects it. `false` after `timeout_ms` (default 10000).
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
--- after Talk-to on a banker
 print(ChatOptions.continue_until_option("access my bank"))
 ```
 
@@ -218,12 +193,10 @@ Definition:
 ```luau
 function ChatOptions.title(): string?
 ```
-The title of the open option menu (usually "Select an option"; the dark red line you can't pick), or nil when no option menu is open.
+The open menu's title (usually "Select an option"), or `nil`.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.title())
 ```
 
@@ -233,12 +206,10 @@ Definition:
 ```luau
 function ChatOptions.similarity(a: string, b: string): number
 ```
-How alike two texts are, from 0 to 1, ignoring case: 1 minus the number of letters to change, add or remove, divided by the longer text's length.
+Case-insensitive similarity from 0 to 1: 1 minus Levenshtein distance over the longer length.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.similarity("Select an option", "Select an Option")) --> 1
 ```
 
@@ -248,12 +219,10 @@ Definition:
 ```luau
 function ChatOptions.is_title(text: string, similarity: number?): boolean
 ```
-True when the option menu's title is at least `similarity` (0.8 by default) alike to `text`.
+Whether the menu title's `similarity` to `text` is at least `similarity` (default 0.8).
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.is_title("Select an option"))
 ```
 
@@ -263,12 +232,10 @@ Definition:
 ```luau
 function ChatOptions.wait_title(text: string, timeout_ms: number?, similarity: number?): boolean
 ```
-Waits up to `timeout_ms` (600 ms by default) for an option menu whose title is alike to `text`.
+Waits up to `timeout_ms` (default 600) for `is_title`.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.wait_title("Select an option", 3000))
 ```
 
@@ -278,12 +245,10 @@ Definition:
 ```luau
 function ChatOptions.speech(): { name: string, text: string }?
 ```
-Who is talking in the open speech box and what they say, or nil when none is open.
+The speaker and text of the open NPC or player speech box, or `nil`.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 local speech = ChatOptions.speech()
 if speech then
 	print(speech.name .. ": " .. speech.text)
@@ -296,12 +261,10 @@ Definition:
 ```luau
 function ChatOptions.leveled_up(): boolean
 ```
-True while the level up message is open: the level up display, which is just the message and "Click here to continue". The message's text is also checked, for when it isn't in the usual place.
+Whether a level-up is showing: the level-up display is open or any open dialogue text contains "Congratulations".
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 if ChatOptions.leveled_up() then
 	ChatOptions.handle_level_up()
 end
@@ -313,14 +276,11 @@ Definition:
 ```luau
 function ChatOptions.level_up_message(since: number?): Chat.Message?
 ```
-The first level up message in the chat history newer than the message `since` (its `uid`; all messages when nil). Level ups show up as a game message ("Congratulations, you've just advanced your X level. You are now level N."), and the dialogue box doesn't always open with it, so use this to notice a level up.
+The first history message newer than uid `since` (default: all) that contains `LEVEL_UP_TEXT`. The display doesn't always open, so use this to notice level-ups.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
-local last = -1
-local message = ChatOptions.level_up_message(last)
+local message = ChatOptions.level_up_message()
 if message then
 	print("level up:", message.text)
 end
@@ -332,12 +292,10 @@ Definition:
 ```luau
 function ChatOptions.parse_level_up(text: string): LevelUp?
 ```
-Reads the skill and new level out of level up text, either the display ("Congratulations, you just advanced a Prayer level." with "Your Prayer level is now 12.") or the game message ("Congratulations, you've just advanced your Prayer level. You are now level 12."). Returns `{ skill: string, level: number }`, or nil when the text isn't a level up.
+Parses the skill and level from level-up display text or the level-up game message; `nil` when it isn't one.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 local up = ChatOptions.parse_level_up("Congratulations, you've just advanced your Prayer level. You are now level 12.")
 print(up and up.skill, up and up.level) -- Prayer 12
 ```
@@ -348,12 +306,10 @@ Definition:
 ```luau
 function ChatOptions.level_up(): LevelUp?
 ```
-The skill and new level of the level up display open right now, nil when there is none. Read only: it doesn't dismiss the display.
+`parse_level_up` of the open dialogue text, without dismissing it.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 local up = ChatOptions.level_up()
 if up then
 	print(`{up.skill} is now level {up.level}`)
@@ -366,11 +322,9 @@ Definition:
 ```luau
 function ChatOptions.handle_level_up(key_probability: number?): boolean
 ```
-Continues through the level up messages until they're gone (8 seconds at most).
+Continues through level-up messages with random pauses until gone; `false` if still showing after 8 seconds.
 
 Example:
 ```luau
-local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
-
 print(ChatOptions.handle_level_up())
 ```

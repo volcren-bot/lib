@@ -1,14 +1,18 @@
 # Main.EquipmentLayout
 
-Equipment layouts: what an `equipment` form field gives a script, checked against and put on with the worn items, the inventory and the bank.
+Equipment layouts from a form's `equipment` field: checked against the worn items and put on from the inventory and bank.
 
 ```luau
 local EquipmentLayout = require("@lib/main/equipment_layout")
 ```
 
-The user makes layouts in the loader, on the Equipment tab of the script's page: it reads the worn items from the client, keeps the layouts per script, and the form's `equipment` field picks one (see `Host.form` in [Host](../host.md)). A layout lists every worn items slot once: it wants an item there (`mode = "item"`, by its `ids`, as the client held it), nothing there (`empty`) or doesn't care (`any`). The script never has to guess an id. Some items are worn under another id than they are held in the inventory and the bank (graceful pieces: 13624 worn, 13623 held), so the inventory and the bank are searched by the slot's ids or its name. A dose or charge item counts by its accepted `doses` (an `Amulet of glory(6)` slot accepting 6 to 2 is happy with `Amulet of glory(3)`) and the bank takes them in that order; see [LayoutItem](layout_item.md). A worn stack (ammo) wants at least its `min`, and is topped up to its `max`; one over its `max` stays worn, since only all of it can be taken off.
+The user builds layouts per script on the loader's Equipment tab, read from the worn items; the form's `equipment` field picks one (see `Host.form` in [Host](../host.md)). Each worn slot is listed once as `mode = "item"` (by `ids`), `"empty"` or `"any"`. Some items have a different held id than worn id (graceful: 13624 worn, 13623 held), so the inventory and bank are searched by ids or name. Dose/charge items count by accepted `doses` and are withdrawn in that order ([LayoutItem](layout_item.md)). A worn stack (ammo) wants at least `min` and is topped up to `max`; one over `max` stays, since only all of it can be removed.
 
-A field's `required` items, each with its `slot`, are in every layout the user makes, padlocked: they replace whatever the user's layout had in that slot, can't be changed, and come with `locked = true`.
+A field's `required` items, each with a `slot`, replace that slot in every layout, padlocked (`locked = true`).
+
+The secondary ammo slot (`Wornitems.SECONDARY_AMMO`) is always listed. Without a bolt pouch in the inventory or a worn quiver it is ignored everywhere, as is an item the pouch can't hold (arrows). A quiver's ammo comes out of the bank with it; a pouch must already be carried. See [Wornitems](interfaces/gametabs/wornitems.md).
+
+A layout can carry a combat spell. If the weapon read into it offered autocast, `prepare` sets it as the autocast; otherwise `spell` gives it for the script to cast.
 
 ```luau
 local Host = require("@lib/host")
@@ -17,7 +21,6 @@ local EquipmentLayout = require("@lib/main/equipment_layout")
 local values = Host.form({
 	title = "Slayer",
 	fields = {
-		-- a charged glory in the amulet slot, the most charges first
 		{ id = "equipment", kind = "equipment", label = "Equipment", required = { { ids = { 11978 }, slot = 2, doses = { 6, 5, 4, 3, 2, 1 } } } },
 	},
 })
@@ -26,10 +29,6 @@ if layout and not EquipmentLayout.prepare(layout) then
 	print("couldn't get the equipment on")
 end
 ```
-
-The Equipment tab always has the secondary ammo slot (`Wornitems.SECONDARY_AMMO`), because a layout can't know whether the account will have a bolt pouch in its inventory or Dizana's quiver. Without one the slot is ignored everywhere here, and so is an item a pouch can't store, such as arrows. A layout that wears a quiver counts as having the slot, so its ammo comes out of the bank with the quiver. For a pouch, have it in the inventory first. See [Wornitems](interfaces/gametabs/wornitems.md).
-
-The layout can carry a spell, picked on the same tab from the three books with combat spells. When the weapon read into the layout offered autocast (a staff), it is the autocast spell and `prepare` sets it on the combat tab; otherwise it is a spell for the script to cast by hand (`spell` gives it as the spellbook knows it).
 
 ## Constants
 
@@ -43,7 +42,11 @@ EquipmentLayout.SWAP_MOUSE_PACE = 1.2
 EquipmentLayout.STOP_POLL_MS = 30
 EquipmentLayout.SLOTS: { number }
 ```
-How long to wait for the worn items to change after a click that takes something off or moves ammo, and between looks; how long `equip`'s clicked items get to show as worn, and how many rounds of clicks they get; how many times faster the mouse moves while `equip` clicks the items (`Mouse.pace`, `HOST_API` 12; 1.2 is 20% faster); how often `equip` asks its `stop` while the clicks run; and the worn items slots a layout lists (`Wornitems.HEAD` to `Wornitems.AMMO`, in the container's order, then `Wornitems.SECONDARY_AMMO`).
+- `EQUIP_TIMEOUT_MS`, `POLL_MS`: wait and poll after taking off or moving ammo.
+- `CONFIRM_MS`, `WEAR_ATTEMPTS`: `equip`'s wait per round and maximum rounds.
+- `SWAP_MOUSE_PACE`: `equip`'s mouse speed relative to `Mouse.pace` (1.2 is 20% faster).
+- `STOP_POLL_MS`: how often `equip` checks `stop`.
+- `SLOTS`: the listed slots, `Wornitems.HEAD` to `Wornitems.AMMO` in container order, then `Wornitems.SECONDARY_AMMO`.
 
 ## Types
 
@@ -51,8 +54,9 @@ Definition:
 ```luau
 export type Layout = Host.EquipmentLayout
 export type Slot = Host.EquipmentLayoutSlot
+export type EquipOptions = { stop: (() -> boolean)?, after_clicks: (() -> ())? }
 ```
-A layout is `{ name, slots, spell? }`; a slot is `{ slot, mode }` plus a `LayoutItem`'s fields (`id`, `ids`, `name`, `stackable`, `min`, `max`, `doses`, `locked`) when `mode` is `"item"`; the spell is `{ key, name, book, level, autocast }`.
+A layout is `{ name, slots, spell? }`; a slot is `{ slot, mode }` plus `LayoutItem` fields (`id`, `ids`, `name`, `stackable`, `min`, `max`, `doses`, `locked`) when `mode` is `"item"`; the spell is `{ key, name, book, level, autocast }`.
 
 ## EquipmentLayout.from_client
 
@@ -60,7 +64,12 @@ Definition:
 ```luau
 function EquipmentLayout.from_client(name: string?): Layout?
 ```
-A layout of what is worn now: every slot its item, or `empty`, and `any` for a secondary ammo slot nothing gives. Nil when the worn items can't be read. `stackable` is only known for a stack of more than one, which wants exactly what is worn.
+A layout of what is worn now: items, `empty`, and `any` for an unusable secondary ammo slot. Nil when the worn items can't be read. `stackable` is only known for stacks over one, which want exactly what is worn.
+
+Example:
+```luau
+local layout = EquipmentLayout.from_client("current")
+```
 
 ## EquipmentLayout.matches
 
@@ -68,7 +77,12 @@ Definition:
 ```luau
 function EquipmentLayout.matches(layout: Layout): boolean?
 ```
-Whether every slot of the layout holds: its item worn (anything that counts as it, a stack at least its `min`), or nothing worn where it wants nothing. A secondary ammo slot that doesn't count is ignored. Nil when the worn items can't be read.
+Whether every slot holds: an accepted item worn (a stack at least `min`) or nothing where `empty`. An unusable secondary ammo slot is ignored. Nil when the worn items can't be read.
+
+Example:
+```luau
+print(EquipmentLayout.matches(layout))
+```
 
 ## EquipmentLayout.missing
 
@@ -76,7 +90,14 @@ Definition:
 ```luau
 function EquipmentLayout.missing(layout: Layout): { Slot }
 ```
-The slots whose item is neither worn (the other ammo slot counts, being a swap away) nor in the inventory, or whose stack is under its `min` with what is worn and carried together: what has to come out of the bank. A secondary ammo slot that doesn't count isn't listed. Bolts stored in the pouch's other rows aren't looked at.
+Slots that must come from the bank: the item is neither worn (the other ammo slot counts) nor carried, or worn plus carried stack is under `min`. Bolts in the pouch's other rows aren't counted.
+
+Example:
+```luau
+for _, s in ipairs(EquipmentLayout.missing(layout)) do
+	print(s.name)
+end
+```
 
 ## EquipmentLayout.withdraw
 
@@ -84,18 +105,30 @@ Definition:
 ```luau
 function EquipmentLayout.withdraw(layout: Layout): boolean
 ```
-With the bank open, withdraws each missing item: a stack up to its `max` with what is worn and carried (all the bank has when both ends are 0), else one of the first of its items the bank has. True when none is missing afterwards. The items wait in the inventory for `equip`, so wear them before `InventoryLayout.withdraw`, which deposits whatever its layout doesn't list.
+With the bank open, withdraws each missing item: a stack up to `max` counting worn and carried (all of it when both ends are 0), else one of the first accepted item the bank has. True when nothing is missing afterwards. Items wait in the inventory, so `equip` before `InventoryLayout.withdraw`, which would deposit them.
+
+Example:
+```luau
+EquipmentLayout.withdraw(layout)
+```
 
 ## EquipmentLayout.equip
 
 Definition:
 ```luau
 function EquipmentLayout.equip(layout: Layout, options: EquipOptions?): boolean
-export type EquipOptions = { stop: (() -> boolean)?, after_clicks: (() -> ())? }
 ```
-Wears each of the layout's items from the inventory (of its items, the first one carried), then takes off what is worn where the layout wants nothing. The items are clicked in the order `Inventory.pattern` gives (starting by the mouse) with no wait between them, through the async mouse queue, so a swap has no misses or idling either; it then waits up to `CONFIRM_MS` for them to show as worn and clicks again whatever didn't change, `WEAR_ATTEMPTS` rounds at most. It blocks until the swap is done. With `options.stop`, that is asked every `STOP_POLL_MS` while the clicks run, and once it says true the queued clicks are dropped and `equip` returns false, with part of the layout worn (a fight that has to react, say). `options.after_clicks` runs once, as soon as the first round of clicks is in, while `equip` waits for them to show as worn: an async hover of what comes next (the NPC to attack) gets the mouse there during the wait. The bank must be closed, since a click in the inventory would deposit. True when the layout matches afterwards. An item that isn't in the inventory, or no room to take something off, fails it.
+Wears each item from the inventory, then removes what is worn in `empty` slots. Items are clicked in `Inventory.pattern` order from the mouse, without waits, through the async mouse queue; it then waits up to `CONFIRM_MS` and re-clicks what didn't change, `WEAR_ATTEMPTS` rounds at most. Blocks until done. `options.stop` is checked every `STOP_POLL_MS`; when true, queued clicks are dropped and it returns false with the layout partly worn. `options.after_clicks` runs once after the first round of clicks, during the wait (e.g. hovering the next target). The bank must be closed. False when an item isn't carried or there's no room to take something off.
 
-With the secondary ammo slot in play the ammo comes last, because an item only reaches that slot through the worn ammo slot: it is worn, then swapped across (`Wornitems.swap_ammo`), which leaves the slot's old ammo worn, and the ammo slot's own item replaces that.
+Secondary ammo goes last: it is worn, swapped across (`Wornitems.swap_ammo`), then the ammo slot's own item replaces what came back.
+
+Example:
+```luau
+local deadline = os.clock() + 5
+EquipmentLayout.equip(layout, { stop = function()
+	return os.clock() > deadline
+end })
+```
 
 ## EquipmentLayout.spell
 
@@ -103,7 +136,15 @@ Definition:
 ```luau
 function EquipmentLayout.spell(layout: Layout): Magic.Spell?
 ```
-The layout's spell as the spellbook knows it ([Magic](interfaces/gametabs/magic.md)), nil when the layout has none or the book can't be read. For a spell to cast by hand, this is what `Magic.cast` takes.
+The layout's spell as [Magic](interfaces/gametabs/magic.md) knows it, for `Magic.cast`. Nil when there is none or the book can't be read.
+
+Example:
+```luau
+local spell = EquipmentLayout.spell(layout)
+if spell and not EquipmentLayout.autocasts(layout) then
+	Magic.cast(spell)
+end
+```
 
 ## EquipmentLayout.autocasts
 
@@ -111,7 +152,12 @@ Definition:
 ```luau
 function EquipmentLayout.autocasts(layout: Layout): boolean
 ```
-Whether the layout's spell is one to autocast: the weapon read into the layout offered autocast.
+Whether the layout's spell is an autocast spell.
+
+Example:
+```luau
+print(EquipmentLayout.autocasts(layout))
+```
 
 ## EquipmentLayout.set_autocast
 
@@ -119,7 +165,12 @@ Definition:
 ```luau
 function EquipmentLayout.set_autocast(layout: Layout, defensive: boolean?): boolean
 ```
-Sets the layout's spell as the autocast, defensively with `defensive`, through the combat tab ([Combat](interfaces/gametabs/combat.md)). True when the layout has no spell to autocast, or once it is set; false when the wielded weapon's picker doesn't offer it.
+Sets the spell as autocast through [Combat](interfaces/gametabs/combat.md), defensively with `defensive`. True when there is no autocast spell or once set; false when the weapon doesn't offer it.
+
+Example:
+```luau
+EquipmentLayout.set_autocast(layout, true)
+```
 
 ## EquipmentLayout.prepare
 
@@ -127,4 +178,9 @@ Definition:
 ```luau
 function EquipmentLayout.prepare(layout: Layout): boolean
 ```
-Gets the layout worn: nothing when it matches already; with the bank open it withdraws what is missing and closes the bank; then equips, and sets the autocast spell when the layout has one. True when the layout matches at the end.
+Gets the layout worn: if the bank is open, withdraws and closes it; then equips and sets the autocast. Fails when items are missing and the bank isn't open. True when the layout matches at the end.
+
+Example:
+```luau
+EquipmentLayout.prepare(layout)
+```

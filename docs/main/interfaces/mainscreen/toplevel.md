@@ -1,12 +1,10 @@
 # Main.Interfaces.Mainscreen.Toplevel
 
-The main game screen: which windows are open on top of it (bank, shop, dialogue...), where the 3D view is, and which parts of it are covered by panels. Use it to make sure a click lands on the game and not on something in the way.
+The main game screen: which windows are open on it, where the 3D view is and what covers it. An open window is an `Open` table: `group` (interface number) and `slot` (`"modal"`, `"crm"` or `"floater"`).
 
 ```luau
 local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 ```
-
-An open window is a table with `group` (its interface number) and `slot` (`"modal"`, `"crm"` or `"floater"`: the layer it's in).
 
 ## Constants
 
@@ -14,8 +12,13 @@ Definition:
 ```luau
 Toplevel.SLOTS
 Toplevel.LAYOUT
+Toplevel.ESCAPE_TRIES = 3
+Toplevel.ESCAPE_PAUSE_MS = { 150, 400 }
 ```
-Tables describing, for each game window layout, where windows are placed and where the 3D view and the panels covering it are.
+- `SLOTS`: per root layout, the child of each window slot.
+- `LAYOUT`: per root layout, the viewport child and the panel children covering it.
+- `ESCAPE_TRIES`: Escape presses before Escape closing is switched off.
+- `ESCAPE_PAUSE_MS`: random pause range between Escape tries.
 
 ## Toplevel.interfaces
 
@@ -23,12 +26,10 @@ Definition:
 ```luau
 function Toplevel.interfaces(): { Open }?
 ```
-Every window open on the main screen, the most important first.
+Every open main screen window, ordered modal, floater, crm. `nil` when the layout is unknown or state is unavailable.
 
 Example:
 ```luau
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
-
 for _, open in ipairs(Toplevel.interfaces() or {}) do
 	print(open.group, open.slot)
 end
@@ -40,12 +41,10 @@ Definition:
 ```luau
 function Toplevel.interface(): number?
 ```
-The interface number of the most important open window, or `nil` if none.
+The group of the first window from `interfaces`, or `nil` if none.
 
 Example:
 ```luau
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
-
 print(Toplevel.interface())
 ```
 
@@ -55,12 +54,10 @@ Definition:
 ```luau
 function Toplevel.interface_name(): string?
 ```
-The readable name of that window.
+The name of `Toplevel.interface()`.
 
 Example:
 ```luau
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
-
 print(Toplevel.interface_name())
 ```
 
@@ -70,11 +67,10 @@ Definition:
 ```luau
 function Toplevel.close(group: number | string, button: () -> Widget?, key_probability: number?, timeout_ms: number?): boolean
 ```
-Closes an interface of the main screen and waits for it to close (`timeout_ms` for each try, 3 ticks by default). It presses Escape with the chance `key_probability` (by default the `Biometrics.ESCAPE` probability), unless the client's "Esc to close" setting is off or Escape has been given up on (see `Toplevel.escape_enabled`). Escape gets `Toplevel.ESCAPE_TRIES` (3) tries, `timeout_ms` each with a short random pause between. If that doesn't close it, or Escape isn't used, it clicks the widget `button()` returns, up to 3 times; `button` returns `nil` when the close button can't be found, and then `close` fails. Returns `true` at once when it isn't open.
+Closes an interface and waits for it (`timeout_ms` per try, 1800 by default). With chance `key_probability` (default `Biometrics.ESCAPE`) it tries Escape first, if the client's "Esc to close" setting is on and Escape is still enabled. Otherwise, or if Escape fails, it clicks `button()` up to 3 times; fails if `button` returns `nil`. `true` at once when not open.
 
 Example:
 ```luau
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 
 Toplevel.close(Bankmain.GROUP, Bankmain.close_button)
@@ -84,12 +80,14 @@ Toplevel.close(Bankmain.GROUP, Bankmain.close_button)
 
 Definition:
 ```luau
-Toplevel.ESCAPE_TRIES = 3
-Toplevel.ESCAPE_PAUSE_MS = { 150, 400 }
 function Toplevel.escape_enabled(): boolean
-function Toplevel.reset_escape()
 ```
-Escape closing of every main screen interface (`close`, `escape_clear`, and so the bank and the deposit box) shares one switch. When Escape fails to close an interface `ESCAPE_TRIES` times in a row, "Esc to close" is probably off, so the switch turns off for the rest of the run and only the mouse is used. A yellow line in the loader's log says so, naming the interface. `escape_enabled` tells whether it is still on; `reset_escape` turns it back on.
+Whether Escape closing is still on. It is shared by `close` and `escape_clear`; after `ESCAPE_TRIES` failed presses on one interface it turns off for the rest of the run (a warning naming the interface is logged) and only the mouse is used.
+
+Example:
+```luau
+print(Toplevel.escape_enabled())
+```
 
 ## Toplevel.escape_clear
 
@@ -97,7 +95,12 @@ Definition:
 ```luau
 function Toplevel.escape_clear(timeout_ms: number?): boolean
 ```
-Closes whatever window is open on the main screen with Escape (`timeout_ms` per try, 600 by default), with the same tries and switch as `close`. `true` at once when nothing is open; `false` when it didn't close or Escape is off. `Bankmain.open` and `DepositBox.open` use it to clear the way.
+Closes whatever is open with Escape (`timeout_ms` per try, 600 by default), using the same tries and switch as `close`. `true` at once when nothing is open; `false` if it stayed open or Escape is off.
+
+Example:
+```luau
+Toplevel.escape_clear()
+```
 
 ## Toplevel.has_interface
 
@@ -109,9 +112,7 @@ Whether any window is open on the main screen.
 
 Example:
 ```luau
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
-
-print("something open:", Toplevel.has_interface())
+print(Toplevel.has_interface())
 ```
 
 ## Toplevel.is_open
@@ -120,13 +121,11 @@ Definition:
 ```luau
 function Toplevel.is_open(interface: number | string): boolean
 ```
-Whether a particular window is open, given by its number or name.
+Whether a window is open, by group or case-insensitive name.
 
 Example:
 ```luau
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
-
-print("bank open:", Toplevel.is_open(12))
+print(Toplevel.is_open(12))
 ```
 
 ## Toplevel.viewport
@@ -135,14 +134,11 @@ Definition:
 ```luau
 function Toplevel.viewport(): Box?
 ```
-The rectangle the 3D game world is drawn in.
+The box the 3D world is drawn in; `nil` for an unknown layout.
 
 Example:
 ```luau
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
-
 local view = Toplevel.viewport()
-print(view and view.x1, view and view.y1, view and view.x2, view and view.y2)
 ```
 
 ## Toplevel.blockers
@@ -151,13 +147,11 @@ Definition:
 ```luau
 function Toplevel.blockers(): { Box }?
 ```
-The rectangles drawn on top of the 3D view (side panels, chat, open windows), where a click would hit them instead of the world.
+`panel_blockers` plus the box of every open window: areas where a click would not reach the world.
 
 Example:
 ```luau
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
-
-print("covering panels:", #(Toplevel.blockers() or {}))
+print(#(Toplevel.blockers() or {}))
 ```
 
 ## Toplevel.is_visible
@@ -166,12 +160,10 @@ Definition:
 ```luau
 function Toplevel.is_visible(p: Point, viewport: Box?, blockers: { Box }?): boolean
 ```
-Whether a point is on the 3D view and not covered by anything. You can pass `viewport` and `blockers` you already have to save time when checking many points.
+Whether `p` is inside the viewport and outside every blocker. Pass `viewport` and `blockers` to reuse them across many points.
 
 Example:
 ```luau
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
-
 print(Toplevel.is_visible({ x = 300, y = 200 }))
 ```
 
@@ -181,12 +173,11 @@ Definition:
 ```luau
 function Toplevel.visible_point(area: Box): Point?
 ```
-Finds a point inside a rectangle that is on the 3D view and uncovered, as close as possible to the rectangle's middle. Returns `nil` if the whole rectangle is covered.
+The visible point of a 7x7 grid over `area` closest to its centre, or `nil` if none is visible.
 
 Example:
 ```luau
 local Geometry = require("@lib/utils/math/geometry")
-local Toplevel = require("@lib/main/interfaces/mainscreen/toplevel")
 
 print(Toplevel.visible_point(Geometry.Box.new(100, 100, 300, 300)))
 ```
@@ -197,11 +188,11 @@ Definition:
 ```luau
 function Toplevel.reset_escape()
 ```
-TODO...
+Turns Escape closing back on after it was switched off.
 
 Example:
 ```luau
-
+Toplevel.reset_escape()
 ```
 
 ## Toplevel.panel_blockers
@@ -210,9 +201,9 @@ Definition:
 ```luau
 function Toplevel.panel_blockers(): { Box }?
 ```
-TODO...
+The boxes of the layout's fixed panels over the 3D view (chat, side panels), without open windows. `nil` for an unknown layout.
 
 Example:
 ```luau
-
+print(#(Toplevel.panel_blockers() or {}))
 ```

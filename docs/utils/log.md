@@ -1,5 +1,7 @@
 # Utils.Log
 
+Timestamped log lines and formatting helpers.
+
 ```luau
 local Log = require("@lib/utils/log")
 ```
@@ -44,7 +46,7 @@ Definition:
 ```luau
 function Log.block(tag: string, title: string, rows: { Row })
 ```
-Prints one multi-line entry: the usual `[tag][time]:` line with the title, then the rows indented, with the values aligned.
+Prints a `[tag][time]: title` line followed by indented rows with aligned values.
 
 Example:
 ```luau
@@ -92,5 +94,4 @@ Formats a number with thousands separators, rounded to whole numbers (one decima
 Example:
 ```luau
 Log.number(1234567.8) -- "1,234,568"
-Log.number(2.5) -- "2.5"
 ```

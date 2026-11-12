@@ -1,16 +1,12 @@
 # Main.Interfaces.Mainscreen.Jewellerybox
 
-The jewellery box in a player's house: panels of teleports by the jewellery they copy, opened by "Teleport Menu" on the box (group 590, `poh_jewellery_box` in the cache). Trips are free.
+The house jewellery box menu (group 590), opened by "Teleport Menu" on any size of box: panels of free teleports grouped by the jewellery they copy. Each line reads like `<col=ccccff>1:</col> Emir's Arena`; its digit or letter is also its key, and a struck-through line is unavailable. Only the ornate box (six panels) has been observed. The box's direct destination option and "Remove" are never used, and house rows aren't in the transports.
 
 ```luau
 local Jewellerybox = require("@lib/main/interfaces/mainscreen/jewellerybox")
 ```
 
-Each destination is a line like `<col=ccccff>1:</col> Emir's Arena`, whose letter or digit is also its key. One the account can't use is struck through (`available` is false). Only the ornate box, with all six panels, has been seen; a smaller box should just show fewer panels.
-
-The box's right-click menu also offers a destination directly (`Emir's Arena` here), which isn't used, and "Remove", which takes the box out of the house and which nothing here can click. Walking the chooser to a box isn't wired up: all house rows are left out of the transports.
-
-A destination has `name`, `key`, `jewellery` (its panel's title), `available` and `area` (the line: where to hover and click).
+A `Destination` has `name`, `key`, `jewellery` (its panel's title), `available` and `area` (the line widget).
 
 ## Constants
 
@@ -31,7 +27,7 @@ Jewellerybox.POLL_MS = 50
 Jewellerybox.HOVER_SETTLE_MS = 150
 Jewellerybox.SETTLE_MS = { 250, 500 }
 ```
-The interface piece numbers, what box objects are called (any size), the option that opens the menu, the chance a biometric is rolled around for using a key rather than a click, and the waits: for `wait_open`, for a hover to show the menu, for the menu to go after a pick, between looks, for the menu to follow the mouse, and the pause `open` makes once the menu shows.
+Widget ids, the object-name substring and option, the biometric centre for key-vs-click, and timings.
 
 ## Jewellerybox.Place
 
@@ -39,7 +35,7 @@ Definition:
 ```luau
 export type Place = "Emir's Arena" | "Castle Wars" | "Ferox Enclave" | "Fortis Colosseum" | "Burthorpe" | "Barbarian Outpost" | "Corporeal Beast" | "Tears of Guthix" | "Wintertodt Camp" | "Warriors' Guild" | "Champions' Guild" | "Monastery" | "Ranging Guild" | "Fishing Guild" | "Mining Guild" | "Crafting Guild" | "Cooking Guild" | "Woodcutting Guild" | "Farming Guild" | "Miscellania" | "Grand Exchange" | "Falador Park" | "Dondakan's Rock" | "Edgeville" | "Karamja" | "Draynor Village" | "Al Kharid"
 ```
-Every destination of the biggest box, as the game names them. `Jewellerybox.Place` is a frozen table of them keyed without spaces or punctuation (`EmirsArena`, `GrandExchange`, `AlKharid`, ...), so a trip is `Jewellerybox.select(Jewellerybox.Place.GrandExchange)` and a misspelled place is a type error.
+Every destination of the biggest box. `Jewellerybox.Place` is a frozen table keyed without spaces or punctuation (`EmirsArena`, `TearsofGuthix`, `GrandExchange`).
 
 ## Jewellerybox.is_open
 
@@ -55,7 +51,7 @@ Definition:
 ```luau
 function Jewellerybox.wait_open(timeout_ms: number?): boolean
 ```
-Whether the menu is open, polled for up to `timeout_ms` (3 seconds by default).
+Waits up to `timeout_ms` (default `OPEN_TIMEOUT_MS`) for the menu. False on timeout.
 
 ## Jewellerybox.destinations
 
@@ -63,12 +59,10 @@ Definition:
 ```luau
 function Jewellerybox.destinations(): { Destination }?
 ```
-The destinations in the menu's order, read from the widgets without hovering. Nil when the menu isn't open.
+Every destination, panel by panel, read from memory without hovering. Nil when the menu isn't open.
 
 Example:
 ```luau
-local Jewellerybox = require("@lib/main/interfaces/mainscreen/jewellerybox")
-
 for _, d in ipairs(Jewellerybox.destinations() or {}) do
 	print(d.key, d.name, d.jewellery, d.available)
 end
@@ -80,7 +74,7 @@ Definition:
 ```luau
 function Jewellerybox.names(): { string }?
 ```
-The names of the destinations in the menu's order. Nil when the menu isn't open.
+The destination names in menu order. Nil when the menu isn't open.
 
 ## Jewellerybox.find
 
@@ -88,7 +82,7 @@ Definition:
 ```luau
 function Jewellerybox.find(name: string): Destination?
 ```
-The destination called `name`, ignoring case. An exact name wins. Otherwise a name that contains the other counts, but only when exactly one destination fits ("Exchange" finds the Grand Exchange, "Guild" finds nothing).
+The destination called `name`, case-insensitive. An exact match wins; otherwise a substring match either way counts only if exactly one fits ("Exchange" finds Grand Exchange, "Guild" finds nothing).
 
 ## Jewellerybox.select
 
@@ -96,12 +90,10 @@ Definition:
 ```luau
 function Jewellerybox.select(place: Place, key_probability: number?): string?
 ```
-Chooses a destination and returns how it was done: "key" (its key; chance `key_probability`, nil or 0 is a biometric around `KEY_CHANCE`) or "click" on its line. A key that leaves the menu open for `CONFIRM_TIMEOUT_MS` is followed by the click, which only happens once the menu under the mouse offers that destination, so a wrong spot costs nothing. Nil when no destination has that name, it is struck through, or nothing worked. The trip itself is not waited for.
+Chooses a destination and returns "key" or "click". The key is pressed with chance `key_probability` (nil or 0 uses a biometric around `KEY_CHANCE`); if the menu is still open after `CONFIRM_TIMEOUT_MS` it falls back to hovering the line and clicking only once the menu offers that destination. Nil when not found, struck through, or nothing closed the menu. Doesn't wait for the teleport.
 
 Example:
 ```luau
-local Jewellerybox = require("@lib/main/interfaces/mainscreen/jewellerybox")
-
 assert(Jewellerybox.open())
 assert(Jewellerybox.select(Jewellerybox.Place.GrandExchange), "couldn't choose the Grand Exchange")
 ```
@@ -120,7 +112,7 @@ Definition:
 ```luau
 function Jewellerybox.close(key_probability: number?): boolean
 ```
-Closes the menu: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
+Closes the menu via `Toplevel.close`: Escape with chance `key_probability` (nil or 0 uses the biometric), else the close button. True when closed, also if it wasn't open.
 
 ## Jewellerybox.nearest
 
@@ -128,7 +120,7 @@ Definition:
 ```luau
 function Jewellerybox.nearest(): Loc?
 ```
-The nearest jewellery box of any size, nil when there is none.
+The nearest object whose name contains "jewellery box", nil when none.
 
 ## Jewellerybox.open
 
@@ -136,14 +128,11 @@ Definition:
 ```luau
 function Jewellerybox.open(box: Loc?, walk: boolean?): (boolean, string?)
 ```
-Opens the menu from the nearest box (or `box`), walking closer first unless `walk` is false, and waits for it. True also when it was open already. When it didn't work, the second result says why.
+Clears other interfaces with Escape, uses "Teleport Menu" on `box` or the nearest box (walking closer unless `walk` is false), and waits for the menu. True when open, also if it already was; otherwise false and the reason.
 
 Example:
 ```luau
-local Jewellerybox = require("@lib/main/interfaces/mainscreen/jewellerybox")
-
 local ok, why = Jewellerybox.open()
 assert(ok, why)
 print(table.concat(Jewellerybox.names() or {}, ", "))
-assert(Jewellerybox.close())
 ```

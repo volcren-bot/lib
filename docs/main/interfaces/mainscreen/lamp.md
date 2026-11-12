@@ -1,16 +1,10 @@
 # Main.Interfaces.Mainscreen.Lamp
 
-The experience lamp interface: a grid of the skills and a button, opened by "Rub" on a lamp (group 240, `xpreward` in the cache).
+The experience lamp interface (group 240): a grid of skills and a "Confirm" button. Opening, choosing and closing keep the lamp; only "Confirm" spends it (`Lamp.confirm`, `Lamp.use`), after which the interface closes and a continue message box shows, which those functions dismiss. Items are found by name (`Lamp.NAMES`), since many unrelated items are called lamps; the `Lamp` and `Book of Knowledge` are tested, the rest are assumed to work the same. A `Cell` has `name` and `area`. Skills are `Stats.Skill` values, so a misspelled skill is a type error.
 
 ```luau
 local Lamp = require("@lib/main/interfaces/mainscreen/lamp")
 ```
-
-Rubbing a lamp, choosing a skill and closing the interface all keep the lamp. Only "Confirm" spends it, so only `Lamp.confirm` and `Lamp.use` do. Closing forgets the chosen skill. After "Confirm" the interface closes, the lamp leaves the inventory, and a message box (group 229, `messagebox`) says `Your wish has been granted!`, then `You have been awarded 990 Slayer XP!` (seen once, at level 99), until it is continued. `Lamp.confirm` and `Lamp.use` dismiss it.
-
-The plain `Lamp` (id 2528, from the genie) opens it with "Rub", and the `Book of Knowledge` (id 11640, from the Surprise Exam) with "Read" (`Lamp.OPTIONS`), both seen. The other names in `Lamp.NAMES` come from the cache and are assumed to work the same; `open` fails with a reason if one doesn't. Many other items are called lamps, like an oil lamp, which is why these go by name.
-
-A cell has `name` and `area` (where to hover and click). Skills are given with `Stats.Skill` (`Lamp.choose(Stats.Skill.Herblore)`), so a misspelled skill is a type error.
 
 ## Constants
 
@@ -37,7 +31,10 @@ Lamp.POLL_MS = 50
 Lamp.SETTLE_MS = 150
 Lamp.OPEN_SETTLE_MS = { 250, 500 }
 ```
-The interface piece numbers, the inventory's container, the options that open the interface and spend the lamp, the items `open` looks for by default and those it opens with another option than `OPTION`, and the waits: for `wait_open`, for a hover to show the menu, for a choice to show, for the interface to go after "Confirm", for the message after it, between looks, for the menu to follow the mouse, and the pause `open` makes once the interface shows.
+- Widget children of the interface, and the inventory container.
+- `OPTION`/`OPTIONS`: the option that opens an item (`OPTIONS` overrides per name); `CONFIRM_OPTION` spends it.
+- `NAMES`: items `open` and `slot` look for by default.
+- Timeouts: open, hover menu, choice, close after Confirm, message; `POLL_MS` between looks, `SETTLE_MS` after a hover, `OPEN_SETTLE_MS` random pause after opening.
 
 ## Lamp.is_open
 
@@ -47,13 +44,23 @@ function Lamp.is_open(): boolean
 ```
 Whether the interface is open.
 
+Example:
+```luau
+print(Lamp.is_open())
+```
+
 ## Lamp.wait_open
 
 Definition:
 ```luau
 function Lamp.wait_open(timeout_ms: number?): boolean
 ```
-Whether the interface is open, polled for up to `timeout_ms` (3 seconds by default).
+Polls for the interface up to `timeout_ms` (`OPEN_TIMEOUT_MS` by default).
+
+Example:
+```luau
+Lamp.wait_open()
+```
 
 ## Lamp.skills
 
@@ -61,7 +68,12 @@ Definition:
 ```luau
 function Lamp.skills(): { Cell }?
 ```
-The skills in the interface's order. Each cell keeps its skill's name as its first menu option, so nothing is hovered. Nil when the interface isn't open.
+The visible skill cells in interface order, named by their menu option. `nil` when closed.
+
+Example:
+```luau
+print(#(Lamp.skills() or {}))
+```
 
 ## Lamp.find
 
@@ -69,7 +81,12 @@ Definition:
 ```luau
 function Lamp.find(name: string): Cell?
 ```
-The cell of `name`, ignoring case. Nil when the interface isn't open or it has no such skill.
+The cell of skill `name`, ignoring case. `nil` when closed or absent.
+
+Example:
+```luau
+local cell = Lamp.find("herblore")
+```
 
 ## Lamp.selected
 
@@ -77,7 +94,12 @@ Definition:
 ```luau
 function Lamp.selected(): SkillName?
 ```
-The skill chosen now, read from the button's label ("Confirm: Herblore"). Nil when none is, or the interface isn't open.
+The chosen skill, read from the button label ("Confirm: Herblore"). `nil` when none or closed.
+
+Example:
+```luau
+print(Lamp.selected())
+```
 
 ## Lamp.choose
 
@@ -85,16 +107,13 @@ Definition:
 ```luau
 function Lamp.choose(skill: SkillName): boolean
 ```
-Chooses a skill, which spends nothing, and waits for the button to name it. The click only happens once the menu under the mouse offers that skill. True at once when it is chosen already. False when the interface has no such skill or the choice didn't take.
+Hovers the skill, clicks only once the menu offers it, and waits for the button to name it. Spends nothing. `true` at once if already chosen; `false` if absent or the choice didn't take.
 
 Example:
 ```luau
-local Lamp = require("@lib/main/interfaces/mainscreen/lamp")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
-assert(Lamp.open())
-assert(Lamp.choose(Stats.Skill.Herblore), "couldn't choose Herblore")
-print(Lamp.selected())
+assert(Lamp.choose(Stats.Skill.Herblore))
 ```
 
 ## Lamp.confirm
@@ -103,7 +122,12 @@ Definition:
 ```luau
 function Lamp.confirm(): boolean
 ```
-Clicks "Confirm", which **spends the lamp** on the chosen skill, waits for the interface to go and dismisses the message that follows. False, with no click, when no skill is chosen. True once the lamp is spent, even if the message couldn't be dismissed, which is logged.
+Clicks "Confirm", **spending the lamp**, waits for the interface to close and dismisses the message. `false` with no click when no skill is chosen. `true` once spent, even if the message couldn't be dismissed (logged).
+
+Example:
+```luau
+assert(Lamp.confirm())
+```
 
 ## Lamp.close_message
 
@@ -111,7 +135,12 @@ Definition:
 ```luau
 function Lamp.close_message(key_probability: number?, timeout_ms: number?): boolean
 ```
-Dismisses the message box the game shows after "Confirm", waiting up to `timeout_ms` for it (`MESSAGE_TIMEOUT_MS` by default). By key or click (`key_probability`; nil is the biometric), by click if the key doesn't take. True when one was dismissed. `Lamp.confirm` already does this; it's for a message left open.
+Waits up to `timeout_ms` (`MESSAGE_TIMEOUT_MS`) for the post-Confirm message and continues it by key (chance `key_probability`, `nil` for the biometric) or click, falling back to a click. `true` when dismissed. For a message left open; `confirm` already calls it.
+
+Example:
+```luau
+Lamp.close_message()
+```
 
 ## Lamp.close_button
 
@@ -119,7 +148,12 @@ Definition:
 ```luau
 function Lamp.close_button(): Widget?
 ```
-The close button, nil when the interface isn't open.
+The close button, `nil` when closed.
+
+Example:
+```luau
+local button = Lamp.close_button()
+```
 
 ## Lamp.close
 
@@ -127,7 +161,12 @@ Definition:
 ```luau
 function Lamp.close(key_probability: number?): boolean
 ```
-Closes the interface, keeping the lamp: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
+Closes the interface, keeping the lamp, via `Toplevel.close` (`nil` or 0 uses the Escape biometric).
+
+Example:
+```luau
+Lamp.close()
+```
 
 ## Lamp.slot
 
@@ -135,7 +174,12 @@ Definition:
 ```luau
 function Lamp.slot(item: (number | string)?): number?
 ```
-The inventory slot of `item` (an id or a name, ignoring case), or by default of the first item called one of `NAMES`. Nil when none is held.
+The inventory slot of `item` (id, or name ignoring case), or by default of the first item named in `NAMES`. `nil` when not held.
+
+Example:
+```luau
+print(Lamp.slot())
+```
 
 ## Lamp.open
 
@@ -143,16 +187,12 @@ Definition:
 ```luau
 function Lamp.open(item: (number | string)?): (boolean, string?)
 ```
-Opens the interface by rubbing a lamp in the inventory (`item`, an id or a name; by default the first of `NAMES`), which spends nothing yet, and waits for it. True when it is open, also if it already was. When it didn't work the second result says why.
+Clears any other open interface with Escape, then rubs (or `OPTIONS` option) the lamp and waits for the interface. Spends nothing. `true` if open or already open; otherwise `false` and a reason ("no lamp held", "another interface is open", ...).
 
 Example:
 ```luau
-local Lamp = require("@lib/main/interfaces/mainscreen/lamp")
-
 local ok, why = Lamp.open()
 assert(ok, why)
-print(#(Lamp.skills() or {}), "skills")
-assert(Lamp.close(), "couldn't close it")
 ```
 
 ## Lamp.use
@@ -161,11 +201,10 @@ Definition:
 ```luau
 function Lamp.use(skill: SkillName, item: (number | string)?): (boolean, string?)
 ```
-Opens the interface if needed, chooses `skill` and confirms, **spending the lamp** and dismissing the message after it. When it didn't work the second result says why.
+`open`, `choose` and `confirm`: **spends the lamp** on `skill`. `false` and a reason on failure.
 
 Example:
 ```luau
-local Lamp = require("@lib/main/interfaces/mainscreen/lamp")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 local ok, why = Lamp.use(Stats.Skill.Herblore)

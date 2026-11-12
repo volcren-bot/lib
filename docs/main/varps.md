@@ -1,6 +1,6 @@
 # Main.Varps
 
-Named access to the game's saved settings ("varps"): run toggle, special attack, poison and so on.
+Read the game's player variables ("varps"): run toggle, special attack, poison and so on.
 
 ```luau
 local Varps = require("@lib/main/varps")
@@ -22,7 +22,7 @@ Varps.SLAYER_TASK_SIZE = 394
 Varps.SLAYER_TASK_CREATURE = 395
 Varps.LAST_HOME_TELEPORT = 892
 ```
-The ids of a few commonly used settings.
+Common varp ids.
 
 ## Varps.get
 
@@ -30,7 +30,7 @@ Definition:
 ```luau
 function Varps.get(id: number): number?
 ```
-Reads one setting.
+One varp's value, or `nil` when unavailable.
 
 Example:
 ```luau
@@ -45,7 +45,7 @@ Definition:
 ```luau
 function Varps.all(): { [number]: number }?
 ```
-Reads every setting at once, as a table keyed by id.
+Every varp, keyed by id from 0, or `nil` when unavailable.
 
 Example:
 ```luau
@@ -66,7 +66,7 @@ function Varps.changes(
 	after: { [number]: number }
 ): { [number]: { before: number?, after: number } }
 ```
-Compares two snapshots from `Varps.all` and returns only the settings that changed. Useful to discover which setting a button controls.
+The varps whose value differs in `after`, for finding which varp a button controls.
 
 Example:
 ```luau
@@ -88,7 +88,7 @@ Definition:
 ```luau
 function Varps.poison_state(value: number): string
 ```
-Turns the poison setting's value into `"healthy"`, `"poisoned"` or `"envenomed"`.
+Maps the `POISON` value: `>= 1000000` `"envenomed"`, `> 0` `"poisoned"`, else `"healthy"`.
 
 Example:
 ```luau

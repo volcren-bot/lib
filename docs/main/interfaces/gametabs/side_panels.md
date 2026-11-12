@@ -1,12 +1,10 @@
 # Main.Interfaces.Gametabs.SidePanels
 
-The row of tabs next to the inventory: combat, skills, prayer, spells, settings, logout and so on. Check which one is open and open another.
+The side panel tabs (combat, stats, prayer, spells, logout...): which is open, and opening one by key or click. A tab is given by number or by lowercase name (`"inventory"`, `"prayerbook"`, `"magic_spellbook"`).
 
 ```luau
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 ```
-
-A tab can be given by its number or by its name (`"inventory"`, `"stats"`, `"prayerbook"`...).
 
 ## Constants
 
@@ -30,7 +28,7 @@ SidePanels.SETTINGS_SIDE = 11
 SidePanels.EMOTE = 12
 SidePanels.MUSIC = 13
 ```
-The number of each tab, and the client setting that remembers which one is open.
+The varc holding the open tab, the base chance of using a tab's key, and each tab's number (its name is the constant in lowercase).
 
 ## SidePanels.name
 
@@ -38,7 +36,7 @@ Definition:
 ```luau
 function SidePanels.name(tab: number): string?
 ```
-The name of a tab from its number.
+A tab's name from its number; nil when unknown.
 
 Example:
 ```luau
@@ -53,7 +51,7 @@ Definition:
 ```luau
 function SidePanels.resolve(tab: number | string): number?
 ```
-Turns a tab number or name into its number. Returns an error for an unknown tab.
+A tab number from a number or case-insensitive name; logs and returns nil for an unknown tab.
 
 Example:
 ```luau
@@ -68,7 +66,7 @@ Definition:
 ```luau
 function SidePanels.current(): number?
 ```
-The number of the tab that is open now.
+The open tab's number.
 
 Example:
 ```luau
@@ -83,13 +81,13 @@ Definition:
 ```luau
 function SidePanels.is_open(tab: number | string): boolean
 ```
-Whether a given tab is the open one.
+Whether `tab` is the open one; false for an unknown tab.
 
 Example:
 ```luau
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
-print("inventory open:", SidePanels.is_open("inventory"))
+print(SidePanels.is_open("inventory"))
 ```
 
 ## SidePanels.button
@@ -98,14 +96,13 @@ Definition:
 ```luau
 function SidePanels.button(tab: number | string): Widget?
 ```
-The clickable button for a tab. Returns an error if you aren't in game.
+The tab's button widget. Nil when not logged in, the tab is unknown, or the current root interface's layout isn't known.
 
 Example:
 ```luau
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
 local button = SidePanels.button("stats")
-print(button and button.x, button and button.y)
 ```
 
 ## SidePanels.key
@@ -114,14 +111,13 @@ Definition:
 ```luau
 function SidePanels.key(tab: number | string): number?
 ```
-The key bound to a tab (a `Keyboard.keys` code), or `nil` if it's unbound or you aren't in game. It's read from the client's own keybind settings, found by the names the game cache gives them, so it follows rebinding. Each tab is read once and kept, so rebinding mid-run isn't noticed.
+The `Keyboard.keys` code bound to the tab in the client's keybind settings (F1 to F12 or ESCAPE), nil when unbound or unreadable. Cached per tab once read, so mid-run rebinds aren't seen.
 
 Example:
 ```luau
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
-local Keyboard = require("@lib/utils/input/keyboard")
 
-print(SidePanels.key("inventory") == Keyboard.keys.ESCAPE)
+print(SidePanels.key("inventory"))
 ```
 
 ## SidePanels.open
@@ -130,16 +126,13 @@ Definition:
 ```luau
 function SidePanels.open(tab: number | string, key_probability: number?, timeout_ms: number?): boolean
 ```
-Opens a tab and waits for it to open (`timeout_ms` for each try, 3 ticks by default). Does nothing if it's already open.
-
-If the tab has a key bound (see `SidePanels.key`), it presses it with the chance `key_probability`. By default that is a biometric random around `SidePanels.KEY_CHANCE` (0.9), or the `Biometrics.ESCAPE` probability when the key is ESC, since ESC also closes interfaces. Pass `1` to always use the key and `0` to never use it. A tab with no key, or a key press that didn't open the tab, is clicked with the mouse, up to 3 times. Returns `false` if it still isn't open, or if the tab's button isn't available (the click needs it, the key doesn't).
+Opens the tab and waits `timeout_ms` (1800) per try; true at once when already open. A bound key is pressed with chance `key_probability` (default a biometric value around `KEY_CHANCE`, or the `Biometrics.ESCAPE` probability for ESC; `1` always, `0` never). Otherwise, or if the key didn't work, the button is clicked up to 3 times. False if it never opens or the button is unavailable.
 
 Example:
 ```luau
 local SidePanels = require("@lib/main/interfaces/gametabs/side_panels")
 
-print(SidePanels.open("inventory"))
-print(SidePanels.open("stats", 0)) -- always with the mouse
+SidePanels.open("stats", 0)
 ```
 
 ## SidePanels.open_async
@@ -148,7 +141,7 @@ Definition:
 ```luau
 function SidePanels.open_async(tab: number | string, key_probability: number?, force: boolean?): boolean
 ```
-Like `SidePanels.open`, but queues the key press or click as async input and returns immediately: it doesn't wait for the tab to open and doesn't retry. Returns `true` if the tab was already open or the input was queued, `false` if the tab is unknown or its button isn't available. `force` queues it even when the tab is open now, for a tab that an earlier queued input leaves. Check `SidePanels.is_open` later, or `Mouse.wait()` / `Keyboard.wait()` to wait for the input.
+`open` as one queued key press or click, without waiting or retrying. True when already open (unless `force`) or the input was queued; false for an unknown tab or missing button. Wait with `Mouse.wait()` / `Keyboard.wait()` or check `is_open` later.
 
 Example:
 ```luau

@@ -1,14 +1,8 @@
 # Main.Interfaces.Mainscreen.Balloon
 
-The hot air balloons' map: a place to click for each balloon, opened by "Fly" on a balloon's pilot or "Use" on its basket (group 469, `zep_balloon_map` in the cache).
+The hot air balloon map (group 469), opened with "Fly" on a pilot or "Use" on the basket. Pilots often have empty names, so they are identified by offering "Fly". Every place shows whether unlocked or not; `is_unlocked` reads its varbit. A flight takes about 3 seconds and ends in a position jump; the map closes shortly after landing.
 
-```luau
-local Balloon = require("@lib/main/interfaces/mainscreen/balloon")
-```
-
-The pilots are different NPCs, often with an empty name in the NPC list, so "Fly" is what identifies one. A place's menu only says "Travel", so the module knows each by its component. The map shows every place whether it is unlocked or not; `is_unlocked` reads the varbit that tells. A flight is a jump of about 3 seconds, and the map goes a moment after it lands.
-
-**Logs.** A flight spends one log of the place's kind, from the inventory or from the log storage, which is shared by every balloon. The data asks for no tinderbox.
+A flight spends one log of the place's kind, from the inventory or the shared log storage:
 
 | Place | Log | Unlock varbit |
 | --- | --- | --- |
@@ -19,11 +13,13 @@ The pilots are different NPCs, often with an empty name in the NPC list, so "Fly
 | Castle Wars | Yew logs | 2869 = 1 |
 | Grand Tree | Magic logs | 2870 = 1 |
 
-**The stored counts aren't in the game's variables.** A flight that took a stored log changed no varp to match, so `stored` reads them from the chat: "This crate currently contains ..." from "Check", and "You have 29 sets of Magic logs left in storage." after a flight. For `has_log`, a kind not said yet is taken to be there, and a flight that doesn't happen takes it to be out for `OUT_MS`. Because that could waste a walk, the walker only uses a balloon with its log in the inventory, unless a script sets `Transports.BALLOON_STORAGE = true`. Using the map directly is not limited by this.
+Stored counts are in no varp, so they are read from chat ("This crate currently contains ...", "You have N sets of X left in storage."). An unseen kind is assumed present; a failed flight marks its kind out for `OUT_MS`. The walker only flies with the log held unless `Transports.BALLOON_STORAGE = true`. The storage's "Ask me what logs to use every time" preference, flights with logs both held and stored, and running out are untested.
 
-The storage's "Preferences" asks which logs go first, and one answer is "Ask me what logs to use every time". That setting, a flight with logs both held and stored, and running out of logs haven't been seen.
+A `Destination` has `name`, `area` (widget to hover and click), `log` (`LogKind`: `id`, `name`) and `unlocked`.
 
-A destination has `name`, `area` (where to hover and click), `log` (`id` and `name`) and `unlocked`.
+```luau
+local Balloon = require("@lib/main/interfaces/mainscreen/balloon")
+```
 
 ## Constants
 
@@ -50,8 +46,14 @@ Balloon.PILOT_ASK_LIMIT = 8
 Balloon.PILOT_HOVER_MS = 350
 Balloon.LAND_DISTANCE = 6
 Balloon.OUT_MS = 300000
+Balloon.LOG_KINDS
+Balloon.PLACES
 ```
-The interface piece numbers and options, the waits, how the pilot is found, the jump that counts as the flight, and how long a log is taken to be out.
+- Widget children, inventory container, and the object/NPC options used.
+- Waits: open, hover menu, flight, check message, poll, hover settle, random pause after opening.
+- `PILOT_RANGE`: tiles searched for a pilot, basket or storage; `PILOT_ASK_LIMIT`: NPCs hovered at most; `PILOT_HOVER_MS`: wait per hover.
+- `LAND_DISTANCE`: tiles moved that count as the flight; `OUT_MS`: how long a log kind stays marked out.
+- `LOG_KINDS`: every `LogKind`; `PLACES`: per place its `button` child, `log`, `varbit` and unlock `value`.
 
 ## Balloon.Place
 
@@ -59,7 +61,12 @@ Definition:
 ```luau
 export type Place = "Entrana" | "Taverley" | "Crafting Guild" | "Varrock" | "Castle Wars" | "Grand Tree"
 ```
-Every place. `Balloon.Place` is a frozen table of them keyed without spaces (`CastleWars`, `GrandTree`, ...), and `Balloon.PLACES` has each one's component, log and unlock varbit.
+Every place. `Balloon.Place` is a frozen table of them keyed without spaces (`Balloon.Place.CastleWars`).
+
+Example:
+```luau
+Balloon.select(Balloon.Place.GrandTree)
+```
 
 ## Balloon.is_open
 
@@ -69,13 +76,23 @@ function Balloon.is_open(): boolean
 ```
 Whether the map is open.
 
+Example:
+```luau
+print(Balloon.is_open())
+```
+
 ## Balloon.wait_open
 
 Definition:
 ```luau
 function Balloon.wait_open(timeout_ms: number?): boolean
 ```
-Whether the map is open, polled for up to `timeout_ms` (`OPEN_TIMEOUT_MS` by default).
+Polls for the map up to `timeout_ms` (`OPEN_TIMEOUT_MS`).
+
+Example:
+```luau
+Balloon.wait_open()
+```
 
 ## Balloon.is_unlocked
 
@@ -83,7 +100,12 @@ Definition:
 ```luau
 function Balloon.is_unlocked(place: Place): boolean
 ```
-Whether the account has this balloon, by the game's varbit. It doesn't need the map.
+Whether the place is unlocked, by varbit. Works without the map.
+
+Example:
+```luau
+print(Balloon.is_unlocked(Balloon.Place.Varrock))
+```
 
 ## Balloon.destinations
 
@@ -91,7 +113,14 @@ Definition:
 ```luau
 function Balloon.destinations(): { Destination }?
 ```
-Every place on the map, unlocked or not. Nil when it isn't open.
+Every visible place on the map, in no fixed order. `nil` when closed.
+
+Example:
+```luau
+for _, d in ipairs(Balloon.destinations() or {}) do
+	print(d.name, d.log.name, d.unlocked)
+end
+```
 
 ## Balloon.find
 
@@ -99,7 +128,12 @@ Definition:
 ```luau
 function Balloon.find(name: string): Destination?
 ```
-The place called `name`, ignoring case. Nil when the map isn't open or has no such place.
+The place called `name`, ignoring case. `nil` when closed or absent.
+
+Example:
+```luau
+local d = Balloon.find("varrock")
+```
 
 ## Balloon.stored
 
@@ -107,12 +141,10 @@ Definition:
 ```luau
 function Balloon.stored(): { [string]: number }
 ```
-The logs in storage as the chat last said, by log name in lowercase (`logs`, `oak logs`, ...). A kind not said yet is missing. The game keeps the chat for the session, so this can be called anywhere.
+Stored log counts from the latest chat messages, keyed by lowercase log name (`"oak logs"`). Unseen kinds are missing. Works anywhere, since chat persists for the session.
 
 Example:
 ```luau
-local Balloon = require("@lib/main/interfaces/mainscreen/balloon")
-
 print(Balloon.stored()["magic logs"])
 ```
 
@@ -122,7 +154,12 @@ Definition:
 ```luau
 function Balloon.holds_log(place: Place): boolean
 ```
-Whether the inventory holds the log a flight to this place takes.
+Whether the inventory holds the place's log.
+
+Example:
+```luau
+print(Balloon.holds_log(Balloon.Place.Entrana))
+```
 
 ## Balloon.has_log
 
@@ -130,7 +167,12 @@ Definition:
 ```luau
 function Balloon.has_log(place: Place): boolean
 ```
-Whether a flight to this place has a log to spend: one in the inventory, or in storage unless the chat said or a recent flight showed there are none.
+Whether a log is available: held, or stored unless chat said zero or a failed flight marked it out within `OUT_MS`.
+
+Example:
+```luau
+print(Balloon.has_log(Balloon.Place.Entrana))
+```
 
 ## Balloon.select
 
@@ -138,12 +180,10 @@ Definition:
 ```luau
 function Balloon.select(place: Place): (boolean, string?)
 ```
-Clicks a place on the map and waits for the flight and for the map to go. The click only happens once the menu under the mouse offers that place's "Travel". True when the flight happened. When it didn't the second result says why, and the place's log is taken to be out for `OUT_MS`.
+Hovers the place, clicks once the menu offers its "Travel", then waits for the jump and for the map to close. `false` and a reason on failure; a flight that didn't happen also marks the log out for `OUT_MS`.
 
 Example:
 ```luau
-local Balloon = require("@lib/main/interfaces/mainscreen/balloon")
-
 assert(Balloon.open())
 assert(Balloon.select(Balloon.Place.Varrock))
 ```
@@ -154,7 +194,12 @@ Definition:
 ```luau
 function Balloon.close_button(): Widget?
 ```
-The close button, nil when the map isn't open.
+The close button, `nil` when closed.
+
+Example:
+```luau
+local button = Balloon.close_button()
+```
 
 ## Balloon.close
 
@@ -162,7 +207,12 @@ Definition:
 ```luau
 function Balloon.close(key_probability: number?): boolean
 ```
-Closes the map: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
+Closes the map via `Toplevel.close` (`nil` or 0 uses the Escape biometric).
+
+Example:
+```luau
+Balloon.close()
+```
 
 ## Balloon.find_pilot
 
@@ -170,7 +220,12 @@ Definition:
 ```luau
 function Balloon.find_pilot(): Npc?
 ```
-The NPC near you (within `PILOT_RANGE` tiles) that offers "Fly", found by asking: those the cache calls a balloon's first (`zep_`), then the rest, nearest first, up to `PILOT_ASK_LIMIT` hovered. Nil when there is none.
+Hovers NPCs within `PILOT_RANGE`, cache names containing `zep_` first then nearest first, up to `PILOT_ASK_LIMIT`, and returns the first offering "Fly". `nil` when none.
+
+Example:
+```luau
+print(Balloon.find_pilot())
+```
 
 ## Balloon.open
 
@@ -178,7 +233,13 @@ Definition:
 ```luau
 function Balloon.open(npc: Npc?, walk: boolean?): (boolean, string?)
 ```
-Opens the map with "Fly" on the pilot near you (or `npc`), else "Use" on the basket, walking closer first unless `walk` is false, and waits for it. True when it is open, also if it already was. When it didn't work the second result says why.
+Clears other interfaces with Escape, then uses "Fly" on `npc` or `find_pilot()` (walking closer unless `walk` is false), or else "Use" on a basket within `PILOT_RANGE` (always walking), and waits for the map. `true` if open or already open; otherwise `false` and a reason.
+
+Example:
+```luau
+local ok, why = Balloon.open()
+assert(ok, why)
+```
 
 ## Balloon.check
 
@@ -186,4 +247,9 @@ Definition:
 ```luau
 function Balloon.check(): { [string]: number }?
 ```
-Reads the log storage near you with "Check", dismisses the message and returns the counts. Nil when there is no storage nearby or nothing was said. It also clears what was taken to be out.
+"Check"s the log storage within `PILOT_RANGE`, dismisses the message, clears every out mark and returns `stored()`. `nil` when no storage is near or no message came.
+
+Example:
+```luau
+local counts = Balloon.check()
+```

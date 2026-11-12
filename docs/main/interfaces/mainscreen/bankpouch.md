@@ -1,12 +1,10 @@
 # Main.Interfaces.Mainscreen.BankPouch
 
-The rune pouch's panel in the bank: "Configure" on a pouch in the bank's inventory shows it in place of the inventory, in the bank's side interface (group 15). It has the pouch's runes, a "Deposit runes" button, ten loadouts in a scrolling list and "Dismiss" to go back to the inventory.
+The rune pouch panel in the bank's side interface (group 15), shown in place of the inventory by "Configure" on a pouch: the pouch's runes, "Deposit runes", ten loadouts in a scrolling list, and "Dismiss". While it shows, runes withdrawn from the bank go straight into the pouch. Pouch contents are read from [Runepouch](runepouch.md) varbits; every function here needs the bank open and, except `open`, the panel too.
 
 ```luau
 local BankPouch = require("@lib/main/interfaces/mainscreen/bankpouch")
 ```
-
-While the panel shows, a rune withdrawn from the bank goes straight into the pouch instead of the inventory, so filling the pouch takes no trip out of the bank. The pouch's runes are read from [Runepouch](runepouch.md)'s client variables, so they don't need the panel. Everything else here needs the bank open and, except `open`, the panel too.
 
 ## Constants
 
@@ -33,7 +31,7 @@ BankPouch.MAX_SCROLLS = 12
 BankPouch.TIMEOUT_MS = 2500
 BankPouch.POLL_MS = 50
 ```
-The bank's side interface and, in it, the panel (hidden while the inventory shows), its buttons, and the pouch's rune cells: children 1 to 4 of `RUNES`, each showing its rune and amount, and an empty cell another item. `LIST` is the scrolling list of loadouts: each row in `LOADOUTS` has a cell per slot as children 1 to 4 (the empty-slot item `EMPTY_SLOT` where no rune is set), its name as child 1 of the matching `NAMES` component (`UNNAMED` until the player names it), and a Load button somewhere in the panel up to `LAST_CHILD` whose parent is the row. Then the menu options, the query the client asks for a typed amount, and how far to scroll and how long to wait for each step, and between looks.
+Panel components: `RUNES` holds the pouch cells as children 1 to `SLOTS`; each `LOADOUTS` row holds its rune cells the same way (`EMPTY_SLOT` where unset), with its name as child 1 of the matching `NAMES` entry (`UNNAMED` until named) and a Load button parented to the row somewhere up to `LAST_CHILD`. Then menu options, the typed-amount query, the scroll limit and timings. `LOADOUTS` and `NAMES` are frozen.
 
 ## Types
 
@@ -41,7 +39,7 @@ Definition:
 ```luau
 export type Loadout = { number: number, name: string?, runes: { number } }
 ```
-A loadout: its place in the list from 1, its name (nil while unnamed), and the item ids of its runes in slot order, empty slots left out.
+A loadout's 1-based list position, its name (nil while unnamed), and its rune item ids in slot order without empty slots.
 
 ## BankPouch.is_open
 
@@ -49,81 +47,7 @@ Definition:
 ```luau
 function BankPouch.is_open(): boolean
 ```
-Whether the bank is open with the panel showing, read from the panel's own component, which the client hides with all its contents when the inventory shows.
-
-## BankPouch.open / BankPouch.close
-
-Definition:
-```luau
-function BankPouch.open(timeout_ms: number?): boolean
-function BankPouch.close(timeout_ms: number?): boolean
-```
-`open` picks "Configure" on the first pouch in the bank's inventory (`Bankmain.inventory`) and waits for the panel; false when the bank isn't open or the inventory holds no pouch. `close` clicks Dismiss and waits for the inventory to come back. Each is true at once when the panel already is that way.
-
-Example:
-```luau
-local BankPouch = require("@lib/main/interfaces/mainscreen/bankpouch")
-
-if BankPouch.open() then
-	BankPouch.close()
-end
-```
-
-## BankPouch.withdraw
-
-Definition:
-```luau
-function BankPouch.withdraw(rune: Item, amount: number?): boolean
-```
-Takes a rune from the bank into the pouch (`Bankmain.withdraw`, which puts it in the pouch while the panel shows). True once the pouch holds more of it. When the bank can't give it or the pouch doesn't take it, it logs which, with the rune's name, and returns false.
-
-Example:
-```luau
-local BankPouch = require("@lib/main/interfaces/mainscreen/bankpouch")
-
-if BankPouch.open() then
-	BankPouch.withdraw("Law rune", 500)
-	BankPouch.close()
-end
-```
-
-## BankPouch.deposit / BankPouch.deposit_runes
-
-Definition:
-```luau
-function BankPouch.deposit(rune: Item, amount: number?): boolean
-function BankPouch.deposit_runes(): boolean
-```
-`deposit` puts some of a rune from the pouch back in the bank from its cell: 1, 5, 10 or the bank's custom amount by their own options, any other amount by Deposit-X and the typed amount, and all of it with no amount or one at least what the pouch holds. True once the pouch holds less of it; false when it holds none. `deposit_runes` empties the pouch into the bank with the panel's button, true once the pouch is empty (at once when it is).
-
-## BankPouch.loadouts
-
-Definition:
-```luau
-function BankPouch.loadouts(): { Loadout }?
-```
-The ten loadouts, from the panel's cells, whether or not their row is scrolled into view. Nil while the panel isn't open.
-
-## BankPouch.load
-
-Definition:
-```luau
-function BankPouch.load(which: number | string): boolean
-```
-Loads a loadout, by its number or its name (any case): scrolls its row into view over the list, clicks its Load, and waits until the pouch holds exactly the loadout's runes. False for an empty or missing loadout, or when the row can't be shown.
-
-Example:
-```luau
-local BankPouch = require("@lib/main/interfaces/mainscreen/bankpouch")
-
-if BankPouch.open() then
-	for _, loadout in ipairs(BankPouch.loadouts() or {}) do
-		print(loadout.number, loadout.name, #loadout.runes)
-	end
-	BankPouch.load(1)
-	BankPouch.close()
-end
-```
+Whether the bank is open with the panel showing.
 
 ## BankPouch.open
 
@@ -131,11 +55,13 @@ Definition:
 ```luau
 function BankPouch.open(timeout_ms: number?): boolean
 ```
-TODO...
+Uses "Configure" on the first pouch in the bank's inventory and waits up to `timeout_ms` (default `TIMEOUT_MS`) for the panel. True at once if already open; false when the bank isn't open or no pouch is held.
 
 Example:
 ```luau
-
+if BankPouch.open() then
+	BankPouch.close()
+end
 ```
 
 ## BankPouch.close
@@ -144,11 +70,11 @@ Definition:
 ```luau
 function BankPouch.close(timeout_ms: number?): boolean
 ```
-TODO...
+Clicks Dismiss and waits for the inventory to return. True at once if the panel isn't open.
 
 Example:
 ```luau
-
+BankPouch.close()
 ```
 
 ## BankPouch.deposit_runes
@@ -157,11 +83,11 @@ Definition:
 ```luau
 function BankPouch.deposit_runes(): boolean
 ```
-TODO...
+Empties the pouch into the bank with the panel's button. True once the pouch is empty, at once if it already was.
 
 Example:
 ```luau
-
+BankPouch.deposit_runes()
 ```
 
 ## BankPouch.deposit
@@ -170,9 +96,49 @@ Definition:
 ```luau
 function BankPouch.deposit(rune: Item, amount: number?): boolean
 ```
-TODO...
+Deposits `amount` of a pouch rune from its cell: "Deposit-1/5/10" or the bank's custom amount when it matches, "Deposit-X" with a typed amount otherwise, and "Deposit-All" when `amount` is nil, 0 or at least what's held. True once the pouch holds less; false when it holds none.
 
 Example:
 ```luau
+BankPouch.deposit("Law rune", 100)
+```
 
+## BankPouch.withdraw
+
+Definition:
+```luau
+function BankPouch.withdraw(rune: Item, amount: number?): boolean
+```
+Withdraws `rune` from the bank into the pouch via `Bankmain.withdraw` (nil is 1, 0 or less is all). True once the pouch holds more of it; logs and returns false when the bank or pouch refuses.
+
+Example:
+```luau
+if BankPouch.open() then
+	BankPouch.withdraw("Law rune", 500)
+	BankPouch.close()
+end
+```
+
+## BankPouch.loadouts
+
+Definition:
+```luau
+function BankPouch.loadouts(): { Loadout }?
+```
+All ten loadouts, read from memory whether or not their row is scrolled into view. Nil while the panel isn't open.
+
+## BankPouch.load
+
+Definition:
+```luau
+function BankPouch.load(which: number | string): boolean
+```
+Loads a loadout by number or case-insensitive name: scrolls its row into view, clicks Load, and waits until the pouch holds exactly its runes. False for a missing or empty loadout, or when the row can't be scrolled into view.
+
+Example:
+```luau
+if BankPouch.open() then
+	BankPouch.load(1)
+	BankPouch.close()
+end
 ```

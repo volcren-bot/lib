@@ -1,63 +1,57 @@
 # Main.Interfaces.Login.WelcomeScreen
-The "Click here to play" lobby you land on after logging in, before entering the game.
 
-## WelcomeScreen
-Definition:
-```luau
-local WelcomeScreen: { ROOT_INTERFACE: number, GROUP: number, PLAY_BUTTON: number, ... }
-```
-The lobby itself. The constants are the interface ids of the screen and its play button.
+The "Click here to play" lobby shown after logging in, before entering the game.
 
-Example:
 ```luau
 local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
-
-print(WelcomeScreen.GROUP, WelcomeScreen.PLAY_BUTTON)
+local Host = require("@lib/host")
 ```
 
+## Constants
+
+Definition:
+```luau
+WelcomeScreen.ROOT_INTERFACE = 165
+WelcomeScreen.GROUP = 378
+WelcomeScreen.PLAY_BUTTON = 72
+```
+The lobby's root interface, its interface and the play button component.
+
 ## WelcomeScreen.is_open
+
 Definition:
 ```luau
 function WelcomeScreen.is_open(state: ClientState): boolean
 ```
-Checks if the lobby is showing, given the client state.
+Whether `state` is logged in with the lobby as root interface.
 
 Example:
 ```luau
-local Host = require("@lib/host")
-local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
-
-local state = Host.game_state()
-if state then
-	print("lobby open:", WelcomeScreen.is_open(state))
-end
+print(WelcomeScreen.is_open(Host.game_state()))
 ```
 
 ## WelcomeScreen.play_button
+
 Definition:
 ```luau
 function WelcomeScreen.play_button(): Widget?
 ```
-Gets the lobby's play button.
+The lobby's play button widget, or `nil`.
 
 Example:
 ```luau
-local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
-
-local button = WelcomeScreen.play_button()
-print(if button then "found the play button" else `not found`)
+print(WelcomeScreen.play_button() ~= nil)
 ```
 
 ## WelcomeScreen.play
+
 Definition:
 ```luau
 function WelcomeScreen.play(): boolean
 ```
-Clicks the lobby's play button. Returns `false` if the lobby isn't open.
+Clicks the play button without waiting for the game to load. `false` when the lobby isn't open or the button is missing.
 
 Example:
 ```luau
-local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
-
-print("clicked play:", WelcomeScreen.play())
+print(WelcomeScreen.play())
 ```

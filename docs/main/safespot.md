@@ -1,6 +1,6 @@
 # Main.SafeSpot
 
-Safe spotting: standing where an NPC that wants to hit you can't get to you. It works out how an NPC walks at you over the scene's collision, finds the tiles where it gets stuck, and walks you there.
+Safe spotting: standing where a melee NPC chasing you can't reach you. It simulates the game's NPC chase over the scene's collision, finds tiles where the NPC gets stuck, and walks you there.
 
 ```luau
 local SafeSpot = require("@lib/main/safespot")
@@ -8,18 +8,13 @@ local SafeSpot = require("@lib/main/safespot")
 
 ## How NPCs chase you
 
-An NPC chasing you to hit you in melee doesn't plan a route like you do. Every tick:
+Each tick a chasing NPC:
 
-1. If it is next to you (north, east, south or west, not diagonally) with no wall between, it attacks and doesn't move.
-2. It picks the side of you it's on, split by the two diagonals through your tile, comparing its south-west tile with yours: west, north, east or south. On a diagonal it takes the north or south side, so an NPC diagonal to you steps east or west. Its destination is the tile next to you on that side (for a big NPC, where its tiles touch yours).
-3. It takes one step towards that tile: diagonally if both coordinates differ and it can, else east or west, else north or south. If none of them can be taken it stays where it is.
+1. Attacks without moving if it is next to you north, east, south or west with no wall between.
+2. Picks the side of you it is on, comparing its south-west tile with yours and split by the diagonals through your tile; on a diagonal it takes north or south. It heads for the tile next to you on that side.
+3. Steps towards it: diagonally if both coordinates differ and it can, else east/west, else north/south, else stays.
 
-Every NPC paths from its south-west tile, whatever its size; a bigger NPC checks every tile its edge steps onto, including the walls between them. NPCs don't walk onto tiles other NPCs stand on (players don't block them).
-
-This is what makes the two common safe spots work:
-
-- **Behind something**: it walks diagonally until it's straight north, east, south or west of you, then straight at you, and stops against whatever is in between.
-- **Corners**: diagonal to you with a wall or object on the tile it steps east or west onto, it stays put:
+NPCs path from their south-west tile; bigger NPCs check every tile their edge steps onto. They don't walk onto other NPCs (players don't block them). So an NPC stops behind an obstacle once it is straight in line with you, or diagonal to you when the tile it would step east or west onto is blocked:
 
 ```
 0 0 0 0 0
@@ -28,24 +23,41 @@ This is what makes the two common safe spots work:
 0 0 | 0 0
 ```
 
-`X` is you, `E` the NPC's south-west tile, `|` the obstacle.
+`X` is you, `E` the NPC's south-west tile, `|` the obstacle. Running (2 tiles a tick) usually beats the NPC there; `find` simulates the chase during your walk too.
 
-You walk faster than an NPC when running (2 tiles a tick against 1), so you can usually reach a spot before it does. `SafeSpot.find` plays out the chase while you walk there too.
-
-Things this doesn't cover:
-
-- NPCs that attack from range (bows, magic): being out of reach isn't being safe from them.
-- An NPC lured past its range from where it spawned stops chasing and walks back. For a safe spot that's as good, and `SafeSpot.trap` takes it as trapped.
-- Your character walks back to an NPC that hits it while auto retaliate is on, out of any safe spot: turn it off.
+Not covered: ranged and magic attackers; an NPC lured past its spawn range walks back (`trap` counts that as trapped); auto retaliate walks you out of the spot, so turn it off.
 
 ## Types
 
 | Type | What it holds |
 | --- | --- |
-| `Grid` | The scene's collision flags in an area (from `Host.collision`), plus `occupied`: the tiles other NPCs stand on, by `"x,y"` (see `SafeSpot.occupy`). |
-| `Chaser` | An NPC as the pathfinding sees it: south-west tile `x`, `y`, `size` in tiles and, when read from the game, its `index`. |
-| `Chase` | How a chase ends: `outcome` (`"reached"`, `"stuck"`, `"loop"` or `"far"`), `path` (every south-west tile, the start first), `at` (the last one) and `touched` (it got next to you while you walked). |
-| `Spot` | A safe `tile`, the `distance` you walk to it, the `chases` of the NPCs (with the NPCs around standing still), the same over the walls alone (`walls`) and whether the walls alone hold every NPC (`walls_hold`). |
+| `Grid` | Collision `flags` of an area (`x`, `y`, `width`, `height`, `plane`) from `Host.collision`, plus `occupied`: tiles other NPCs stand on, by `"x,y"`. |
+| `Chaser` | An NPC's south-west tile `x`, `y`, `size` in tiles and, when read from the game, `index`. |
+| `Chase` | `outcome` (`"reached"`, `"stuck"`, `"loop"` or `"far"`), `path` (south-west tiles, start first), `at` (the last) and `touched` (it got next to you while you walked). |
+| `Spot` | `tile`, walk `distance`, `chases` with other NPCs standing still, `walls` (the same over walls alone), and `walls_hold` (walls alone hold every NPC). |
+
+## Constants
+
+Definition:
+```luau
+SafeSpot.FLAG = { WALL_NORTH_WEST = 0x1, WALL_NORTH = 0x2, WALL_NORTH_EAST = 0x4, WALL_EAST = 0x8, WALL_SOUTH_EAST = 0x10, WALL_SOUTH = 0x20, WALL_SOUTH_WEST = 0x40, WALL_WEST = 0x80, BLOCKED = 0x1240100 }
+SafeSpot.MAX_STEPS = 64
+SafeSpot.RADIUS = 10
+SafeSpot.SETTLE_TICKS = 3
+SafeSpot.ATTEMPTS = 3
+SafeSpot.WALK_TIMEOUT_MS = 10000
+SafeSpot.SETTLE_TIMEOUT_MS = 8000
+SafeSpot.POLL_MS = 50
+SafeSpot.LOCATE_MS = 40
+```
+- `FLAG`: collision bits of a tile.
+- `MAX_STEPS`: chase steps before a chase is `"far"`.
+- `RADIUS`: default search radius of `find`.
+- `SETTLE_TICKS`, `SETTLE_TIMEOUT_MS`: how long `wait_trapped` needs the NPC still, and gives up after.
+- `ATTEMPTS`: default tries of `trap`.
+- `WALK_TIMEOUT_MS`: walk timeout of `trap`.
+- `POLL_MS`: poll interval of `wait_trapped`.
+- `LOCATE_MS`: gap between the two samples `locate` takes.
 
 ## SafeSpot.grid
 
@@ -53,12 +65,10 @@ Definition:
 ```luau
 function SafeSpot.grid(area: Host.Corners?): (Grid?, string?)
 ```
-The live collision of your plane in an area of the loaded scene (all of it without one). About 2 ms; read it once and reuse it while nothing opens or closes.
+Live collision of your plane in an area of the loaded scene, or all of it. About 2 ms; reuse it while nothing opens or closes.
 
 Example:
 ```luau
-local SafeSpot = require("@lib/main/safespot")
-
 local grid = assert(SafeSpot.grid())
 print(`{grid.width}x{grid.height} tiles from {grid.x},{grid.y}`)
 ```
@@ -69,15 +79,11 @@ Definition:
 ```luau
 function SafeSpot.grid_around(center: Tile, radius: number): (Grid?, string?)
 ```
-The grid `radius` tiles around a tile, with room around it for NPCs walking in from further away.
+The grid `radius` tiles around `center`, padded by `MAX_STEPS / 2` for NPCs walking in from further away.
 
 Example:
 ```luau
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
 local grid = assert(SafeSpot.grid_around(assert(Walker.position()), 10))
-print(grid.x, grid.y)
 ```
 
 ## SafeSpot.flags
@@ -86,17 +92,13 @@ Definition:
 ```luau
 function SafeSpot.flags(grid: Grid, x: number, y: number): number
 ```
-A tile's collision flags (`SafeSpot.FLAG`); a tile outside the grid has them all.
+A tile's collision flags (`SafeSpot.FLAG`); tiles outside the grid have every bit set.
 
 Example:
 ```luau
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
 local me = assert(Walker.position())
-local grid = assert(SafeSpot.grid_around(me, 1))
-local north = SafeSpot.flags(grid, me.x, me.y + 1)
-print("wall to the north:", bit32.band(north, SafeSpot.FLAG.WALL_SOUTH) ~= 0)
+local north = SafeSpot.flags(assert(SafeSpot.grid_around(me, 1)), me.x, me.y + 1)
+print(bit32.band(north, SafeSpot.FLAG.WALL_SOUTH) ~= 0)
 ```
 
 ## SafeSpot.size
@@ -105,17 +107,12 @@ Definition:
 ```luau
 function SafeSpot.size(npc: Npc): number
 ```
-An NPC's size in tiles as the game has it (`Host.npc_sizes`), or guessed with `guess_size` when it can't be read.
+An NPC's size in tiles from `Host.npc_sizes`, or `guess_size` when it can't be read.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
 local demon = assert(Npcs.nearest("Greater demon", assert(Walker.position())))
-local c = SafeSpot.chaser(demon, SafeSpot.size(demon))
-print(`a {c.size}x{c.size} with its south-west tile on {c.x},{c.y}`)
+print(SafeSpot.size(demon))
 ```
 
 ## SafeSpot.guess_size
@@ -124,16 +121,11 @@ Definition:
 ```luau
 function SafeSpot.guess_size(npc: Npc): number
 ```
-An NPC's size when you don't know it: 2 when it stands drawn on a tile corner (an even size), else 1. A walking NPC can't be told and is taken as 1. Pass the size yourself when you know it.
+2 when the NPC is drawn on a tile corner (even size), else 1. A walking NPC is taken as 1.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-
-for _, npc in ipairs(Npcs.find("Cow") or {}) do
-	print(npc.index, SafeSpot.guess_size(npc))
-end
+print(SafeSpot.guess_size(assert(Npcs.nearest("Cow", assert(Walker.position())))))
 ```
 
 ## SafeSpot.occupy
@@ -142,19 +134,13 @@ Definition:
 ```luau
 function SafeSpot.occupy(grid: Grid, except: { number }?, sizes: { [string]: number }?): Grid
 ```
-Marks the tiles the NPCs around stand on in `grid.occupied`, leaving out the NPCs whose indices are in `except` (the ones you're working out). Sizes come from the game, else from `sizes` (by name), else they're guessed. NPCs walk on, so this is right for a tick or two.
+Marks the tiles nearby NPCs stand on in `grid.occupied`, skipping indices in `except`. Sizes come from the game, else `sizes` by name, else are guessed. Valid for a tick or two.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
 local me = assert(Walker.position())
 local guard = assert(Npcs.nearest("Guard", me))
 local grid = SafeSpot.occupy(assert(SafeSpot.grid_around(me, 10)), { guard.index })
-local next_tile = SafeSpot.step(grid, SafeSpot.chaser(guard), me)
-print(if next_tile then `it steps to {next_tile.x},{next_tile.y}` else "it stays")
 ```
 
 ## SafeSpot.grid_for
@@ -163,18 +149,13 @@ Definition:
 ```luau
 function SafeSpot.grid_for(chasers: { Chaser }, center: Tile, radius: number): (Grid?, string?)
 ```
-`grid_around` with the tiles the other NPCs stand on marked (`occupy`), leaving out `chasers`. `find` builds its grid with this when you don't pass one.
+`grid_around` plus `occupy`, skipping `chasers`. `find` uses this when no grid is given.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
 local me = assert(Walker.position())
 local guard = SafeSpot.chaser(assert(Npcs.nearest("Guard", me)))
-local grid = assert(SafeSpot.grid_for({ guard }, me, 10))
-print("guard held there:", SafeSpot.is_safe(grid, guard, me))
+print(SafeSpot.is_safe(assert(SafeSpot.grid_for({ guard }, me, 10)), guard, me))
 ```
 
 ## SafeSpot.can_step
@@ -183,16 +164,12 @@ Definition:
 ```luau
 function SafeSpot.can_step(grid: Grid, x: number, y: number, dx: number, dy: number, size: number?): boolean
 ```
-Whether something of `size` (1 by default) with its south-west tile on `x, y` can take a step of `dx, dy` (each -1, 0 or 1) past the walls and objects, the way the game checks it. Other NPCs aren't looked at.
+Whether something of `size` (default 1) with its south-west tile on `x, y` can step `dx, dy` (each -1, 0 or 1) past walls and objects, as the game checks it. Ignores other NPCs.
 
 Example:
 ```luau
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
 local me = assert(Walker.position())
-local grid = assert(SafeSpot.grid_around(me, 2))
-print("north-east is open:", SafeSpot.can_step(grid, me.x, me.y, 1, 1))
+print(SafeSpot.can_step(assert(SafeSpot.grid_around(me, 2)), me.x, me.y, 1, 1))
 ```
 
 ## SafeSpot.reached
@@ -201,17 +178,11 @@ Definition:
 ```luau
 function SafeSpot.reached(grid: Grid, npc: Chaser, target: Tile): boolean
 ```
-Whether the NPC can hit `target` in melee: next to it north, east, south or west, with no wall between.
+Whether the NPC can melee `target`: adjacent north, east, south or west with no wall between.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local guard = assert(Npcs.nearest("Guard", me))
-print(SafeSpot.reached(assert(SafeSpot.grid_around(me, 2)), SafeSpot.chaser(guard), me))
+print(SafeSpot.reached(grid, SafeSpot.chaser(guard), me))
 ```
 
 ## SafeSpot.under
@@ -220,12 +191,10 @@ Definition:
 ```luau
 function SafeSpot.under(npc: Chaser, target: Tile): boolean
 ```
-Whether `target` is one of the NPC's tiles. Standing under an NPC isn't safe: it steps off and hits you.
+Whether `target` is one of the NPC's tiles. Not safe: it steps off and hits you.
 
 Example:
 ```luau
-local SafeSpot = require("@lib/main/safespot")
-
 print(SafeSpot.under({ x = 3200, y = 3200, size = 2 }, { x = 3201, y = 3201 })) -- true
 ```
 
@@ -239,9 +208,6 @@ The south-west tile the NPC heads for to hit `target` (step 2 above).
 
 Example:
 ```luau
-local SafeSpot = require("@lib/main/safespot")
-
--- diagonal to you, south-west: it goes for the tile south of you
 local to = SafeSpot.destination({ x = 99, y = 99, size = 1 }, { x = 100, y = 100 })
 print(to.x, to.y) -- 100 99
 ```
@@ -252,17 +218,11 @@ Definition:
 ```luau
 function SafeSpot.step(grid: Grid, npc: Chaser, target: Tile): Tile?
 ```
-The NPC's south-west tile after its next step chasing `target`, or `nil` when it doesn't move: it reached it, or it is stuck. NPCs in `grid.occupied` block it.
+The NPC's south-west tile after its next step towards `target`; nil when it reached it or is stuck. `grid.occupied` blocks it.
 
 Example:
 ```luau
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local grid = assert(SafeSpot.grid_around(me, 10))
-local npc = { x = me.x + 4, y = me.y - 3, size = 1 }
-print(SafeSpot.step(grid, npc, me))
+print(SafeSpot.step(grid, { x = me.x + 4, y = me.y - 3, size = 1 }, me))
 ```
 
 ## SafeSpot.chase
@@ -271,18 +231,12 @@ Definition:
 ```luau
 function SafeSpot.chase(grid: Grid, npc: Chaser, target: Tile, route: { Tile }?, speed: number?): Chase
 ```
-Plays out the NPC chasing you to the end, one step a tick. Without `route` you stand on `target`; with one you walk it first (you first, `speed` tiles a tick, 1 by default) and stand on its last tile. The NPC moves first in a tick. `"stuck"` and `"loop"` mean it never reaches you, `"far"` that it was still walking after `SafeSpot.MAX_STEPS`.
+Simulates the chase to the end, NPC moving first each tick. With `route` you walk it at `speed` tiles a tick (default 1) and end on its last tile; without, you stand on `target`. `"stuck"` and `"loop"` mean it never reaches you, `"far"` that it was still walking after `MAX_STEPS`.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local guard = assert(Npcs.nearest("Guard", me))
-local chase = SafeSpot.chase(assert(SafeSpot.grid_around(me, 10)), SafeSpot.chaser(guard), me)
-print(chase.outcome, `ends on {chase.at.x},{chase.at.y} after {#chase.path - 1} steps`)
+local chase = SafeSpot.chase(grid, SafeSpot.chaser(guard), me)
+print(chase.outcome, #chase.path - 1)
 ```
 
 ## SafeSpot.is_safe
@@ -291,17 +245,11 @@ Definition:
 ```luau
 function SafeSpot.is_safe(grid: Grid, npc: Chaser, target: Tile): boolean
 ```
-Whether the NPC, from where it is, can never reach you standing on `target`.
+Whether the NPC, from where it is, never reaches you standing on `target`.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local guard = assert(Npcs.nearest("Guard", me))
-print(SafeSpot.is_safe(assert(SafeSpot.grid_around(me, 10)), SafeSpot.chaser(guard), me))
+print(SafeSpot.is_safe(grid, SafeSpot.chaser(guard), me))
 ```
 
 ## SafeSpot.chaser
@@ -310,17 +258,12 @@ Definition:
 ```luau
 function SafeSpot.chaser(npc: Npc, size: number?, before: Npc?): Chaser
 ```
-The NPC's south-west tile (`size` 1 by default), from where it's drawn. While it walks it's drawn between tiles: with how it was drawn a moment `before`, it's the tile it walks to, which is where the game already has it; without, the nearest tile. `SafeSpot.locate` does the two looks for you.
+The NPC's south-west tile (`size` default 1) from where it is drawn. A walking NPC is drawn between tiles: given its earlier sample `before`, this is the tile it walks to (where the game already has it); without, the nearest tile. `locate` takes both samples.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
-local cow = assert(Npcs.nearest("Cow", assert(Walker.position())))
-local c = SafeSpot.chaser(cow, 2)
-print(`south-west tile {c.x},{c.y}`)
+local c = SafeSpot.chaser(assert(Npcs.nearest("Cow", me)), 2)
+print(c.x, c.y)
 ```
 
 ## SafeSpot.locate
@@ -329,17 +272,11 @@ Definition:
 ```luau
 function SafeSpot.locate(index: number, size: number?): Chaser?
 ```
-The chaser of the NPC with `index`, looked at twice `SafeSpot.LOCATE_MS` apart to know where it is walking to. `nil` when it's gone.
+The chaser of NPC `index`, sampled twice `SafeSpot.LOCATE_MS` apart to know where it walks to. Nil when it's gone.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
-local guard = assert(Npcs.nearest("Guard", assert(Walker.position())))
 local c = SafeSpot.locate(guard.index)
-print(c and c.x, c and c.y)
 ```
 
 ## SafeSpot.find
@@ -348,35 +285,25 @@ Definition:
 ```luau
 function SafeSpot.find(chasers: { Chaser }, options: FindOptions?): ({ Spot }?, string?)
 ```
-The tiles around you where none of `chasers` can reach you, nearest walk first. Each NPC is played out chasing you from where it is while you walk to the tile (the shortest walk, 2 tiles a tick when running) and then while you stand there. A tile only counts when the NPC gets stuck on the walls alone *and* with the other NPCs standing where they are now: they may walk off, so a spot never relies on them. Options:
+Tiles near you where no chaser reaches you, nearest walk first. Each NPC is simulated chasing you while you walk the shortest route there and then stand. A tile counts only if it holds on walls alone and with the other NPCs where they stand now. Fails with `"not logged in"` or a grid error. Options:
 
-- `around`, `radius`: where to look (default you, `SafeSpot.RADIUS` tiles).
-- `from`: where you start walking (default you).
-- `speed`: tiles you walk a tick (default 2 running, else 1).
-- `untouched`: `true` drops tiles an NPC gets next to you on the way to (one hit). By default they come after the others as far away.
-- `exclude`: tiles not to stand on, by `"x,y"`.
-- `npcs_hold`: `true` also takes tiles where only the NPCs standing in the way stop it (`walls_hold` is false on those). Off by default, since they may walk off; `CombatSafeSpot` uses it.
-- `limit`: the most spots returned.
-- `grid`: the collision to use, as is (default: read, with the other NPCs in `occupied`).
+- `around`, `radius`: search centre and radius (default you, `RADIUS`).
+- `from`: walk start (default you).
+- `speed`: tiles a tick (default 2 running, else 1).
+- `untouched`: drop tiles where an NPC gets next to you on the way; by default they sort after equally far tiles.
+- `exclude`: tiles to skip, by `"x,y"`.
+- `npcs_hold`: also accept tiles held only by NPCs in the way (`walls_hold` false); used by [CombatSafeSpot](combat_safespot.md).
+- `limit`: maximum spots.
+- `grid`: collision to use as is (default `grid_for`).
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
 local guards = {}
 for _, npc in ipairs(Npcs.find("Guard") or {}) do
-	if Npcs.distance(npc, me) <= 12 then
-		table.insert(guards, SafeSpot.chaser(npc))
-	end
+	table.insert(guards, SafeSpot.chaser(npc))
 end
--- safe from every guard around
 local spots = assert(SafeSpot.find(guards, { limit = 3 }))
-for _, spot in ipairs(spots) do
-	print(`{spot.tile.x},{spot.tile.y}, {spot.distance} tiles away`)
-end
+print(spots[1] and spots[1].tile.x)
 ```
 
 ## SafeSpot.wait_trapped
@@ -385,17 +312,11 @@ Definition:
 ```luau
 function SafeSpot.wait_trapped(index: number, size: number?, timeout_ms: number?): (Chaser?, string?)
 ```
-Waits until the NPC has stood on one tile out of your reach for `SafeSpot.SETTLE_TICKS` ticks (up to `SafeSpot.SETTLE_TIMEOUT_MS`), and returns where. Otherwise `nil` and why: it reached you, it's gone, or it kept moving.
+Blocks until the NPC has stood on one tile out of reach for `SETTLE_TICKS` ticks (timeout default `SETTLE_TIMEOUT_MS`) and returns it; else nil and why (it reached you, is gone, or kept moving).
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
-local guard = assert(Npcs.nearest("Guard", assert(Walker.position())))
 local at, why = SafeSpot.wait_trapped(guard.index)
-print(if at then `stuck on {at.x},{at.y}` else why)
 ```
 
 ## SafeSpot.trap
@@ -404,20 +325,10 @@ Definition:
 ```luau
 function SafeSpot.trap(index: number, options: TrapOptions?): (Tile?, Chaser? | string)
 ```
-Gets the NPC with `index` stuck where it can't hit you: walks to the best tile `SafeSpot.find` gives (or the first safe one of `options.spots`), makes sure you stand on that exact tile, and waits for the NPC to settle. When it still reaches you it tries again from where it is, up to `SafeSpot.ATTEMPTS` times. Returns your tile and where the NPC is stuck, or `nil` and why not. Options: `size` (the NPC's, default 1), `spots`, `find` (`FindOptions`), `attempts`.
+Walks to the best `find` tile (or the first safe one of `options.spots`), makes sure you stand exactly on it, and waits for NPC `index` to settle, retrying from the new position up to `attempts` times. Returns your tile and the NPC's stuck chaser, or nil and why. Options: `size` (default 1), `spots`, `find` (`FindOptions`), `attempts` (default `ATTEMPTS`). Attack the NPC first so it chases you.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local SafeSpot = require("@lib/main/safespot")
-local Walker = require("@lib/main/walker")
-
-local frog = assert(Npcs.nearest("Giant frog", assert(Walker.position())))
--- a giant frog is 2x2; attack it first, so it chases you
 local tile, how = SafeSpot.trap(frog.index, { size = 2 })
-if tile then
-	print(`safe on {tile.x},{tile.y}, it's stuck on {(how :: SafeSpot.Chaser).x},{(how :: SafeSpot.Chaser).y}`)
-else
-	print("not trapped:", how)
-end
+print(tile or how)
 ```

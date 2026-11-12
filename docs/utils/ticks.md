@@ -1,6 +1,6 @@
 # Utils.Ticks
 
-Waiting in game time. The game advances in "ticks" of 0.6 seconds, and many things (walking, skilling, combat) happen once per tick, so waiting for ticks is more reliable than waiting for a fixed number of milliseconds.
+Waiting in game ticks (0.6 s), the unit most game actions happen in.
 
 ```luau
 local Ticks = require("@lib/utils/ticks")
@@ -13,7 +13,7 @@ Definition:
 Ticks.MS = 600
 Ticks.POLL_MS = 50
 ```
-How long a tick lasts in milliseconds, and how often `wait` checks whether a new tick arrived.
+Tick length and `wait`'s poll interval, in ms.
 
 ## Ticks.current
 
@@ -21,7 +21,7 @@ Definition:
 ```luau
 function Ticks.current(): number?
 ```
-The number of the current tick (it counts up as the game runs).
+The current tick counter (`game_state().tick_count`); nil when unknown.
 
 Example:
 ```luau
@@ -36,7 +36,7 @@ Definition:
 ```luau
 function Ticks.wait(count: number?, timeout_ms: number?): number?
 ```
-Waits until `count` new ticks (default 1) have passed and returns the tick number it ended on. Gives up with an error if no tick arrives within `timeout_ms` (twice the expected time by default), which usually means you were logged out.
+Waits for `count` new ticks (default 1) and returns the tick reached. Returns nil, logging a line, when the counter is unknown or no tick arrives within `timeout_ms` (default twice the expected time; usually a logout).
 
 Example:
 ```luau

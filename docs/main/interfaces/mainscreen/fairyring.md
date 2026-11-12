@@ -1,29 +1,26 @@
 # Main.Interfaces.Mainscreen.Fairyring
 
-The fairy ring network. A ring is used through its **dials** (the main screen interface, group 398 `fairyrings`) or through the **travel log** (the side tab that opens beside it, group 381); both are opened together by the "Configure" option of a "Fairy ring". When the interface is closed, the ring also offers "Last-destination (CODE)" for the last code used.
+The fairy ring network. "Configure" on a ring opens the **dials** (`Fairyring.Dial`, group 398) together with the **travel log** side tab (`Fairyring.Log`, group 381); with the interface closed the ring also offers "Last-destination (CODE)", "Zanaris" and a "Favourites" submenu. A house's Spiritual Fairy Tree works too: its options start with "Ring-" and it has no favourites.
 
 ```luau
 local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 ```
 
-A house's Spiritual Fairy Tree is a ring too, and every function here takes it. Its options start with "Ring-" (`Ring-configure`, `Ring-Zanaris`, `Ring-last-destination (CODE)`), and it has no favourites, so `travel` doesn't try them there.
-
-A code is three letters, one from each dial. Turning a dial clockwise goes through its letters in this order: the first dial `A D C B`, the second `I L K J`, the third `P S R Q` (so `AIP` is all three dials at their start and `BJQ` the last position of each). `Fairyring.Dial` is the dials, `Fairyring.Log` is the travel log; the functions on `Fairyring` itself work over both.
-
-A destination is given as a code in any way a player writes it (`"aiq"`, `"A I Q"`, `"a-i-q"`) or as a part of a place's name in any case (`"mudskipper"`, `"zoo"`, `"Ardougne zoo"`). A text fitting several places (`"islands"`) is an error.
+A code is three letters, one per dial; clockwise order is `A D C B`, `I L K J`, `P S R Q` (positions 0 to 3, so `AIP` is all at the start). A destination is a code in any spelling (`"aiq"`, `"A I Q"`, `"a-i-q"`) or a case-insensitive part of a place name (`"mudskipper"`, `"zoo"`); text fitting several places is an error.
 
 ## Requirements
 
-Using the rings needs two things, and `Fairyring.travel` and `Fairyring.open` **raise an error** when they are not met:
+`open` and every `travel*` **raise an error** unless both hold:
 
-1. The quest part: the game's own check. The "Use of fairy rings" requirement of the diary list reads two varbits, `fairyring_use` (2328) at least 1 and `fairyring_permission` (2329) at least 2, which "Fairytale II - Cure a Queen" sets as you advance in it. They are what is checked here, so the quest need not be finished.
-2. One of: a Dramen staff or a Lunar staff in the inventory or worn, or the Lumbridge & Draynor elite diary.
+1. Varbits 2328 ≥ 1 and 2329 ≥ 2, set while progressing "Fairytale II - Cure a Queen" (it need not be finished).
+2. A Dramen or Lunar staff carried or worn, or the Lumbridge & Draynor elite diary.
 
 ## Constants
 
 Definition:
 ```luau
 Fairyring.OBJECT = "Fairy ring"
+Fairyring.SPIRITUAL = "Spiritual Fairy Tree"
 Fairyring.CONFIGURE = "Configure"
 Fairyring.LAST = "Last-destination"
 Fairyring.ZANARIS = "Zanaris"
@@ -45,7 +42,8 @@ Fairyring.STAVES = { "Dramen staff", "Lunar staff" }
 Fairyring.DIARY_REGION = "lumbridge"
 Fairyring.DIARY_TIER = "elite"
 ```
-The ring object and its options (the favourites submenu, the varbits of the four favourites, and how close to the ring to get before its menu is opened), the waits, how far a position must move to count as arrived, the pause `open` makes once the interface shows, the chance a biometric is rolled around for using the travel log rather than the dials, and what the rings require.
+
+Ring object names and options; the four favourite slots' varbits (three positions and a set flag each); `MENU_NEAR`, the tiles from the ring before opening its menu for a favourite; waits; `ARRIVED_DISTANCE`, the tiles moved (or a plane change) that count as arrived; `OPEN_SETTLE_MS`, the pause after `open`; `LOG_CHANCE`, the base chance of using the log over the dials; and the requirements.
 
 ## Fairyring.PLACES
 
@@ -56,23 +54,72 @@ Fairyring.PLACES: { Place }
 ```
 The codes the travel log has been seen to list, with their places worded as the log words them (`"Asgarnia: Mudskipper Point"`). Names are matched against these and, when the log is open, against its own rows. A code that isn't here can still be given as a code.
 
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(#Fairyring.PLACES)
+```
+
 ## Fairyring.parse_code
 
 Definition:
 ```luau
 function Fairyring.parse_code(text: string): string?
 ```
-A code written as a player might (`"aiq"`, `"A I Q"`, `"a-i-q"`) as three capital letters, each from its dial. Nil when the text is not a code.
+Normalises a code (ignoring spaces, `-`, `.`, `_`, `,`) to three capitals. Nil when the text isn't a valid code.
 
-## Fairyring.code_of / Fairyring.positions_of / Fairyring.place
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.parse_code("a-i-q")) -- AIQ
+```
+
+## Fairyring.code_of
 
 Definition:
 ```luau
 function Fairyring.code_of(positions: { number }): string?
+```
+The code three dial positions (0 to 3) spell. Nil when a position is out of range.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.code_of({ 0, 0, 3 })) -- AIQ
+```
+
+## Fairyring.positions_of
+
+Definition:
+```luau
 function Fairyring.positions_of(code: string): { number }?
+```
+The dial positions of a code. Nil when it isn't a code.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(table.concat(Fairyring.positions_of("dkr") or {}, " ")) -- 1 2 2
+```
+
+## Fairyring.place
+
+Definition:
+```luau
 function Fairyring.place(code: string): string?
 ```
-The code three dial positions (0 to 3 each) spell, the positions of a code, and a code's place among `PLACES`.
+The code's place name from `PLACES`, or nil.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.place("AIQ")) -- Asgarnia: Mudskipper Point
+```
 
 ## Fairyring.resolve
 
@@ -80,7 +127,7 @@ Definition:
 ```luau
 function Fairyring.resolve(text: string): (string?, string?)
 ```
-What a text names: a code as it is, else a part of a place's name (an exact name, or the place without its region, wins; otherwise exactly one place must contain the text). Returns the code and the place's name, or nil and why not.
+A code returns as is with its place. Otherwise matches names from the open travel log and `PLACES`: an exact name, or a name without its region, wins; else exactly one name must contain the text. Returns the code and name, or nil and a reason.
 
 Example:
 ```luau
@@ -96,7 +143,14 @@ Definition:
 ```luau
 function Fairyring.can_use(): (boolean, string?)
 ```
-Whether the rings can be used now, and if not why. See Requirements.
+Whether the [requirements](#requirements) are met, and the reason if not.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.can_use())
+```
 
 ## Fairyring.require
 
@@ -106,13 +160,43 @@ function Fairyring.require()
 ```
 Raises an error with the reason when the rings can't be used.
 
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+Fairyring.require()
+```
+
 ## Fairyring.nearest
 
 Definition:
 ```luau
 function Fairyring.nearest(): Loc?
 ```
-The nearest "Fairy ring" among the objects loaded, on the plane you are on first. Nil when none is loaded.
+The nearest loaded fairy ring or Spiritual Fairy Tree, preferring the player's plane. Nil when none is loaded.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+local ring = Fairyring.nearest()
+print(ring and ring.name)
+```
+
+## Fairyring.is_open
+
+Definition:
+```luau
+function Fairyring.is_open(): boolean
+```
+Whether the dials are open.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.is_open())
+```
 
 ## Fairyring.open
 
@@ -120,25 +204,59 @@ Definition:
 ```luau
 function Fairyring.open(ring: Loc?, walk: boolean?): (boolean, string?)
 ```
-Opens the dials and the travel log with "Configure" on the nearest ring (or `ring`), walking closer first unless `walk` is false. True when they are open (also if they already were); when it didn't work the second result says why. Errors when the rings can't be used.
+Clears other interfaces with Escape, then "Configure"s `ring` (default `nearest()`), walking closer unless `walk` is false, and waits for the dials plus `OPEN_SETTLE_MS`. True if open (or already was); otherwise false and a reason. Errors when the rings can't be used.
 
-## Fairyring.close / Fairyring.is_open
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.open())
+```
+
+## Fairyring.close
 
 Definition:
 ```luau
 function Fairyring.close(key_probability: number?): boolean
-function Fairyring.is_open(): boolean
 ```
-Closes the dials and the travel log (Escape with chance `key_probability`, nil or 0 is the Escape biometric, else the close button; see `Toplevel.close`), and whether they are open.
+Closes the dials and log by Escape (chance `key_probability`, nil or 0 uses the biometric default) or the close button; see [Toplevel.close](toplevel.md).
 
-## Fairyring.last_code / Fairyring.last_option
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+Fairyring.close(0.5)
+```
+
+## Fairyring.last_code
 
 Definition:
 ```luau
 function Fairyring.last_code(): string?
+```
+The last code used, from varbit `Dial.LAST_VARBIT` (first position × 16 + second × 4 + third). It updates a moment after landing, so right after a teleport it may still be the old code.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.last_code())
+```
+
+## Fairyring.last_option
+
+Definition:
+```luau
 function Fairyring.last_option(): string?
 ```
-The last code used, which the ring offers as `"Last-destination (CODE)"` while the interface is closed (`last_option` is that text). It is read from varbit 5374, which holds the first dial's position times 16, plus the second's times 4, plus the third's. The game updates it a moment after a teleport lands, so right then it can still read the old value.
+The ring's menu text for the last code, `"Last-destination (CODE)"`, or nil.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.last_option())
+```
 
 ## Fairyring.travel_last
 
@@ -146,16 +264,44 @@ Definition:
 ```luau
 function Fairyring.travel_last(ring: Loc?, walk: boolean?): boolean
 ```
-Uses "Last-destination" on the nearest ring (or `ring`), walking closer first unless `walk` is false, and waits for the teleport. Errors when the rings can't be used. False when the interface is open, there is no last code or ring, or nothing happened.
+Uses "Last-destination" on `ring` (default `nearest()`), walking closer unless `walk` is false, and waits for the teleport. False when the dials are open, there's no last code or ring, or the player didn't move. Errors when the rings can't be used.
 
-## Fairyring.favourites / Fairyring.is_favourite
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.travel_last())
+```
+
+## Fairyring.favourites
 
 Definition:
 ```luau
 function Fairyring.favourites(): { string }
+```
+The set favourite codes in slot order (up to four), read from varbits without opening anything.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(table.concat(Fairyring.favourites(), ", "))
+```
+
+## Fairyring.is_favourite
+
+Definition:
+```luau
 function Fairyring.is_favourite(code: string): boolean
 ```
-The ring's favourite codes (up to four, in slot order), and whether a code is one. Read from the game's variables (each favourite is three dial positions and a flag that says it is set), so nothing is opened.
+Whether the code is a favourite.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.is_favourite("dkr"))
+```
 
 ## Fairyring.travel_favourite
 
@@ -163,7 +309,14 @@ Definition:
 ```luau
 function Fairyring.travel_favourite(code: string, ring: Loc?, walk: boolean?): boolean
 ```
-Uses a favourite from the ring's menu: walks close to the nearest ring (or `ring`) unless `walk` is false, right clicks it, opens its "Favourites" submenu, picks the code, and waits for the teleport. Errors when the rings can't be used. False when the code isn't a favourite, the interface is open, there is no ring or nothing happened.
+Walks within `MENU_NEAR` of `ring` (default `nearest()`) unless `walk` is false, picks the code from its "Favourites" submenu and waits for the teleport. False when the code isn't a favourite, the dials are open, there's no ring or the player didn't move. Errors when the rings can't be used.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.travel_favourite("DKR"))
+```
 
 ## Fairyring.travel_zanaris
 
@@ -171,7 +324,14 @@ Definition:
 ```luau
 function Fairyring.travel_zanaris(ring: Loc?, walk: boolean?): boolean
 ```
-Goes to Zanaris with the ring's own "Zanaris" option on the nearest ring (or `ring`), walking closer first unless `walk` is false, and waits for the teleport. Errors when the rings can't be used and when Lost City is not complete (the quest Zanaris needs). False when the interface is open, there is no ring or nothing happened. `Fairyring.travel("zanaris")` does the same.
+Uses the ring's "Zanaris" option, walking closer unless `walk` is false, and waits for the teleport. Errors when the rings can't be used or Lost City isn't complete; false when the dials are open, there's no ring or the player didn't move.
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.travel_zanaris())
+```
 
 ## Fairyring.travel
 
@@ -180,9 +340,7 @@ Definition:
 export type Method = "dial" | "log" | "last" | "favourite" | "zanaris"
 function Fairyring.travel(text: string, method: Method?, ring: Loc?): Method?
 ```
-Teleports to a destination (a code or a part of a place's name) and waits for the teleport. Errors when the rings can't be used and when the text names no single place. Returns the way it was done, or nil when nothing happened. The text `"zanaris"` (or the method `"zanaris"`) uses the ring's "Zanaris" option, `travel_zanaris`.
-
-The way is picked by chance unless `method` says: `"last"` when the destination is the last code used and the interface is closed (the ring's own option), then `"favourite"` when it is one of the ring's favourites (its menu), else the travel log (chance `LOG_CHANCE`, when it lists the place) or the dials. A way that fails is followed by the dials.
+Teleports to a destination and returns the method used, or nil. `"zanaris"` (text or method) uses `travel_zanaris`. With no `method` it tries, in order: "Last-destination" if the code is the last one, the favourite submenu if it's a favourite (not on a Spiritual Fairy Tree), then opens the dials and uses the travel log (chance around `LOG_CHANCE`, when listed) or the dials. A forced `"last"` or `"favourite"` that fails returns nil; a failed log selection falls back to the dials. Errors when the rings can't be used or the text names no single place.
 
 Example:
 ```luau
@@ -194,7 +352,7 @@ print("went by", Fairyring.travel("dkr", "dial"))
 
 ## Fairyring.Dial
 
-The dials (group 398). Their interface pieces:
+The dials (group 398): click areas that turn each dial one step, and a varbit per dial holding its position 0 to 3.
 
 Definition:
 ```luau
@@ -213,99 +371,12 @@ Dial.TURN_TRIES = 3
 Dial.CONFIRM_TIMEOUT_MS = 4000
 Dial.POLL_MS = 50
 ```
-The click areas turn a dial one step; each dial's position is a varbit from 0 to 3 going clockwise.
-
-Functions:
-```luau
-function Dial.is_open(): boolean
-function Dial.wait_open(timeout_ms: number?): boolean
-function Dial.positions(): { number }
-function Dial.code(): string?
-function Dial.turn(dial: number, clockwise: boolean): boolean
-function Dial.set(code: string): boolean
-function Dial.confirm(): boolean
-function Dial.close_button(): Widget?
-function Dial.close(key_probability: number?): boolean
-```
-`positions` and `code` read where the dials are. `turn` turns one dial one step and waits for it to show. `set` turns the dials to a code, each by the shortest way (a half turn goes either way by chance); true when they spell it. `confirm` presses "Confirm", which teleports, and waits for the interface to go; false when it stayed open (a code with no ring).
-
-## Fairyring.Log
-
-The travel log (group 381, the side tab). It lists the codes used before, each with its place; the list is long, so it scrolls.
-
-Definition:
-```luau
-export type Destination = { code: string, name: string, visible: boolean, row: Widget }
-Log.GROUP = 381
-Log.TITLE = 6
-Log.LIST = 8
-Log.TITLE_TEXT = "Travel log"
-Log.OPTION = "Use code"
-Log.FIRST_COMPONENT = 12
-Log.LAST_COMPONENT = 170
-Log.MAX_SCROLLS = 40
-Log.OPEN_TIMEOUT_MS = 3000
-Log.CONFIRM_TIMEOUT_MS = 4000
-Log.POLL_MS = 50
-```
-
-Functions:
-```luau
-function Log.is_open(): boolean
-function Log.wait_open(timeout_ms: number?): boolean
-function Log.destinations(): { Destination }?
-function Log.find(text: string): Destination?
-function Log.scroll_to(text: string): Destination?
-function Log.select(text: string): boolean
-```
-`destinations` lists the rows top to bottom (`visible` is whether a row is fully inside the scrolled list). `find` takes a code or a part of a place's name. `scroll_to` scrolls until the row is shown. `select` clicks the row ("Use code"), which **turns the dials to its code but does not teleport** (press `Dial.confirm` for that; `Fairyring.travel` does both). False when the log doesn't list it or the dials didn't turn.
 
 Example:
 ```luau
 local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
-assert(Fairyring.open())
-assert(Fairyring.Log.select("zoo"), "the log has no zoo")
-assert(Fairyring.Dial.confirm(), "couldn't confirm")
-```
-
-## Fairyring.code_of
-
-Definition:
-```luau
-function Fairyring.code_of(positions: { number }): string?
-```
-TODO...
-
-Example:
-```luau
-
-```
-
-## Fairyring.positions_of
-
-Definition:
-```luau
-function Fairyring.positions_of(code: string): { number }?
-```
-TODO...
-
-Example:
-```luau
-
-```
-
-## Fairyring.place
-
-Definition:
-```luau
-function Fairyring.place(code: string): string?
-```
-TODO...
-
-Example:
-```luau
-
+print(Fairyring.Dial.GROUP)
 ```
 
 ## Dial.is_open
@@ -314,11 +385,15 @@ Definition:
 ```luau
 function Dial.is_open(): boolean
 ```
-TODO...
+Whether the dials are open.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local Dial = Fairyring.Dial
+
+print(Dial.is_open())
 ```
 
 ## Dial.wait_open
@@ -327,11 +402,15 @@ Definition:
 ```luau
 function Dial.wait_open(timeout_ms: number?): boolean
 ```
-TODO...
+Polls `is_open` for up to `timeout_ms` (default `OPEN_TIMEOUT_MS`).
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local Dial = Fairyring.Dial
+
+print(Dial.wait_open())
 ```
 
 ## Dial.positions
@@ -340,11 +419,15 @@ Definition:
 ```luau
 function Dial.positions(): { number }
 ```
-TODO...
+The three dial positions from their varbits; works with the dials closed.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local Dial = Fairyring.Dial
+
+print(table.concat(Dial.positions(), " "))
 ```
 
 ## Dial.code
@@ -353,11 +436,15 @@ Definition:
 ```luau
 function Dial.code(): string?
 ```
-TODO...
+The code the dials currently spell.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local Dial = Fairyring.Dial
+
+print(Dial.code())
 ```
 
 ## Dial.turn
@@ -366,11 +453,15 @@ Definition:
 ```luau
 function Dial.turn(dial: number, clockwise: boolean): boolean
 ```
-TODO...
+Clicks dial `dial`'s (1 to 3) turn area and waits for its varbit to change, up to `TURN_TRIES` clicks. False when the area isn't shown or the dial never moved.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local Dial = Fairyring.Dial
+
+print(Dial.turn(1, true))
 ```
 
 ## Dial.set
@@ -379,11 +470,15 @@ Definition:
 ```luau
 function Dial.set(code: string): boolean
 ```
-TODO...
+Turns each dial the shortest way to `code` (a half turn goes either way at random) with random pauses between clicks. False when the dials are closed or the code invalid; true when they spell it.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local Dial = Fairyring.Dial
+
+print(Dial.set("AIQ"))
 ```
 
 ## Dial.confirm
@@ -392,11 +487,17 @@ Definition:
 ```luau
 function Dial.confirm(): boolean
 ```
-TODO...
+Clicks "Confirm" (teleports) and waits for the dials to close. False (logged) when they stay open, e.g. a code with no ring.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local Dial = Fairyring.Dial
+
+if Dial.set("AIQ") then
+	Dial.confirm()
+end
 ```
 
 ## Dial.close_button
@@ -405,11 +506,15 @@ Definition:
 ```luau
 function Dial.close_button(): Widget?
 ```
-TODO...
+The close button, nil when the dials aren't open.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local Dial = Fairyring.Dial
+
+print(Dial.close_button() ~= nil)
 ```
 
 ## Dial.close
@@ -418,11 +523,42 @@ Definition:
 ```luau
 function Dial.close(key_probability: number?): boolean
 ```
-TODO...
+Same as `Fairyring.close`; true if already closed.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local Dial = Fairyring.Dial
+
+Dial.close()
+```
+
+## Fairyring.Log
+
+The travel log (group 381, a side tab): a scrolling list of codes used before, each with its place. `Fairyring.Log` is `TravelLog` below.
+
+Definition:
+```luau
+export type Destination = { code: string, name: string, visible: boolean, row: Widget }
+TravelLog.GROUP = 381
+TravelLog.TITLE = 6
+TravelLog.LIST = 8
+TravelLog.TITLE_TEXT = "Travel log"
+TravelLog.OPTION = "Use code"
+TravelLog.FIRST_COMPONENT = 12
+TravelLog.LAST_COMPONENT = 170
+TravelLog.MAX_SCROLLS = 40
+TravelLog.OPEN_TIMEOUT_MS = 3000
+TravelLog.CONFIRM_TIMEOUT_MS = 4000
+TravelLog.POLL_MS = 50
+```
+
+Example:
+```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
+
+print(Fairyring.Log.is_open())
 ```
 
 ## TravelLog.is_open
@@ -431,11 +567,15 @@ Definition:
 ```luau
 function TravelLog.is_open(): boolean
 ```
-TODO...
+Whether the side tab shows the "Travel log" title.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local TravelLog = Fairyring.Log
+
+print(TravelLog.is_open())
 ```
 
 ## TravelLog.wait_open
@@ -444,11 +584,15 @@ Definition:
 ```luau
 function TravelLog.wait_open(timeout_ms: number?): boolean
 ```
-TODO...
+Polls `is_open` for up to `timeout_ms` (default `OPEN_TIMEOUT_MS`).
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local TravelLog = Fairyring.Log
+
+print(TravelLog.wait_open())
 ```
 
 ## TravelLog.destinations
@@ -457,11 +601,17 @@ Definition:
 ```luau
 function TravelLog.destinations(): { Destination }?
 ```
-TODO...
+Every listed row top to bottom; `visible` is whether the row lies fully inside the scrolled view. Nil when the log isn't open.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local TravelLog = Fairyring.Log
+
+for _, d in ipairs(TravelLog.destinations() or {}) do
+	print(d.code, d.name, d.visible)
+end
 ```
 
 ## TravelLog.find
@@ -470,11 +620,16 @@ Definition:
 ```luau
 function TravelLog.find(text: string): Destination?
 ```
-TODO...
+The row for a code or place text (via `Fairyring.resolve`). Nil when the log is closed or doesn't list it.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local TravelLog = Fairyring.Log
+
+local d = TravelLog.find("zoo")
+print(d and d.code)
 ```
 
 ## TravelLog.scroll_to
@@ -483,11 +638,15 @@ Definition:
 ```luau
 function TravelLog.scroll_to(text: string): Destination?
 ```
-TODO...
+Scrolls the list until the row is fully visible, up to `MAX_SCROLLS`. Nil when not listed or scrolling stops moving it.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
+local TravelLog = Fairyring.Log
+
+TravelLog.scroll_to("mudskipper")
 ```
 
 ## TravelLog.select
@@ -496,87 +655,13 @@ Definition:
 ```luau
 function TravelLog.select(text: string): boolean
 ```
-TODO...
+Scrolls to and clicks the row ("Use code"), which **turns the dials but doesn't teleport**; follow with `Dial.confirm`. True once the dials spell the code.
 
 Example:
 ```luau
+local Fairyring = require("@lib/main/interfaces/mainscreen/fairyring")
 
-```
-
-## Fairyring.is_open
-
-Definition:
-```luau
-function Fairyring.is_open(): boolean
-```
-TODO...
-
-Example:
-```luau
-
-```
-
-## Fairyring.close
-
-Definition:
-```luau
-function Fairyring.close(key_probability: number?): boolean
-```
-TODO...
-
-Example:
-```luau
-
-```
-
-## Fairyring.last_code
-
-Definition:
-```luau
-function Fairyring.last_code(): string?
-```
-TODO...
-
-Example:
-```luau
-
-```
-
-## Fairyring.last_option
-
-Definition:
-```luau
-function Fairyring.last_option(): string?
-```
-TODO...
-
-Example:
-```luau
-
-```
-
-## Fairyring.favourites
-
-Definition:
-```luau
-function Fairyring.favourites(): { string }
-```
-TODO...
-
-Example:
-```luau
-
-```
-
-## Fairyring.is_favourite
-
-Definition:
-```luau
-function Fairyring.is_favourite(code: string): boolean
-```
-TODO...
-
-Example:
-```luau
-
+assert(Fairyring.open())
+assert(Fairyring.Log.select("zoo"), "the log has no zoo")
+assert(Fairyring.Dial.confirm(), "couldn't confirm")
 ```

@@ -1,12 +1,10 @@
 # Main.Interfaces.Mainscreen.Runepouch
 
-The rune pouch: its runes, plus the interface that moves them (group 190), opened by "Open" on a pouch in the inventory, with the pouch's runes above and the inventory below.
+The rune pouch's contents and its transfer interface (group 190, "Open" on a pouch): pouch slots above, inventory below. Contents come from client variables, so reading needs neither the interface nor the pouch. The inventory disappears while the interface is open and returns shortly after it closes. To fill the pouch at the bank see [BankPouch](bankpouch.md) and [InventoryLayout](../../inventory_layout.md).
 
 ```luau
 local Runepouch = require("@lib/main/interfaces/mainscreen/runepouch")
 ```
-
-The runes are in client variables, so reading doesn't need the interface. The interface takes the inventory away while it is open, and the inventory comes back a moment after it closes, so `close` waits for that. To fill the pouch from the bank see [BankPouch](bankpouch.md), the pouch's panel in the bank, and [InventoryLayout](../../inventory_layout.md).
 
 ## Constants
 
@@ -25,7 +23,7 @@ Runepouch.RUNES_ENUM = 982
 Runepouch.TIMEOUT_MS = 2500
 Runepouch.POLL_MS = 50
 ```
-The components, each with a child per slot by index; the pouches as the inventory names them; and the variables that hold each pouch slot's rune (a number the enum maps to an item id) and amount.
+Widget ids (one child per slot), options, pouch item names, per-slot rune and amount varbits (rune is an index the enum maps to an item id), and the wait/poll times.
 
 ## Types
 
@@ -35,15 +33,13 @@ export type Rune = { id: number, name: string, quantity: number }
 export type Amount = number | "All"
 ```
 
-A rune in the pouch and how many of it.
-
 ## Runepouch.held
 
 Definition:
 ```luau
 function Runepouch.held(): boolean
 ```
-Whether a pouch is in the inventory.
+Whether any pouch is in the inventory.
 
 ## Runepouch.runes
 
@@ -51,7 +47,7 @@ Definition:
 ```luau
 function Runepouch.runes(): { Rune }?
 ```
-The runes in the pouch now, from the client's variables (they keep their values whether or not a pouch is in the inventory). Nil when they can't be read.
+The pouch's runes now, from varbits. Nil when they can't be read.
 
 ## Runepouch.quantity
 
@@ -59,12 +55,10 @@ Definition:
 ```luau
 function Runepouch.quantity(rune: Item): number
 ```
-How many of a rune the pouch holds, by id or name.
+How many of a rune (id or name) the pouch holds; 0 when none.
 
 Example:
 ```luau
-local Runepouch = require("@lib/main/interfaces/mainscreen/runepouch")
-
 print(Runepouch.quantity("Law rune"))
 ```
 
@@ -82,7 +76,7 @@ Definition:
 ```luau
 function Runepouch.open(): boolean
 ```
-Opens the interface from a pouch in the inventory. True when it is open.
+Opens the interface from a pouch in the inventory. True once open.
 
 ## Runepouch.close
 
@@ -90,7 +84,7 @@ Definition:
 ```luau
 function Runepouch.close(): boolean
 ```
-Closes the interface and waits for the inventory to come back. True once it is usable.
+Closes the interface and waits for the inventory to return. True once it has.
 
 ## Runepouch.withdraw
 
@@ -98,7 +92,7 @@ Definition:
 ```luau
 function Runepouch.withdraw(rune: Item, amount: Amount): boolean
 ```
-With the interface open, takes a rune out to the inventory: 1, 5 or `"All"`. Other amounts return false, since the client's X option needs typing. True once the pouch holds less of it.
+With the interface open, moves 1, 5 or `"All"` of a rune to the inventory; other amounts return false (X needs typing). True once the pouch holds less.
 
 ## Runepouch.store
 
@@ -106,12 +100,10 @@ Definition:
 ```luau
 function Runepouch.store(rune: Item, amount: Amount): boolean
 ```
-With the interface open, puts a rune from the inventory in the pouch: 1, 5 or `"All"`. True once the pouch holds more of it.
+With the interface open, moves 1, 5 or `"All"` of a rune from the inventory into the pouch; other amounts return false. True once the pouch holds more.
 
 Example:
 ```luau
-local Runepouch = require("@lib/main/interfaces/mainscreen/runepouch")
-
 if Runepouch.open() then
 	print(Runepouch.withdraw("Law rune", 5))
 	print(Runepouch.store("Law rune", "All"))

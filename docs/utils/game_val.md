@@ -1,6 +1,6 @@
 # Utils.GameVal
 
-Looking up readable names for the game's internal numbers: objects, NPCs, interfaces, animations and more.
+Readable names for the game's internal ids (objects, NPCs, interfaces, animations...).
 
 ```luau
 local GameVal = require("@lib/utils/game_val")
@@ -25,7 +25,7 @@ GameVal.SPRITE = 12
 GameVal.INTERFACE = 14
 GameVal.VARC = 15
 ```
-The kinds of things you can look up. Pass one of these as `kind`.
+The `kind` values.
 
 ## GameVal.name
 
@@ -33,7 +33,7 @@ Definition:
 ```luau
 function GameVal.name(kind: number, id: number): string?
 ```
-The readable name of one thing.
+Name of one id of `kind`.
 
 Example:
 ```luau
@@ -48,7 +48,7 @@ Definition:
 ```luau
 function GameVal.names(kind: number, ids: { number }): { string? }?
 ```
-The readable names of many things of the same kind at once.
+Names of many ids of one `kind`.
 
 Example:
 ```luau
@@ -65,7 +65,7 @@ Definition:
 ```luau
 function GameVal.interface(group: number): string?
 ```
-The readable name of an interface from its group number.
+Name of an interface group.
 
 Example:
 ```luau

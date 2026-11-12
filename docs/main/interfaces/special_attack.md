@@ -1,14 +1,12 @@
 # Main.Interfaces.SpecialAttack
 
-The special attack orb on the minimap and the special attack bar on the Combat tab: whether the weapon in your hands has a special attack, how much energy you have, and switching it on for the next attack.
+The special attack orb (minimap) and bar (Combat tab): availability, energy, cost and toggling.
 
 ```luau
 local SpecialAttack = require("@lib/main/interfaces/special_attack")
 ```
 
-The orb is hidden while the weapon has no special attack, and so is the bar, so `available` also tells you whether the weapon has one. The bar only shows while the Combat tab is open, and the orb not at all when the minimap orbs are turned off in the game's settings. The energy and the switch are read from the game (`Player.special_attack`, `Player.special_attack_enabled`), so they work with any tab open.
-
-**Costs.** A weapon's special attack cost comes from a table in the game's cache, enum `COST_ENUM`: item id to the energy it drains in tenths of a percent (Dragon claws 500, the Crystal halberd 300, the Saradomin sword 1000). It is read once and kept, so the cost is known before the weapon is ever wielded, with nothing learned or assumed. A weapon the table leaves out has no special attack, and `cost` gives nil for it. Every wieldable variant checked (those of the Granite maul and the Abyssal tentacle) has its own entry, and every item with a special attack description (enum 1739) has a cost; noted copies and placeholders have none. A handful of entries aren't a plain drain: shields that spend charges are 0, and a few weapons with special attacks that work differently have small values (the Soulreaper axe 1, the Lithic sceptre 5, the Sunlight spear 7, the Rondache 10), which `cost` passes on as 0.1% to 1%.
+Orb and bar are hidden when the wielded weapon has no special attack; the bar shows only with the Combat tab open, the orb not at all when minimap orbs are off. Energy and the toggle come from `Player.special_attack`/`Player.special_attack_enabled`, so they work with any tab open. Costs come from cache enum `COST_ENUM` (item id to drain in tenths of a percent), read once; a weapon missing from it has no special attack. A few entries aren't plain drains (charge shields 0; some weapons 1 to 10, which `cost` returns as 0.1% to 1%).
 
 ## Constants
 
@@ -27,7 +25,12 @@ SpecialAttack.WEAPON_SLOT = 3
 SpecialAttack.COST_ENUM = 906
 SpecialAttack.COST_SCALE = 10
 ```
-The orb's interface, the children that can be its button (the first showing one is clicked), the menu option it has and how long `set` waits for the switch to change; the Combat tab's interface, the bar's button and its menu option, and how often `set` uses the bar instead of the orb (through `Biometrics.random_boolean`); the worn items container and slot the weapon is read from, and the cache table of special attack costs with the scale of its values (300 is 30%).
+- `GROUP`, `ORBS`, `OPTION`: orb interface, candidate children (first showing wins), menu option.
+- `TOGGLE_TIMEOUT_MS`: how long `set` waits for the toggle.
+- `BAR_GROUP`, `BAR`, `BAR_OPTION`: Combat tab bar widget and option.
+- `BAR_CHANCE`: biometric chance `set` uses the bar instead of the orb.
+- `WORN`, `WEAPON_SLOT`: container and slot the weapon is read from.
+- `COST_ENUM`, `COST_SCALE`: cost table and its scale (300 is 30%).
 
 ## SpecialAttack.orb
 
@@ -35,12 +38,10 @@ Definition:
 ```luau
 function SpecialAttack.orb(): (Widget?, number?)
 ```
-The orb's button and its child number, or `nil` when it isn't showing.
+The orb button and its child, nil when hidden.
 
 Example:
 ```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
 print(SpecialAttack.orb())
 ```
 
@@ -50,12 +51,10 @@ Definition:
 ```luau
 function SpecialAttack.bar(): Widget?
 ```
-The Combat tab's special attack bar, or `nil` when it isn't showing (the tab is closed, or the weapon has no special attack).
+The Combat tab bar, nil when the tab is closed or the weapon has no special.
 
 Example:
 ```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
 print(SpecialAttack.bar())
 ```
 
@@ -65,13 +64,11 @@ Definition:
 ```luau
 function SpecialAttack.available(): boolean
 ```
-Whether the weapon in your hands has a special attack: the orb or the bar is showing.
+Whether the orb or bar is showing, i.e. the weapon has a special attack.
 
 Example:
 ```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
-print("special attack:", SpecialAttack.available())
+print(SpecialAttack.available())
 ```
 
 ## SpecialAttack.energy
@@ -80,13 +77,11 @@ Definition:
 ```luau
 function SpecialAttack.energy(): number?
 ```
-Your special attack energy from 0 to 100.
+Special attack energy, 0 to 100.
 
 Example:
 ```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
-print("energy:", SpecialAttack.energy())
+print(SpecialAttack.energy())
 ```
 
 ## SpecialAttack.weapon
@@ -95,13 +90,11 @@ Definition:
 ```luau
 function SpecialAttack.weapon(): number?
 ```
-The item id in the weapon slot, or `nil` when the hands are empty.
+Item id in the weapon slot, nil when empty.
 
 Example:
 ```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
-print("weapon:", SpecialAttack.weapon())
+print(SpecialAttack.weapon())
 ```
 
 ## SpecialAttack.cost
@@ -110,13 +103,11 @@ Definition:
 ```luau
 function SpecialAttack.cost(weapon: number?): number?
 ```
-What a weapon's special attack costs, in percent, from the cache table: `weapon`, or the one in hand when `nil`. Nil for a weapon without a special attack, with no weapon in hand, or when the cache can't be read.
+Special attack cost in percent of `weapon` (default the wielded one). Nil without a special, with no weapon, or when the cache can't be read.
 
 Example:
 ```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
-print("costs:", SpecialAttack.cost())
+print(SpecialAttack.cost())
 ```
 
 ## SpecialAttack.is_enabled
@@ -125,13 +116,11 @@ Definition:
 ```luau
 function SpecialAttack.is_enabled(): boolean
 ```
-Whether the special attack is switched on for the next attack.
+Whether the special is toggled on for the next attack.
 
 Example:
 ```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
-print("on:", SpecialAttack.is_enabled())
+print(SpecialAttack.is_enabled())
 ```
 
 ## SpecialAttack.set
@@ -140,12 +129,10 @@ Definition:
 ```luau
 function SpecialAttack.set(enabled: boolean): boolean
 ```
-Switches the special attack on or off and waits for it to change. Does nothing if it is so already. It clicks the Combat tab's bar (opening the tab first) `BAR_CHANCE` of the time, biometrically, and the orb otherwise; when the one it picked isn't there (the orb turned off, the tab won't open) it uses the other. Returns `false` when the weapon has none or the switch didn't change.
+Toggles the special to `enabled` and waits up to `TOGGLE_TIMEOUT_MS`; no-op when already so. Clicks the bar (opening the Combat tab) with `BAR_CHANCE`, else the orb, falling back to the other. `false` when neither is available or it didn't change.
 
 Example:
 ```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
 SpecialAttack.set(true)
 ```
 
@@ -155,13 +142,11 @@ Definition:
 ```luau
 function SpecialAttack.enable(cost: number?): boolean
 ```
-Switches the special attack on when there is at least `cost` energy, by default the cost of the weapon in hand (`cost()`). Returns `true` when it is on, and `false` without clicking when there isn't enough energy or the weapon has no special attack.
+`set(true)` when energy is at least `cost` (default `cost()`); `false` without clicking otherwise.
 
 Example:
 ```luau
-local SpecialAttack = require("@lib/main/interfaces/special_attack")
-
 if SpecialAttack.enable() then
-	print("the next attack is a special attack")
+	print("special queued")
 end
 ```

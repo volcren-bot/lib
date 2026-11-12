@@ -1,21 +1,28 @@
 # Main.House
 
-The player's house: an instance whose layout each player chooses and can change, so nothing here knows a room or a tile. Furniture is found by name in the scene of this visit, on any floor.
+The player's house. Its layout is the player's choice, so nothing here assumes a room or tile: furniture is found by name in the current scene, on any floor.
 
 ```luau
 local House = require("@lib/main/house")
 ```
 
-The transport data calls the whole house one tile (`House.TILE`), and so does the chooser: every way in arrives there and every way out leaves from there. See `Transports.house`.
-
-**What can be read from anywhere, without opening anything.** The house's town, the Portal Nexus's teleports by name (its slot variables, named through the cache's list of Nexus teleports), the left-click Nexus teleport, and the jewellery box's size once it is fancy or ornate. What else is built, the mounted pieces, the pool and the altar, only shows inside, in the scene: `House.survey` remembers it for the rest of the run. Which of the box's places are struck through for the account only shows in the box itself.
-
-**Doing things.** `House.teleport` takes you somewhere by whatever in the house offers it, `House.start_teleport` by one piece without waiting, `House.restore` drinks from the pool and `House.leave` goes out by the portal. The spellbook altar is `OccultAltar`.
+The transport data treats the whole house as one tile, `House.TILE`: every way in arrives there and every way out leaves from there (see `Transports.house`). From anywhere you can read the house's town, the Portal Nexus teleports and its left-click, and the jewellery box size once fancy or ornate. Mounted pieces, the pool and the altar only show inside; `House.survey` remembers them for the run. Struck-through box places only show in the box. The spellbook altar is `OccultAltar`.
 
 ## Constants
 
 Definition:
 ```luau
+House.TILE = { x = 1858, y = 7051, plane = 0 }
+House.EXIT_PORTAL = 4525
+House.EXIT_OPTION = "Enter"
+House.STAIRS = "Staircase"
+House.CLIMB_UP = "Climb-up"
+House.CLIMB_DOWN = "Climb-down"
+House.PLANES = 4
+House.SIZE = 104
+House.POLL_MS = 100
+House.STAIRS_TIMEOUT_MS = 10000
+House.LEAVE_TIMEOUT_MS = 15000
 House.TELEPORT_TIMEOUT_MS = 10000
 House.RESTORE_TIMEOUT_MS = 8000
 House.LOCATION_VARBIT = 2187
@@ -31,7 +38,15 @@ House.BOX_PLACES = { basic = { ... }, fancy = { ... }, ornate = { ... } }
 House.MOUNTED_PLACES = { glory = { ... }, cape = { ... }, talisman = { ... }, digsite = { ... } }
 House.POOL_OPTION = "Drink"
 ```
-How long `teleport` waits to leave the house and `restore` waits for the pool. The town variable and its names. The Nexus's 30 slots in list order (`poh_nexus_tele_1` to `_30`), each holding a teleport's key or 0, and its left-click teleport. The cache's list of Nexus teleports (an enum of key to struct) and the struct param holding the name. The three teleports with a second place, listed right after them once a diary is done: Varrock's Grand Exchange (Varrock medium), Camelot's Seers' Village (Kandarin hard) and Watchtower's Yanille (Ardougne hard). The box's size variable (`poh_jewellerybox_multi`: 0 basic, 1 fancy, 2 ornate; 0 is also a house without a box), the sizes, the places each size adds to the one below, and the places of each mounted piece.
+- `TILE`: the data's stand-in tile for the house. `EXIT_PORTAL`/`EXIT_OPTION`: the exit portal loc and its option.
+- `STAIRS`, `CLIMB_UP`, `CLIMB_DOWN`: staircase name and options. `PLANES`, `SIZE`: floors and scene size searched.
+- `*_TIMEOUT_MS`, `POLL_MS`: waits for stairs, leaving, `teleport` and `restore`.
+- `LOCATION_VARBIT`, `LOCATIONS`: the town variable and its names.
+- `NEXUS_SLOT_VARBITS`: the 30 Nexus slots in list order, each a teleport key or 0. `NEXUS_LEFT_CLICK_VARBIT`: its left-click.
+- `NEXUS_ENUM`, `NEXUS_NAME_PARAM`: the cache enum of Nexus teleports (key to struct) and the struct's name param.
+- `NEXUS_ALTERNATES`: second places (Grand Exchange, Seers' Village, Yanille) by slot, listed after their teleport once the diary varbit `unlocked_by` is set.
+- `BOX_VARBIT`: box size (0 basic or none, 1 fancy, 2 ornate). `BOX_TIERS`, `BOX_PLACES`: sizes and the places each adds to the one below.
+- `MOUNTED_PLACES`: places of each mounted piece. `POOL_OPTION`: the pool's option.
 
 ## House.Furniture
 
@@ -39,7 +54,7 @@ Definition:
 ```luau
 export type Furniture = "nexus" | "box" | "glory" | "cape" | "talisman" | "digsite"
 ```
-What can take you somewhere from inside the house.
+Furniture that teleports.
 
 ## House.BoxTier
 
@@ -47,7 +62,7 @@ Definition:
 ```luau
 export type BoxTier = "basic" | "fancy" | "ornate"
 ```
-The jewellery box's sizes, smallest first; each offers the places of the ones below it too.
+Box sizes, smallest first; each includes the places of smaller ones.
 
 ## House.NexusTeleport
 
@@ -60,7 +75,7 @@ export type NexusTeleport = {
 	alternate_of: string?,
 }
 ```
-A Nexus teleport: its key in the cache's list, its name as the Nexus lists it ("Fenken' Castle"), its slot (1 to 30), and for a second place the teleport it belongs to ("Varrock" for "Grand Exchange"), which shares that slot.
+Cache key, Nexus name ("Fenken' Castle"), slot 1-30, and for an alternate the teleport whose slot it shares ("Varrock" for "Grand Exchange").
 
 ## House.inside
 
@@ -68,7 +83,7 @@ Definition:
 ```luau
 function House.inside(): boolean
 ```
-Whether the player is in a house, theirs or another's: an instance with the exit portal in it.
+Whether the player is in any house: the scene has the exit portal.
 
 Example:
 ```luau
@@ -83,7 +98,7 @@ Definition:
 ```luau
 function House.is_tile(tile: { x: number, y: number }): boolean
 ```
-Whether a tile is the data's stand-in for the house.
+Whether a tile is `House.TILE` (x and y only).
 
 Example:
 ```luau
@@ -98,7 +113,7 @@ Definition:
 ```luau
 function House.location(): number?
 ```
-Where the house is, by the game's number (varbit 2187; 1 is Rimmington). Its name is `House.location_name`.
+The house's town number (`LOCATION_VARBIT`; 1 is Rimmington). See `House.location_name`.
 
 Example:
 ```luau
@@ -113,7 +128,7 @@ Definition:
 ```luau
 function House.find(what: string | number | { string }): Host.Loc?
 ```
-The nearest clickable loc whose name contains `what` (or any of a list), ignoring case, or with this id: on the player's floor if there is one, else on another.
+The nearest loc with this id, or whose name contains `what` (or any of a list) ignoring case. Prefers the player's floor, else any floor; nil when none.
 
 Example:
 ```luau
@@ -129,7 +144,7 @@ Definition:
 ```luau
 function House.go_to_floor(plane: number): boolean
 ```
-Goes to a floor by the nearest staircase, one flight at a time. True once on it.
+Climbs to a floor by the nearest staircase, one flight at a time. True once on it.
 
 Example:
 ```luau
@@ -144,7 +159,7 @@ Definition:
 ```luau
 function House.reach(what: string | number | { string }): Host.Loc?
 ```
-Finds something built and gets on its floor. The loc to click, or nil when it isn't built or can't be reached.
+`House.find`, then goes to its floor. The loc, or nil when not built or unreachable.
 
 Example:
 ```luau
@@ -155,7 +170,7 @@ print(House.reach("Portal Nexus") ~= nil)
 
 ## House.FURNITURE
 
-What each kind of furniture is called, as a list of name parts: `nexus`, `box`, `glory`, `cape`, `talisman`, `digsite`, `fairy_ring`, `spirit_tree`, `pool` and `occult_altar`. A Spiritual Fairy Tree is both a fairy ring and a spirit tree.
+Name parts per furniture kind: `nexus`, `box`, `glory`, `cape`, `talisman`, `digsite`, `fairy_ring`, `spirit_tree`, `pool`, `occult_altar`. A Spiritual Fairy Tree counts as both fairy ring and spirit tree.
 
 ## House.survey
 
@@ -163,7 +178,7 @@ Definition:
 ```luau
 function House.survey()
 ```
-Looks around the house the player is in and remembers what is built and its name, for `House.seen` and `House.furniture`. `Transports.choose` does this whenever it runs inside a house. Someone else's house counts as much as your own, until the next look.
+Records which `FURNITURE` kinds are built in the current house, and their names, for `House.seen`/`House.furniture`. Kept for the run until the next survey, whoever's house it is. `Transports.choose` calls it inside a house.
 
 Example:
 ```luau
@@ -180,7 +195,7 @@ Definition:
 ```luau
 function House.seen(kind: string): boolean?
 ```
-Whether this kind of furniture (a key of `House.FURNITURE`) was built at the last look around, or nil when no look has been taken this run. It isn't kept between runs.
+Whether this `FURNITURE` kind was built at the last survey; nil before any survey this run.
 
 Example:
 ```luau
@@ -195,7 +210,7 @@ Definition:
 ```luau
 function House.furniture(kind: string): string?
 ```
-The name of this kind of furniture at the last look around ("Ornate pool of Rejuvenation", "Ornate Jewellery Box"), nil when none was seen or no look has been taken this run.
+The name of this kind at the last survey ("Ornate Jewellery Box"); nil when not seen or no survey this run.
 
 Example:
 ```luau
@@ -211,7 +226,7 @@ Definition:
 ```luau
 function House.same_place(a: string, b: string): boolean
 ```
-Whether two names are the same place, compared word by word ignoring case and punctuation. A word cut short with an apostrophe stands for any word it starts ("Fenken' Castle" is "Fenkenstrain's Castle"), and one name may be the start of the other ("Kourend" is "Kourend Castle"). A word is never part of another, so "Trollheim" isn't "Troll Stronghold".
+Word-by-word comparison ignoring case and punctuation. A word ending in an apostrophe matches any word it starts ("Fenken' Castle"), and one name may be a word prefix of the other ("Kourend" = "Kourend Castle"); "Trollheim" is not "Troll Stronghold".
 
 Example:
 ```luau
@@ -226,7 +241,7 @@ Definition:
 ```luau
 function House.location_name(): string?
 ```
-The house's town (`House.LOCATIONS`), nil when it can't be read.
+The house's town from `LOCATIONS`; nil when unreadable.
 
 Example:
 ```luau
@@ -241,7 +256,7 @@ Definition:
 ```luau
 function House.nexus_teleports(): { NexusTeleport }
 ```
-The Portal Nexus's teleports in its list's order, from anywhere and without opening it: empty when it has none or there is no Nexus. The names come from the cache once per run, which takes most of a second the first time. A second place (`House.NEXUS_ALTERNATES`) follows its teleport once its diary is done, as in the game's list.
+The Nexus teleports in list order, read from anywhere without opening it; empty when there is no Nexus. Names load from the cache once per run (most of a second the first time). Unlocked alternates follow their teleport, as in the game.
 
 Example:
 ```luau
@@ -258,7 +273,7 @@ Definition:
 ```luau
 function House.nexus_teleport(name: string): NexusTeleport?
 ```
-The Nexus teleport to `name`, the exact name first and then `House.same_place`; nil when the Nexus doesn't have it.
+The Nexus teleport matching `name` exactly, else by `House.same_place`; nil when absent.
 
 Example:
 ```luau
@@ -273,7 +288,7 @@ Definition:
 ```luau
 function House.nexus_left_click(): string?
 ```
-The name of the Nexus's left-click teleport, nil when it has none.
+The Nexus's left-click teleport name; nil when none.
 
 Example:
 ```luau
@@ -288,7 +303,7 @@ Definition:
 ```luau
 function House.box_tier(): BoxTier?
 ```
-The jewellery box's size: what the last look around saw, else the variable. Nil when neither says: outside, before a visit, a basic box reads the same as none.
+The box size from the last survey, else `BOX_VARBIT`. Nil when a survey saw no box, or unsurveyed and the varbit is 0 (basic reads as none).
 
 Example:
 ```luau
@@ -303,7 +318,7 @@ Definition:
 ```luau
 function House.box_places(tier: BoxTier?): { string }
 ```
-Every place a box of this size offers, by default the house's (`House.box_tier`), in its menu's order, as the box names them; empty when the size isn't known. Some may be struck through for the account, which only the box shows.
+All places a box of `tier` (default `House.box_tier()`) offers, in menu order; empty when the size is unknown. Doesn't know which are struck through for the account.
 
 Example:
 ```luau
@@ -318,7 +333,7 @@ Definition:
 ```luau
 function House.offers(place: string): { Furniture }
 ```
-What in the house can take you to `place`, by `House.same_place`: the Nexus and the box from what the variables say (unless a visit this run showed them missing), and the mounted pieces once a visit has shown them.
+Furniture that goes to `place` (`House.same_place`): the Nexus and box from varbits unless a survey showed them missing, mounted pieces only once a survey saw them.
 
 Example:
 ```luau
@@ -333,7 +348,7 @@ Definition:
 ```luau
 function House.start_teleport(by: Furniture, place: string): (boolean, string?, boolean?)
 ```
-Starts a teleport to `place` from inside the house by one piece of furniture, going to its floor and walking to it first: the Nexus (`Nexus`), the box (`Jewellerybox`) or a mounted piece (`Mounted`). The trip itself isn't waited for. False with why when it didn't start, and true third when trying again is pointless: the piece isn't built or doesn't offer the place.
+Starts a teleport by one piece (through `Nexus`, `Jewellerybox` or `Mounted`), reaching it first; doesn't wait for arrival. On failure returns false, why, and a third `true` when retrying is pointless (not built, or doesn't offer `place`).
 
 Example:
 ```luau
@@ -348,7 +363,7 @@ Definition:
 ```luau
 function House.teleport(place: string): (boolean, string?)
 ```
-Teleports to `place` from inside the house by whatever offers it (`House.offers`), the nearest piece first when several do, and waits to leave the house. False and why.
+Teleports by whatever `House.offers`, nearest piece first, trying the next if one fails to start, and waits up to `TELEPORT_TIMEOUT_MS` to leave the house. False and why otherwise.
 
 Example:
 ```luau
@@ -363,7 +378,7 @@ Definition:
 ```luau
 function House.restore(): (boolean, string?)
 ```
-Drinks from the house's pool, of any kind, and waits for it to take (`Player.restore_with`). False and why.
+Drinks from any pool and waits for the restore (`Player.restore_with`). False and why.
 
 Example:
 ```luau
@@ -378,7 +393,7 @@ Definition:
 ```luau
 function House.leave(): boolean
 ```
-Leaves by the portal, wherever it is. True once outside.
+Leaves by the exit portal. True once outside.
 
 Example:
 ```luau

@@ -1,6 +1,6 @@
 # Main.Position
 
-A small helper for a position in the world and the 64x64 map chunk it belongs to.
+A world position and the 64x64 map chunk it is in.
 
 ```luau
 local Position = require("@lib/main/position")
@@ -12,12 +12,10 @@ Definition:
 ```luau
 function Position.new(local_x: number, local_y: number, x: number, y: number, plane: number?): Position
 ```
-Creates a position from its tile inside the loaded area (`local_x`, `local_y`), its world tile (`x`, `y`) and its `plane` (0, the ground floor, when not given).
+A position from its scene tile (`local_x`, `local_y`), world tile (`x`, `y`) and `plane` (default 0).
 
 Example:
 ```luau
-local Position = require("@lib/main/position")
-
 local pos = Position.new(52, 52, 3200, 3200)
 print(pos.x, pos.y)
 ```
@@ -28,12 +26,10 @@ Definition:
 ```luau
 function Position.chunk(self: Position): Chunk
 ```
-Returns the 64x64 tile chunk that this position is in.
+The chunk containing the position (`x // 64`, `y // 64`).
 
 Example:
 ```luau
-local Position = require("@lib/main/position")
-
 local chunk = Position.new(0, 0, 3200, 3200):chunk()
 print(chunk.x, chunk.y)
 ```
@@ -44,12 +40,10 @@ Definition:
 ```luau
 function Position.in_instance(self: Position): boolean
 ```
-Whether this position is inside an instance (a minigame, raid or other private copy of an area). The game places instances in the map east of x = 6400, which the overworld never reaches, so this is a coordinate check on this position. To ask about the instance you are in now, use `Player.in_instance`, which reads the game client's own flag. Instances move around: a Tempoross game gets new coordinates every time, so test with these and not with a fixed box.
+Whether `x >= 6400`, where the game places instances. For your current state use `Player.in_instance`, which reads the client's flag. Instance coordinates change every time, so don't test against fixed boxes.
 
 Example:
 ```luau
-local Position = require("@lib/main/position")
-
 print(Position.new(0, 0, 13265, 14527):in_instance()) -- true
 print(Position.new(0, 0, 3140, 2839):in_instance()) -- false
 ```
@@ -58,9 +52,9 @@ print(Position.new(0, 0, 3140, 2839):in_instance()) -- false
 
 Definition:
 ```luau
-Position.Chunk: { id: (self: Chunk) -> number }
+Position.Chunk: { new: (x: number, y: number) -> Chunk, id: (self: Chunk) -> number }
 ```
-The chunk type that `Position.chunk` returns. It has an `x`, a `y` and an `id` function.
+The chunk class; a `Chunk` has `x` and `y`.
 
 ## Chunk.new
 
@@ -68,12 +62,10 @@ Definition:
 ```luau
 function Chunk.new(x: number, y: number): Chunk
 ```
-Creates a 64x64 chunk from its coordinates (a tile's x and y divided by 64, rounded down).
+A chunk from chunk coordinates (tile coordinates `// 64`).
 
 Example:
 ```luau
-local Position = require("@lib/main/position")
-
 local chunk = Position.Chunk.new(47, 44)
 print(chunk:id()) -- 12076
 ```
@@ -84,12 +76,9 @@ Definition:
 ```luau
 function Chunk.id(self: Chunk): number
 ```
-A single number that identifies the chunk (its `x` and `y` combined).
+`x << 8 | y`, the game's region id.
 
 Example:
 ```luau
-local Position = require("@lib/main/position")
-
-local chunk = Position.new(0, 0, 3200, 3200):chunk()
-print("chunk id:", chunk:id())
+print(Position.new(0, 0, 3200, 3200):chunk():id()) -- 12850
 ```

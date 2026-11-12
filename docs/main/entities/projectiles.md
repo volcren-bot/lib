@@ -1,262 +1,247 @@
 # Main.Entities.Projectiles
 
-Finding the projectiles in flight: arrows, bolts, spells and the attacks monsters throw at you.
+Projectiles in flight: arrows, spells and monster attacks, for dodging or praying before they land.
 
 ```luau
 local Projectiles = require("@lib/main/entities/projectiles")
 ```
 
-A projectile is a `Host.Projectile`:
+A `Host.Projectile` has:
 
-- `id` is its graphic (spot animation) id, the same id RuneLite's dev tools show.
-- `source_x`, `source_y`, `source_plane` and `target_x`, `target_y`, `target_plane` are the world tiles it flies between, as the server sent them.
-- `source_npc`/`source_player` and `target_npc`/`target_player` are the actors it flies from and at (an NPC or player `index`, -1 for none). A projectile aimed at an actor follows it, so it lands wherever that actor is by then, not on `target_x`, `target_y`. The server often sends only a source tile, so the source actor is -1 even for your own shots.
-- `start_cycle`, `end_cycle` and `cycle` are client cycles (50 a second): when it leaves, when it lands, and now. A projectile is listed from the moment the server sends it, which can be before it leaves; `moving` is false until then.
-- `x`, `y` (world tile), `local_x`, `local_y` (fine units, 128 to a tile) and `height` (fine units above the ground) are where it is now. Until it moves, that is the centre of the source tile at `start_height`. `z` is the client's own height (negative is up, counted from the heightmap's zero rather than the ground) and `orientation` its heading (0 to 2047).
-- `start_height`, `end_height`, `slope` and `start_pos` describe its arc.
-
-Projectiles that are aimed at you can be dodged or prayed against before they land. `remaining_ms` says how long you have.
+- `id`: graphic (spot animation) id.
+- `source_x`, `source_y`, `source_plane`, `target_x`, `target_y`, `target_plane`: world tiles as sent by the server.
+- `source_npc`, `source_player`, `target_npc`, `target_player`: actor indices, -1 for none. A projectile aimed at an actor follows it, landing wherever the actor is. The server often omits the source actor, even for your own shots.
+- `start_cycle`, `end_cycle`, `cycle`: client cycles (50/s) when it leaves, lands, and now. It is listed as soon as the server sends it; `moving` is false until it leaves.
+- `x`, `y` (world tile), `local_x`, `local_y` (fine units, 128 per tile), `height` (fine units above ground): current position, the source tile centre at `start_height` until it moves. `z` is the client's height (negative is up, from the heightmap zero) and `orientation` the heading (0-2047).
+- `start_height`, `end_height`, `slope`, `start_pos`: the arc.
 
 ## Constants
 
 Definition:
+
 ```luau
 Projectiles.CYCLE_MS = 20
 ```
-How long a client cycle lasts. The game ticks every 600 ms, which is 30 cycles.
+
+One client cycle in ms (a 600 ms game tick is 30 cycles).
+
+Example:
+
+```luau
+print(30 * Projectiles.CYCLE_MS) -- 600
+```
 
 ## Projectiles.find
 
 Definition:
+
 ```luau
 function Projectiles.find(what: (number | { number })?): { Projectile }?
 ```
-Lists the projectiles in flight, or about to leave. Give a graphic id or a list of ids to only get matching ones. Returns `nil` when they can't be read.
+
+Projectiles in flight or about to leave, optionally matching a graphic id or list of ids. Nil when unreadable.
 
 Example:
-```luau
-local Projectiles = require("@lib/main/entities/projectiles")
 
-for _, p in ipairs(Projectiles.find() or {}) do
-	print(p.id, p.x, p.y, p.height, p.end_cycle - p.cycle)
+```luau
+for _, p in Projectiles.find() or {} do
+	print(p.id, p.x, p.y, p.end_cycle - p.cycle)
 end
 ```
 
 ## Projectiles.at_npc
 
 Definition:
+
 ```luau
 function Projectiles.at_npc(npc: Npc, what: (number | { number })?): { Projectile }?
 ```
-The projectiles flying at an NPC, optionally only those with the given graphic ids.
+
+Projectiles targeting `npc`, optionally filtered by graphic id.
 
 Example:
-```luau
-local Npcs = require("@lib/main/entities/npcs")
-local Projectiles = require("@lib/main/entities/projectiles")
-local Walker = require("@lib/main/walker")
 
-local cow = Npcs.nearest("Cow", assert(Walker.position()))
-if cow then
-	print(#(Projectiles.at_npc(cow) or {}), "projectiles on their way to the cow")
-end
+```luau
+print(#(Projectiles.at_npc(cow) or {}))
 ```
 
 ## Projectiles.at_player
 
 Definition:
+
 ```luau
 function Projectiles.at_player(player: PlayerInfo, what: (number | { number })?): { Projectile }?
 ```
-The projectiles flying at a player, optionally only those with the given graphic ids.
+
+Projectiles targeting `player`, optionally filtered by graphic id.
 
 Example:
-```luau
-local Players = require("@lib/main/entities/players")
-local Projectiles = require("@lib/main/entities/projectiles")
 
-for _, player in ipairs(Players.find() or {}) do
-	print(player.name, #(Projectiles.at_player(player) or {}))
-end
+```luau
+print(#(Projectiles.at_player(other) or {}))
 ```
 
 ## Projectiles.at_me
 
 Definition:
+
 ```luau
 function Projectiles.at_me(what: (number | { number })?): { Projectile }?
 ```
-The projectiles flying at you, optionally only those with the given graphic ids. Returns `nil` when you can't be found.
+
+Projectiles targeting you. Nil when you can't be found in the player list.
 
 Example:
-```luau
-local Projectiles = require("@lib/main/entities/projectiles")
 
-for _, p in ipairs(Projectiles.at_me() or {}) do
-	print(`graphic {p.id} lands in {Projectiles.remaining_ms(p)} ms`)
+```luau
+for _, p in Projectiles.at_me() or {} do
+	print(p.id, Projectiles.remaining_ms(p))
 end
 ```
 
 ## Projectiles.from_npc
 
 Definition:
+
 ```luau
 function Projectiles.from_npc(npc: Npc, what: (number | { number })?): { Projectile }?
 ```
-The projectiles an NPC launched, optionally only those with the given graphic ids. Only projectiles the server sent with a source actor are found.
+
+Projectiles launched by `npc`. Only finds those the server sent with a source actor.
 
 Example:
-```luau
-local Npcs = require("@lib/main/entities/npcs")
-local Projectiles = require("@lib/main/entities/projectiles")
-local Walker = require("@lib/main/walker")
 
-local xil = Npcs.nearest("Tok-Xil", assert(Walker.position()))
-if xil then
-	print(#(Projectiles.from_npc(xil) or {}), "spines in the air")
-end
+```luau
+print(#(Projectiles.from_npc(xil) or {}))
 ```
 
 ## Projectiles.remaining_ms
 
 Definition:
+
 ```luau
 function Projectiles.remaining_ms(projectile: Projectile): number
 ```
-How long until it lands, in ms (0 once it has).
+
+Ms until it lands, 0 once landed.
 
 Example:
-```luau
-local Projectiles = require("@lib/main/entities/projectiles")
 
-local next = Projectiles.first_landing()
-print(next and Projectiles.remaining_ms(next))
+```luau
+print(Projectiles.remaining_ms(p))
 ```
 
 ## Projectiles.departs_in_ms
 
 Definition:
+
 ```luau
 function Projectiles.departs_in_ms(projectile: Projectile): number
 ```
-How long until it leaves, in ms (0 once it is moving).
+
+Ms until it leaves, 0 once moving.
 
 Example:
-```luau
-local Projectiles = require("@lib/main/entities/projectiles")
 
-for _, p in ipairs(Projectiles.find() or {}) do
-	if not p.moving then
-		print(p.id, "leaves in", Projectiles.departs_in_ms(p), "ms")
-	end
-end
+```luau
+print(Projectiles.departs_in_ms(p))
 ```
 
 ## Projectiles.flight_ms
 
 Definition:
+
 ```luau
 function Projectiles.flight_ms(projectile: Projectile): number
 ```
-How long the whole flight takes, from leaving to landing, in ms.
+
+Total flight time from leaving to landing, in ms.
 
 Example:
-```luau
-local Projectiles = require("@lib/main/entities/projectiles")
 
-for _, p in ipairs(Projectiles.find() or {}) do
-	print(p.id, Projectiles.flight_ms(p))
-end
+```luau
+print(Projectiles.flight_ms(p))
 ```
 
 ## Projectiles.progress
 
 Definition:
+
 ```luau
 function Projectiles.progress(projectile: Projectile): number
 ```
-How far along its flight it is, from 0 (not left yet) to 1 (landed).
+
+Flight progress from 0 (not left) to 1 (landed).
 
 Example:
-```luau
-local Projectiles = require("@lib/main/entities/projectiles")
 
-for _, p in ipairs(Projectiles.find() or {}) do
-	print(p.id, string.format("%.0f%%", Projectiles.progress(p) * 100))
-end
+```luau
+print(Projectiles.progress(p))
 ```
 
 ## Projectiles.tile
 
 Definition:
+
 ```luau
 function Projectiles.tile(projectile: Projectile): Tile
 ```
+
 The world tile it is over now.
 
 Example:
-```luau
-local Projectiles = require("@lib/main/entities/projectiles")
 
-for _, p in ipairs(Projectiles.find() or {}) do
-	local tile = Projectiles.tile(p)
-	print(p.id, tile.x, tile.y)
-end
+```luau
+local tile = Projectiles.tile(p)
 ```
 
 ## Projectiles.target
 
 Definition:
+
 ```luau
 function Projectiles.target(projectile: Projectile): Tile
 ```
-The world tile it was sent at. A projectile aimed at an actor follows it, so look that actor up (`target_npc`, `target_player`) to know where it lands.
+
+The target tile it was sent at. For one aimed at an actor, look up `target_npc`/`target_player` to know where it actually lands.
 
 Example:
-```luau
-local Projectiles = require("@lib/main/entities/projectiles")
 
-for _, p in ipairs(Projectiles.find() or {}) do
-	local target = Projectiles.target(p)
-	print(p.id, "heading for", target.x, target.y)
-end
+```luau
+local tile = Projectiles.target(p)
 ```
 
 ## Projectiles.screen
 
 Definition:
+
 ```luau
 function Projectiles.screen(projectile: Projectile): Point?
 ```
-Where it is drawn on the screen now, or `nil` when it can't be projected.
+
+Its current screen position, or nil when it can't be projected.
 
 Example:
-```luau
-local Draw = require("@lib/utils/draw")
-local Projectiles = require("@lib/main/entities/projectiles")
 
-for _, p in ipairs(Projectiles.find() or {}) do
-	local at = Projectiles.screen(p)
-	if at then
-		Draw.rect(at.x - 4, at.y - 4, at.x + 4, at.y + 4, Draw.color(255, 0, 0))
-	end
+```luau
+local at = Projectiles.screen(p)
+if at then
+	Draw.rect(at.x - 4, at.y - 4, at.x + 4, at.y + 4, Draw.color(255, 0, 0))
 end
 ```
 
 ## Projectiles.first_landing
 
 Definition:
+
 ```luau
 function Projectiles.first_landing(what: (number | { number })?): Projectile?
 ```
-The projectile that lands first, optionally among those with the given graphic ids.
+
+The projectile with the earliest `end_cycle`, optionally among the given graphic ids, or nil.
 
 Example:
-```luau
-local Projectiles = require("@lib/main/entities/projectiles")
 
+```luau
 local next = Projectiles.first_landing()
-if next then
-	print(`graphic {next.id} lands in {Projectiles.remaining_ms(next)} ms`)
-end
 ```

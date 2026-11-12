@@ -1,14 +1,10 @@
 # Main.Interfaces.Mainscreen.Mounted
 
-What a house has mounted on its walls: the amulet of glory, the mythical cape, Xeric's talisman and the digsite pendant. The trips are free.
+Teleports from house-mounted pieces, named by `Kind`: `"glory"`, `"cape"` (mythical cape), `"talisman"` (Xeric's) and `"digsite"` (pendant). Trips are free. The glory offers places as options and the cape's "Teleport" has one place; the talisman and pendant list theirs under "Teleport menu" (group 187, the generic `menu` list). Configurable first options and "Remove" are never used. `Transports.house` builds on this.
 
 ```luau
 local Mounted = require("@lib/main/interfaces/mainscreen/mounted")
 ```
-
-The glory names its places as options, and the cape's "Teleport" has one place. The talisman and the pendant list theirs under "Teleport menu" (group 187, the game's generic `menu` list). Their first options change with the "Configuration" the player set, so those aren't used. Nothing here clicks "Remove", which takes a piece out of the house.
-
-A piece is named by its `Kind`: `"glory"`, `"cape"`, `"talisman"` or `"digsite"`. The chooser uses this through `Transports.house`.
 
 ## Mounted.is_open
 
@@ -16,12 +12,10 @@ Definition:
 ```luau
 function Mounted.is_open(): boolean
 ```
-Whether a list is open. The group is shared with other lists, so this only means something after opening one of these.
+Whether group 187 is open. Other lists share it, so this is only meaningful after opening one of these.
 
 Example:
 ```luau
-local Mounted = require("@lib/main/interfaces/mainscreen/mounted")
-
 print(Mounted.is_open())
 ```
 
@@ -31,12 +25,10 @@ Definition:
 ```luau
 function Mounted.destinations(): { Destination }?
 ```
-The places of the open list, top to bottom, each with `name` ("Xeric's Glade"), `available` (false for one you haven't unlocked) and `row`. Nil when it isn't open.
+The open list's places top to bottom, each with `name`, `available` (false when locked) and `row`. Nil when not open.
 
 Example:
 ```luau
-local Mounted = require("@lib/main/interfaces/mainscreen/mounted")
-
 for _, d in ipairs(Mounted.destinations() or {}) do
 	print(d.name, d.available)
 end
@@ -48,12 +40,10 @@ Definition:
 ```luau
 function Mounted.find(name: string): Destination?
 ```
-The place in the open list whose name contains `name`, ignoring case, when only one does.
+The single place whose name contains `name`, case-insensitive. Nil when none or several match.
 
 Example:
 ```luau
-local Mounted = require("@lib/main/interfaces/mainscreen/mounted")
-
 print(Mounted.find("Glade") ~= nil)
 ```
 
@@ -63,12 +53,10 @@ Definition:
 ```luau
 function Mounted.select(name: string): boolean
 ```
-Clicks a place in the open list and waits for it to close. True once it has. The trip isn't waited for.
+Clicks the place and waits for the list to close. False when not found, locked, or still open after `CLOSE_TIMEOUT_MS`. The trip isn't waited for.
 
 Example:
 ```luau
-local Mounted = require("@lib/main/interfaces/mainscreen/mounted")
-
 print(Mounted.select("Glade"))
 ```
 
@@ -78,12 +66,10 @@ Definition:
 ```luau
 function Mounted.close(): boolean
 ```
-Closes the list. See `Toplevel.close`.
+Closes the list via `Toplevel.close`. True once closed.
 
 Example:
 ```luau
-local Mounted = require("@lib/main/interfaces/mainscreen/mounted")
-
 Mounted.close()
 ```
 
@@ -93,11 +79,9 @@ Definition:
 ```luau
 function Mounted.teleport(kind: Kind, place: string): (boolean, string?, boolean?)
 ```
-Finds the piece in the house the player is in, on any floor, goes to it and starts the teleport to `place`, which isn't waited for. False with why when it didn't start, and true third when trying again is pointless: the piece or the place isn't there.
+Reaches the piece on any floor of the current house and starts the teleport to `place` (not waited for). On failure returns false and a reason, with a third `true` when retrying is pointless (the piece is missing, or the place is missing or locked).
 
 Example:
 ```luau
-local Mounted = require("@lib/main/interfaces/mainscreen/mounted")
-
 print(Mounted.teleport("talisman", "Glade"))
 ```

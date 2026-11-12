@@ -1,12 +1,12 @@
 # Main.Clickbox
 
-Aiming the mouse at characters and objects. A "clickbox" is the area on screen where the game accepts a click for something (a character, a tree, a door). This module picks a good spot inside it, makes sure the game agrees the mouse is on the right thing, and clicks.
-
-You normally use this through [Npcs](entities/npcs.md), [Objects](entities/objects.md) and [Players](entities/players.md), which build the clickbox for you.
+Aiming the mouse at characters and objects. A clickbox is the screen area where the game accepts a click for a thing; this module picks a good spot in it, waits for the client to confirm the mouse is on the thing, and clicks. Usually used through [Npcs](entities/npcs.md), [Objects](entities/objects.md) and [Players](entities/players.md), which build the clickbox.
 
 ```luau
 local Clickbox = require("@lib/main/clickbox")
 ```
+
+Functions that aim take an `Aim` (see `Clickbox.walking`): `aim()` is the box as drawn now, `aim(lead_ms)` where it will be after the player's walk moves the camera.
 
 ## Settings
 
@@ -25,20 +25,26 @@ Clickbox.WALK_REACTION_MS = 30
 Clickbox.WALK_HOLD_MS = 150
 Clickbox.WALK_LEAD_MS = 300
 Clickbox.WALK_LEAD_TOLERANCE = 40
+Clickbox.APPROACH_NEAR = 3
+Clickbox.EARLY_RETRY_MS = 1500
+Clickbox.APPROACH_TIMEOUT_MS = 30000
 ```
-- `TARGET_TRIES`: how many times to try finding a free spot.
-- `MIN_TRIANGLE_AREA`: parts of the shape smaller than this (in pixels) are ignored.
-- `FOLLOW_AREA`: `hover` follows a part of the shape at least this big (in pixels) when there is one.
-- `CENTER_SPREAD`: how tightly a model's triangles are picked around its middle, as a share of how far the shape spreads from it (smaller is tighter; see `Clickbox.target`).
-- `MOUSE_PULL`: how weakly the pick leans towards the current mouse position, in the same spreads (bigger is weaker).
-- `CAMERA_RANGE`: things closer than this many tiles that aren't on the screen may get the camera zoomed out to show them. Set to `nil` to never zoom out for them. Turning towards things is `Camera.face`, with its own settings.
-- `ATTEMPTS`: how many times to aim (a triangle picked and followed) before giving up; the game's confirmation that the mouse is on the thing is waited for by [Track](../utils/input/track.md) (`Track.CONFIRM_MS`).
-- `MISCLICK_ATTEMPTS`: how many times to retry when the game did something else.
-- `ANCHOR_HEIGHT`: the height (fine units) of the reference point used to move a drawn box while walking (see `Clickbox.walking`).
-- `WALK_REACTION_MS`: while walking, how long after the mouse lands the click goes in; the box is aimed at where it'll be by then.
-- `WALK_HOLD_MS`: while walking, how long the spot should stay inside the box after that.
-- `WALK_LEAD_MS`: the guess at the mouse's travel time when the thing isn't drawn yet.
-- `WALK_LEAD_TOLERANCE`: the aim is worked out again for the spot it picked unless its travel time is within this many milliseconds of the guess.
+- `TARGET_TRIES`: tries to find an uncovered spot.
+- `MIN_TRIANGLE_AREA`: triangles smaller than this (pixels) are ignored.
+- `FOLLOW_AREA`: minimum area (pixels) of a drawn box half `hover` follows.
+- `CENTER_SPREAD`: width of the bell curve around the shape's middle, as a share of its spread (smaller is tighter).
+- `MOUSE_PULL`: weakness of the lean towards the mouse, in spreads (bigger is weaker).
+- `CAMERA_RANGE`: off-screen things within this many tiles get the camera moved to show them; `nil` disables it.
+- `ATTEMPTS`: aims before `hover` gives up; confirmation waits are [Track](../utils/input/track.md)'s `CONFIRM_MS`.
+- `MISCLICK_ATTEMPTS`: retries when the client did something else.
+- `ANCHOR_HEIGHT`: default anchor height (fine units) for `walking`.
+- `WALK_REACTION_MS`: delay from the mouse landing to the click while walking.
+- `WALK_HOLD_MS`: how long the spot must stay in the box after that.
+- `WALK_LEAD_MS`: guessed mouse travel time when nothing is drawn yet.
+- `WALK_LEAD_TOLERANCE`: the aim is redone unless the real travel time is within this of the guess.
+- `APPROACH_NEAR`: default `near` for `approach`.
+- `EARLY_RETRY_MS`: interval between early picks during an `approach` walk.
+- `APPROACH_TIMEOUT_MS`: default walk and settle timeout for `approach`.
 
 ## Clickbox.from_model
 
@@ -46,21 +52,13 @@ Definition:
 ```luau
 function Clickbox.from_model(model: Model, what: string): Clickbox?
 ```
-Builds a clickbox from the outline the game drew for a character or object. `what` is a name used in error messages. Returns `nil` and a message when the thing isn't in front of the camera.
+A clickbox from the outline and faces the client drew for a model. Nil when the model has no usable hull or faces (not in front of the camera).
 
 Example:
 ```luau
-local Host = require("@lib/host")
-local Clickbox = require("@lib/main/clickbox")
-
-local npcs = Host.npcs() or {}
-if npcs[1] then
-	local model = Host.npc_model(npcs[1].index)
-	if model then
-		local box = Clickbox.from_model(model, npcs[1].name)
-		print(if box then "got a clickbox" else "unavailable")
-	end
-end
+local npc = (Host.npcs() or {})[1]
+local model = npc and Host.npc_model(npc.index)
+local box = model and Clickbox.from_model(model, npc.name)
 ```
 
 ## Clickbox.target
@@ -69,16 +67,11 @@ Definition:
 ```luau
 function Clickbox.target(box: Clickbox, what: string, keep: ((Point) -> boolean)?, ignore_windows: boolean?): (Point?, Polygon?)
 ```
-Picks a spot inside the clickbox that isn't covered by any interface. On a model it picks one of the triangles whose middle is inside the outline and visible (at least `MIN_TRIANGLE_AREA` pixels), then a spot near that triangle's middle. The pick leans towards the middle of the whole shape, since a spot near the edge misses once the thing moves or animates before the click lands: it finds the shape's middle as the triangles' centres weighted by their area, and how far the shape spreads from it across and down, then weights each triangle by its area times a bell curve around that middle, `CENTER_SPREAD` of the spread wide each way (so a tall shape gets a tall one), times a weak pull towards the mouse, `exp(-distance / (MOUSE_PULL * spread))`. A drawn box without triangles leans towards where the mouse already is. `keep` can turn down spots (for example ones that won't stay in the box), and `ignore_windows` counts only the side panels as covering. Returns the spot and, for a model's clickbox, the triangle it was picked in (nil for a box without triangles), or `nil` when nothing is visible.
+Picks a spot in the box not covered by an interface. On a model it picks a visible triangle (at least `MIN_TRIANGLE_AREA`) weighted by area times a bell curve around the shape's area-weighted middle (`CENTER_SPREAD`) times a weak pull to the mouse (`exp(-distance / (MOUSE_PULL * spread))`), then a spot near that triangle's middle; a box without triangles leans towards the mouse. `keep` rejects spots, `ignore_windows` counts only side panels as covering. Returns the spot and its triangle (nil without triangles), or nil when nothing is visible.
 
 Example:
 ```luau
-local Clickbox = require("@lib/main/clickbox")
-local Npcs = require("@lib/main/entities/npcs")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local npc = Npcs.nearest("Man", me)
+local npc = Npcs.nearest("Man", assert(Walker.position()))
 local box = npc and Npcs.clickbox(npc)
 if box then
 	print(Clickbox.target(box, "the man"))
@@ -89,120 +82,71 @@ end
 
 Definition:
 ```luau
-function Clickbox.reveal(clickbox: () -> Clickbox?, tile: () -> Tile?, what: string): boolean
+function Clickbox.reveal(clickbox: Aim, tile: () -> Tile?, what: string): boolean
 ```
-Makes sure the thing is on the screen. If it isn't, it turns the camera to it (`Camera.face` forced, not left to its chance), then zooms out, then turns straight at it (`Camera.look_at`), then lowers the pitch in up to two steps towards `Camera.PITCH_MIN`, stopping as soon as it shows, as long as it is within `CAMERA_RANGE` tiles. A lower pitch looks farther ahead, which is what brings back a thing past the top of a small game window. Does nothing when it is already visible. Returns false when none of that showed it, so the caller can walk closer. `Clickbox.hover` first turns the camera so the thing shows in the upper half of the screen (`Camera.face`, on its chance), then reveals, so an attack or any other click on a thing off screen always brings it into view.
+Brings an off-screen thing within `CAMERA_RANGE` into view, stopping once it shows: forced `Camera.face`, zoom out, `Camera.look_at`, then up to two pitch steps towards `Camera.PITCH_MIN`. True when visible; false when nothing worked, so the caller can walk closer.
 
 Example:
 ```luau
-local Clickbox = require("@lib/main/clickbox")
-local Npcs = require("@lib/main/entities/npcs")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local npc = Npcs.nearest("Man", me)
-if npc then
-	print(Clickbox.reveal(function()
-		return Npcs.clickbox(npc)
-	end, function()
-		return { x = npc.x, y = npc.y }
-	end, "the man"))
-end
+print(Clickbox.reveal(function()
+	return Npcs.clickbox(npc)
+end, function()
+	return { x = npc.x, y = npc.y }
+end, "the man"))
 ```
 
 ## Clickbox.hover
 
 Definition:
 ```luau
-function Clickbox.hover(
-	clickbox: () -> Clickbox?,
-	hovered: () -> boolean,
-	what: string,
-	tile: (() -> Tile?)?
-): boolean
+function Clickbox.hover(clickbox: Aim, hovered: () -> boolean, what: string, tile: (() -> Tile?)?): boolean
 ```
-Moves the mouse onto the thing and waits until the game confirms (through `hovered`) that the mouse is really on it. On a model it aims with a heat map ([Track.hover_heat](../utils/input/track.md#trackhover_heat)): the screen around the thing is cut into `Track.HEAT_CELL` pixel cells, each read the model covers gets hotter the longer it has stayed covered, and the mouse goes for a hot cell near the middle, so it heads for the part of the body that stays put instead of chasing one face through an animation. The cells are kept relative to the box's `anchor` (set by `Clickbox.walking`), so walking or the camera moving doesn't cool them. While the mouse moves, the game is asked (`hovered`) each time the mouse is on a warm cell, and once it agrees the move stops and, if it still agrees, the hover is done: the click goes in where the mouse is, not where it was going. On a drawn box (no faces) it picks one of its top and bottom halves, the bigger half of those at least `FOLLOW_AREA` pixels, with the same lean towards the middle as `Clickbox.target`, and follows it with [Track.hover](../utils/input/track.md#trackhover), which also stops early once the mouse is on the box and the game agrees. A thing that can't be followed (gone off screen, behind the interface) is logged and tried again, `ATTEMPTS` times in all. Passing `tile` lets it first turn the camera so the thing shows in the upper half of the screen (`Camera.face`), and bring it on screen (`Clickbox.reveal`).
+Moves onto the thing and returns once `hovered` confirms the client sees the mouse on it. A model is aimed with [Track.hover_heat](../utils/input/track.md#trackhover_heat), favouring cells the model has covered longest (kept relative to the box `anchor`), and the move stops early once `hovered` agrees. A drawn box follows its larger top or bottom half (at least `FOLLOW_AREA`) with [Track.hover](../utils/input/track.md#trackhover). Failures are logged and retried up to `ATTEMPTS`. With `tile` it first may turn the camera (`Camera.face`, on its chance) and calls `reveal`.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local npc = Npcs.nearest("Man", me)
-if npc then
-	print(Npcs.hover(npc))
-end
+print(Npcs.hover(npc))
 ```
 
 ## Clickbox.hover_async
 
 Definition:
 ```luau
-function Clickbox.hover_async(clickbox: () -> Clickbox?, what: string): boolean
+function Clickbox.hover_async(clickbox: Aim, what: string): boolean
 ```
-Starts the mouse moving onto the thing and returns at once. It aims from where the thing will be when the mouse arrives, but doesn't turn the camera or check the hover. Returns `true` if there was a spot to aim at, `false` if the thing isn't on screen.
+Starts the mouse towards where the thing will be on arrival and returns at once, without camera moves or hover checks. False when it isn't on screen.
 
 Example:
 ```luau
--- see Npcs.hover_async
+Clickbox.hover_async(function()
+	return Npcs.clickbox(npc)
+end, npc.name)
 ```
 
 ## Clickbox.click
 
 Definition:
 ```luau
-function Clickbox.click(
-	clickbox: () -> Clickbox?,
-	hovered: () -> boolean,
-	what: string,
-	button: Mouse.Button?,
-	tile: (() -> Tile?)?,
-	spam: number?
-): boolean
+function Clickbox.click(clickbox: Aim, hovered: () -> boolean, what: string, button: Mouse.Button?, tile: (() -> Tile?)?, spam: number?): boolean
 ```
-Hovers the thing (see `hover`) and clicks it with the given mouse button (left by default). `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](interact.md#interactspam_click).
+`hover`, then clicks `button` (left by default). `spam` is the chance of extra clicks, see [Interact.spam_click](interact.md#interactspam_click).
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local npc = Npcs.nearest("Man", me)
-if npc then
-	print(Npcs.click(npc))
-end
+print(Npcs.click(npc))
 ```
 
 ## Clickbox.interact
 
 Definition:
 ```luau
-function Clickbox.interact(
-	clickbox: () -> Clickbox?,
-	hovered: () -> boolean,
-	what: string,
-	option: string,
-	target: Minimenu.Target?,
-	tile: (() -> Tile?)?,
-	walk_timeout_ms: (number | false)?,
-	spam: number?,
-	menu: boolean?
-): boolean
+function Clickbox.interact(clickbox: Aim, hovered: () -> boolean, what: string, option: string | { string }, target: Minimenu.Target?, tile: (() -> Tile?)?, walk_timeout_ms: (number | false)?, spam: number?, menu: boolean?): boolean
 ```
-Hovers the thing and picks an option on it (like "Talk-to"), then waits until you arrive if it made you walk. If the game clicked something else by mistake it tries again, up to `MISCLICK_ATTEMPTS` times. `spam` is the chance of a few more clicks on the same spot, see [Interact.spam_click](interact.md#interactspam_click). `menu` picks the option from the right-click menu even when it is the top one, for a thing whose model moves under the mouse (see [Interact.with](interact.md#interactwith)).
+Answers a menu left open first ([Interact.open_menu](interact.md#interactopen_menu)), else hovers and picks the first offered `option` via [Interact.with](interact.md#interactwith), waiting for the walk. Retries up to `MISCLICK_ATTEMPTS` on a misclick or, while walking, when the option slid away. `menu` forces the right-click menu for moving models.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local npc = Npcs.nearest("Man", me)
-if npc then
-	print(Npcs.interact(npc, "Talk-to"))
-end
+print(Npcs.interact(npc, "Talk-to"))
 ```
 
 ## Clickbox.draw
@@ -211,20 +155,11 @@ Definition:
 ```luau
 function Clickbox.draw(box: Clickbox, color: Draw.Color?)
 ```
-Draws the clickbox on top of the game, which is useful to see what a script is aiming at.
+Draws the clickbox over the game, to see what a script aims at.
 
 Example:
 ```luau
-local Clickbox = require("@lib/main/clickbox")
-local Npcs = require("@lib/main/entities/npcs")
-local Walker = require("@lib/main/walker")
-
-local me = assert(Walker.position())
-local npc = Npcs.nearest("Man", me)
-local box = npc and Npcs.clickbox(npc)
-if box then
-	Clickbox.draw(box)
-end
+Clickbox.draw(box)
 ```
 
 ## Clickbox.from_cuboid
@@ -233,15 +168,11 @@ Definition:
 ```luau
 function Clickbox.from_cuboid(cuboid: { bottom: Quad, top: Quad }): Clickbox
 ```
-A clickbox from a projected cuboid (see `Projection.cuboid`): its outline is the hull of the box's corners, and only the box is aimed at, since there are no triangles to aim at.
+A clickbox from a projected cuboid (`Projection.cuboid`): the hull of its corners, with no triangles.
 
 Example:
 ```luau
-local Projection = require("@lib/main/projection/projection")
-local Clickbox = require("@lib/main/clickbox")
-
-local cuboid = assert(Projection.cuboid(5824, 7104))
-local box = Clickbox.from_cuboid(cuboid)
+local box = Clickbox.from_cuboid(assert(Projection.cuboid(5824, 7104)))
 ```
 
 ## Clickbox.walking
@@ -253,21 +184,15 @@ function Clickbox.walking(model: () -> Clickbox?, anchor: () -> Anchor?, what: s
 export type Aim = (lead_ms: number?) -> Clickbox?
 export type Anchor = { x: number, y: number, size: number?, height: number? }
 ```
-The aim for a thing (see `Clickbox.hover`). Called without `lead_ms` it's the client's `model` box as drawn now. Called with `lead_ms` while the player walks, it's where the box will be on screen that many milliseconds from now: the camera follows the player, so things slide across the screen while the mouse travels. The player's move comes from `Walker.ahead`. The drawn box is moved and scaled the way the camera move shifts the `anchor` (where the thing stands, in fine units like `Npc.local_x`, with `height` the height of the reference point, `ANCHOR_HEIGHT` by default). When nothing is drawn yet, a box of `size` tiles around the anchor is used instead. The box it returns carries `anchor`, where the anchor is on screen (moved the same way when aimed ahead), which `hover` keeps its heat map relative to.
-
-`hover`, `click`, `interact` and `approach` ask for the box `Mouse.travel_ms` plus `WALK_REACTION_MS` ahead while the player has a destination. They pick a spot that is still inside it `WALK_HOLD_MS` later, so it's still under the mouse while the hover is checked and the click goes in. Without a destination `WALK_LEAD_MS` is used as the guess. While walking, `interact` tries again (up to `MISCLICK_ATTEMPTS`) when the option slid away before the click.
+Builds an `Aim`. Without `lead_ms` it returns `model()`; with it, the box moved and scaled as the camera shift from `Walker.ahead` moves `anchor` (fine units like `Npc.local_x`, `height` defaulting to `ANCHOR_HEIGHT`). With nothing drawn it uses a box of `size` tiles around the anchor. The result's `anchor` is the anchor's screen point. While the player has a destination, `hover`, `click`, `interact` and `approach` aim `Mouse.travel_ms + WALK_REACTION_MS` ahead and pick a spot still inside `WALK_HOLD_MS` later; with nothing drawn, `WALK_LEAD_MS` is the guess.
 
 Example:
 ```luau
-local Clickbox = require("@lib/main/clickbox")
-local Npcs = require("@lib/main/entities/npcs")
-
 local aim = Clickbox.walking(function()
 	return Npcs.clickbox(npc)
 end, function()
 	return { x = npc.local_x, y = npc.local_y }
 end, npc.name)
-local now = aim()
 local soon = aim(300)
 ```
 
@@ -275,25 +200,22 @@ local soon = aim(300)
 
 Definition:
 ```luau
-function Clickbox.approach(
-	clickbox: Aim,
-	hovered: () -> boolean,
-	what: string,
-	option: string | { string },
-	target: Minimenu.Target?,
-	tile: () -> Tile?,
-	opts: Approach?
-): boolean
+function Clickbox.approach(clickbox: Aim, hovered: () -> boolean, what: string, option: string | { string }, target: Minimenu.Target?, tile: () -> Tile?, opts: Approach?): boolean
+
+export type Approach = {
+	near: number?,
+	walk: Walker.WalkOptions?,
+	timeout_ms: number?,
+	arrive_ms: (number | false)?,
+	settle: boolean?,
+	closer: number?,
+	spam: number?,
+}
 ```
-Walks to the thing and picks `options` on it (see `Clickbox.interact`), so the player doesn't have to stand near it first. Before the walk the camera turns so the thing shows in the upper half of the screen (`Camera.face`). The walk ends `near` tiles away, where the pick happens as `interact` does. A thing already on screen is picked without walking first, and while walking, once the thing is on screen it may be picked straight away (tried again every `EARLY_RETRY_MS`): the client walks the player there and does the option on arrival. "On screen" there means both now, as the hover will read it, and where the walk will have carried it by the time the mouse gets there; a thing only the lead puts on screen would fail the hover as gone. Both only happen when `Walker.plain_walk` says the walk there has no door, climb or shortcut left, since the client can't take the player over those and would walk the long way round, or not at all from a stepping stone: the walk does those first. With `settle` the pick waits until the walk has stopped, so a thing sliding under the mouse is never picked. If the pick fails, `closer` makes it walk to that many tiles from the thing, stand still, and pick once more. Returns once they've arrived (`arrive_ms`), or right after the pick with `arrive_ms` false. `walk.on_step` or `walk.before_click` returning false stops the walk, and this returns false. `opts.spam` is passed to each pick as `spam`.
+Walks to within `near` tiles (`APPROACH_NEAR`) and picks `option` as `interact` does. When the thing is on screen now and at the lead, and `Walker.plain_walk` reports no door, climb or shortcut left, it picks without walking, or early during the walk every `EARLY_RETRY_MS`; `settle` instead waits for the walk to stop. On failure, `closer` walks to that many tiles and picks once more. Returns after arriving (`arrive_ms`, false returns right after the pick). `walk.on_step` or `walk.before_click` returning false stops it with false; `timeout_ms` defaults to `APPROACH_TIMEOUT_MS`.
 
 Example:
 ```luau
-local Npcs = require("@lib/main/entities/npcs")
-local Walker = require("@lib/main/walker")
-
 local npc = assert(Npcs.nearest("Ferryman Nathwood", assert(Walker.position())))
--- picks Examine as soon as it can, or walks next to the ferryman and picks it there
 local ok = Npcs.approach(npc, { "Examine" }, { arrive_ms = false })
-print(ok)
 ```

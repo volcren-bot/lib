@@ -1,61 +1,67 @@
 # Main.Entities.SpotAnims
 
-Finding the spot animations on tiles: the effects the server places at a spot, such as an impact, a splash or a falling rock.
+Spot animations placed on tiles by the server: impacts, splashes, falling rocks. Effects on a character (a teleport flash, a freeze) aren't listed here; they are the `graphic` of that `Npc` or `PlayerInfo`.
 
 ```luau
 local SpotAnims = require("@lib/main/entities/spot_anims")
 ```
 
-RuneLite calls these graphics objects. A spot animation is a `Host.SpotAnim`:
+A `Host.SpotAnim` has:
 
-- `id` is its spot animation (graphic) id, the same id RuneLite's dev tools show.
-- `x`, `y` and `plane` are the world tile it is on. `local_x` and `local_y` are the same place in fine units (128 to a tile).
-- `view_id` is the world view it is in: `0` is the main world. Another number is a moving sub-scene such as a boat the player is on; its `x`, `y` and `local_x` and `local_y` are that scene's own and not on the world's tiles, so `SpotAnims.at` leaves those out.
-- `z` is the client's own height: the ground's height at the tile minus the height the server asked for, so negative is up.
-- `start_cycle` and `cycle` are client cycles (50 a second): when it starts playing, and now. It is listed from the moment the server sends it, which can be before it starts.
-
-Effects on a character, like a teleport flash on you or a freeze on an NPC, are not listed here. They are the `graphic` of that `Npc` or `PlayerInfo`.
+- `id`: graphic id.
+- `x`, `y`, `plane`: world tile; `local_x`, `local_y`: fine units (128 per tile).
+- `view_id`: 0 for the main world, otherwise a moving sub-scene (such as a boat) whose coordinates are its own, not world tiles.
+- `z`: client height, negative is up.
+- `start_cycle`, `cycle`: client cycles (50/s) when it starts and now. It is listed as soon as the server sends it.
 
 ## Constants
 
 Definition:
+
 ```luau
 SpotAnims.CYCLE_MS = 20
 ```
-How long a client cycle lasts. The game ticks every 600 ms, which is 30 cycles.
+
+One client cycle in ms (a 600 ms game tick is 30 cycles).
+
+Example:
+
+```luau
+print(SpotAnims.CYCLE_MS)
+```
 
 ## SpotAnims.find
 
 Definition:
+
 ```luau
 function SpotAnims.find(what: (number | { number })?): { SpotAnim }?
 ```
-Lists the spot animations on tiles. Give a graphic id or a list of ids to only get matching ones. Returns `nil` when they can't be read.
+
+All tile spot animations, optionally matching a graphic id or list of ids. Nil when unreadable.
 
 Example:
-```luau
-local SpotAnims = require("@lib/main/entities/spot_anims")
 
-for _, spot in ipairs(SpotAnims.find() or {}) do
-	print(spot.id, spot.x, spot.y, spot.plane)
+```luau
+for _, spot in SpotAnims.find() or {} do
+	print(spot.id, spot.x, spot.y)
 end
 ```
 
 ## SpotAnims.at
 
 Definition:
+
 ```luau
 function SpotAnims.at(tile: Tile, what: (number | { number })?): { SpotAnim }?
 ```
-The spot animations on a world tile, optionally only those with the given graphic ids.
+
+Main-world (`view_id == 0`) spot animations on `tile`'s x and y, optionally filtered by id. The plane isn't compared.
 
 Example:
-```luau
-local SpotAnims = require("@lib/main/entities/spot_anims")
-local Walker = require("@lib/main/walker")
 
-local here = assert(Walker.position())
-if #(SpotAnims.at(here) or {}) > 0 then
+```luau
+if #(SpotAnims.at(assert(Walker.position())) or {}) > 0 then
 	print("something is landing on us")
 end
 ```
@@ -63,51 +69,47 @@ end
 ## SpotAnims.tile
 
 Definition:
+
 ```luau
 function SpotAnims.tile(spot: SpotAnim): Tile
 ```
-The world tile a spot animation is on.
+
+The world tile it is on.
 
 Example:
-```luau
-local SpotAnims = require("@lib/main/entities/spot_anims")
 
-for _, spot in ipairs(SpotAnims.find() or {}) do
-	local tile = SpotAnims.tile(spot)
-	print(tile.x, tile.y)
-end
+```luau
+local tile = SpotAnims.tile(spot)
 ```
 
 ## SpotAnims.starts_in_ms
 
 Definition:
+
 ```luau
 function SpotAnims.starts_in_ms(spot: SpotAnim): number
 ```
-How long until a spot animation starts playing, 0 once it has.
+
+Ms until it starts playing, 0 once started.
 
 Example:
-```luau
-local SpotAnims = require("@lib/main/entities/spot_anims")
 
-for _, spot in ipairs(SpotAnims.find() or {}) do
-	print(spot.id, SpotAnims.starts_in_ms(spot))
-end
+```luau
+print(SpotAnims.starts_in_ms(spot))
 ```
 
 ## SpotAnims.age_ms
 
 Definition:
+
 ```luau
 function SpotAnims.age_ms(spot: SpotAnim): number
 ```
-How long a spot animation has been playing, 0 while it waits to start.
+
+Ms it has been playing, 0 while waiting to start.
 
 Example:
-```luau
-local SpotAnims = require("@lib/main/entities/spot_anims")
 
-for _, spot in ipairs(SpotAnims.find() or {}) do
-	print(spot.id, SpotAnims.age_ms(spot))
-end
+```luau
+print(SpotAnims.age_ms(spot))
 ```

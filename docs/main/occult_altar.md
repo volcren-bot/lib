@@ -1,12 +1,10 @@
 # Main.OccultAltar
 
-The Altar of the Occult in a player's house, which swaps the spellbook. It offers each other book as a menu option, and "Venerate" (its left click) opens a dialogue listing them.
+The Altar of the Occult in a player's house, which swaps the spellbook through a menu option per book or the "Venerate" dialogue. A swap is confirmed by `Magic.is_spellbook`, never assumed from a click.
 
 ```luau
 local OccultAltar = require("@lib/main/occult_altar")
 ```
-
-A swap is confirmed by the game's spellbook (`Magic.spellbook`), never assumed from a click. The altar's "Remove" option takes it out of the house; nothing here can click it. Only an account with every book unlocked has been seen, so a book you can't use is only known to be missing from the options if the game leaves it out.
 
 ## Constants
 
@@ -19,7 +17,7 @@ OccultAltar.SWAP_TIMEOUT_MS = 8000
 OccultAltar.POLL_MS = 100
 OccultAltar.HOVER_MS = 350
 ```
-The altar's name, the option that opens the dialogue, and the waits: for the dialogue (the walk is part of it), for the book to change, between looks, and after hovering the altar for its menu.
+Object name, dialogue option, wait for the dialogue (walk included), wait for the book to change, poll interval, and menu wait after hovering.
 
 ## OccultAltar.Book
 
@@ -27,7 +25,7 @@ Definition:
 ```luau
 export type Book = "standard" | "ancient" | "lunar" | "arceuus"
 ```
-Every spellbook, as `Magic.spellbook` names it. `OccultAltar.Book` is a frozen table of them (`Standard`, `Ancient`, `Lunar`, `Arceuus`).
+Spellbook names as `Magic.spellbook` reports them. `OccultAltar.Book` is a frozen table of them (`Standard`, `Ancient`, `Lunar`, `Arceuus`).
 
 ## OccultAltar.nearest
 
@@ -35,7 +33,7 @@ Definition:
 ```luau
 function OccultAltar.nearest(): Loc?
 ```
-The nearest altar loaded, nil when there is none.
+The nearest loaded altar, nil when there is none.
 
 ## OccultAltar.books
 
@@ -43,7 +41,7 @@ Definition:
 ```luau
 function OccultAltar.books(altar: Loc?): { Book }?
 ```
-The books the altar's menu offers now, found by hovering it, so never the one in use. Nil when there is no altar to hover.
+Hovers the altar and returns the books its menu offers, which never includes the one in use. Nil when there is no altar or it can't be hovered.
 
 ## OccultAltar.is_dialogue_open
 
@@ -51,7 +49,7 @@ Definition:
 ```luau
 function OccultAltar.is_dialogue_open(): boolean
 ```
-Whether the altar's dialogue is open: a list of options that are all books.
+True when the chat options are open and every one is a book.
 
 ## OccultAltar.venerate
 
@@ -59,7 +57,7 @@ Definition:
 ```luau
 function OccultAltar.venerate(altar: Loc?): (boolean, string?)
 ```
-Opens the dialogue with "Venerate", walking to the altar if needed, and waits for it. True also when it was open already. When it didn't work the second result says why.
+Opens the dialogue with "Venerate", walking if needed, and waits for it. True at once when already open; on failure the second result says why.
 
 ## OccultAltar.choose
 
@@ -67,7 +65,7 @@ Definition:
 ```luau
 function OccultAltar.choose(book: Book, key_probability: number?): (boolean, string?)
 ```
-Picks `book` in the open dialogue, by key or click (`key_probability`; nil is the biometric), by click if the key doesn't take, and waits for the book to change. When it didn't work the second result says why.
+Picks `book` in the open dialogue by key or click (`key_probability`, nil uses the biometric), retries by click if the key doesn't take, and waits for the book to change. On failure the second result says why.
 
 ## OccultAltar.swap_by_menu
 
@@ -75,7 +73,7 @@ Definition:
 ```luau
 function OccultAltar.swap_by_menu(book: Book, altar: Loc?): (boolean, string?)
 ```
-Swaps to `book` with the altar's menu option, walking to it if needed, and waits for the book to change. When it didn't work the second result says why.
+Swaps with the altar's menu option for `book`, walking if needed, and waits for the change. On failure the second result says why.
 
 ## OccultAltar.swap
 
@@ -83,12 +81,10 @@ Definition:
 ```luau
 function OccultAltar.swap(book: Book, via: ("menu" | "dialogue")?, altar: Loc?): (boolean, string?)
 ```
-Swaps to `book`. True at once when it is in use already. A dialogue left open is answered; otherwise the menu option or the dialogue is used, as the account's biometrics favour (`Biometrics.CHOOSEOPTION`). `via` forces one way. When it didn't work the second result says why.
+Swaps to `book`; true at once when it is already in use. An open dialogue is answered, otherwise menu or dialogue is chosen by `Biometrics.CHOOSEOPTION`; `via` forces one. Failures are logged and the second result says why.
 
 Example:
 ```luau
-local OccultAltar = require("@lib/main/occult_altar")
-
 local ok, why = OccultAltar.swap(OccultAltar.Book.Lunar)
 assert(ok, why)
 ```

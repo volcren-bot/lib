@@ -1,12 +1,12 @@
 # Main.Interfaces.Mainscreen.Mushtree
 
-The magic mushtree network on Fossil Island: the list of trees that opens when you "Use" a Magic Mushtree (group 608, `fossil_mushtrees` in the cache). Each tree is a panel reading `<col=8f8f8f>1.</col> House on the Hill`, numbered 1 to 4. A panel is chosen by clicking it (its menu option is "Continue") or by pressing its number key.
+The Fossil Island mushtree list (group 608) that opens on "Use" on a Magic Mushtree. Each panel reads `1. House on the Hill` (numbered 1 to 4) and is chosen by clicking it ("Continue") or pressing its number key. The list includes the tree you're at; this module doesn't distinguish it.
 
 ```luau
 local Mushtree = require("@lib/main/interfaces/mainscreen/mushtree")
 ```
 
-A destination has `number` (the number before the name, which is also its key), `name` and `panel` (the whole panel, where to click). The list also shows the tree you are standing at; this module doesn't tell it apart.
+A `Destination` is `{ number: number, name: string, panel: Widget }`.
 
 ## Constants
 
@@ -25,7 +25,7 @@ Mushtree.CONFIRM_TIMEOUT_MS = 4000
 Mushtree.POLL_MS = 50
 Mushtree.SETTLE_MS = { 250, 500 }
 ```
-The interface piece numbers (the frame holds the title and the close button), the tree object and the option that opens the list, a panel's menu option, the highest tree number, the chance a biometric is rolled around for using a number key, and the waits: for `wait_open`, for the list to go after a choice, and between looks.
+Component ids (the frame holds the title and close button), the object and its option, the panel option, the highest tree number, the base chance of choosing by key, and wait lengths. `SETTLE_MS` is the random pause `open` makes after the list appears, since the game ignores keys pressed right away.
 
 ## Mushtree.is_open
 
@@ -35,13 +35,23 @@ function Mushtree.is_open(): boolean
 ```
 Whether the list is open.
 
+Example:
+```luau
+print(Mushtree.is_open())
+```
+
 ## Mushtree.wait_open
 
 Definition:
 ```luau
 function Mushtree.wait_open(timeout_ms: number?): boolean
 ```
-Waits for the list to open (`OPEN_TIMEOUT_MS` by default). False when it didn't.
+Polls `is_open` for up to `timeout_ms` (default `OPEN_TIMEOUT_MS`).
+
+Example:
+```luau
+print(Mushtree.wait_open())
+```
 
 ## Mushtree.destinations
 
@@ -49,7 +59,7 @@ Definition:
 ```luau
 function Mushtree.destinations(): { Destination }?
 ```
-The trees in the list in order. Nil when the list isn't open.
+The listed trees sorted by number. Nil when the list isn't open.
 
 Example:
 ```luau
@@ -66,7 +76,12 @@ Definition:
 ```luau
 function Mushtree.names(): { string }?
 ```
-The names of the trees, in order.
+The listed tree names in number order. Nil when the list isn't open.
+
+Example:
+```luau
+print(table.concat(Mushtree.names() or {}, ", "))
+```
 
 ## Mushtree.find
 
@@ -74,7 +89,13 @@ Definition:
 ```luau
 function Mushtree.find(name: string): Destination?
 ```
-The tree called `name`, ignoring case. An exact name wins. Otherwise a name that contains the other ("Hill" for "House on the Hill") counts, but only when exactly one tree fits. Nil when nothing fits.
+Case-insensitive: an exact name wins, else a unique substring match either way ("Hill"). Nil when none or several fit, or the list is closed.
+
+Example:
+```luau
+local d = Mushtree.find("swamp")
+print(d and d.number)
+```
 
 ## Mushtree.Tree
 
@@ -82,7 +103,12 @@ Definition:
 ```luau
 export type Tree = "House on the Hill" | "Verdant Valley" | "Sticky Swamp" | "Mushroom Meadow"
 ```
-Every tree of the network, as the list names it. `Mushtree.Tree` is a frozen table of them (`HouseOnTheHill`, `VerdantValley`, `StickySwamp`, `MushroomMeadow`), so a trip is `Mushtree.select(Mushtree.Tree.StickySwamp)` and a misspelled tree is a type error. Read from the open list on a live client.
+Every tree as the list names it. `Mushtree.Tree` is a frozen table of them (`HouseOnTheHill`, `VerdantValley`, `StickySwamp`, `MushroomMeadow`), so a misspelling is a type error.
+
+Example:
+```luau
+Mushtree.select(Mushtree.Tree.StickySwamp)
+```
 
 ## Mushtree.select
 
@@ -90,7 +116,7 @@ Definition:
 ```luau
 function Mushtree.select(tree: Tree, key_probability: number?): string?
 ```
-Chooses a tree by name. It presses the tree's number key with chance `key_probability` (nil or 0 is a biometric around `KEY_CHANCE`), else clicks its panel. A key that leaves the list open for `CONFIRM_TIMEOUT_MS` is followed by the click. Returns `"key"` or `"click"` for the way that worked, or nil when no tree has that name or nothing worked. The trip itself is not waited for.
+Presses the tree's number key with chance `key_probability` (nil or 0: a biometric value around `KEY_CHANCE`), else clicks its panel; a key that leaves the list open for `CONFIRM_TIMEOUT_MS` falls back to a click. Returns `"key"` or `"click"`, or nil when the tree isn't listed or nothing closed the list. Doesn't wait for the trip.
 
 Example:
 ```luau
@@ -108,13 +134,23 @@ function Mushtree.close_button(): Widget?
 ```
 The close button, nil when the list isn't open.
 
+Example:
+```luau
+print(Mushtree.close_button() ~= nil)
+```
+
 ## Mushtree.close
 
 Definition:
 ```luau
 function Mushtree.close(key_probability: number?): boolean
 ```
-Closes the list and waits for it to go: Escape with chance `key_probability` (nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`. True when it's closed.
+Closes the list by Escape (chance `key_probability`, nil or 0 uses the biometric default) or the close button; see [Toplevel.close](toplevel.md). True once closed.
+
+Example:
+```luau
+Mushtree.close(0.5)
+```
 
 ## Mushtree.nearest
 
@@ -122,7 +158,13 @@ Definition:
 ```luau
 function Mushtree.nearest(): Loc?
 ```
-The nearest "Magic Mushtree" among the objects loaded, by straight distance, with the plane you are on first. Nil when none is loaded.
+The nearest loaded Magic Mushtree, preferring the player's plane. Nil when none is loaded.
+
+Example:
+```luau
+local tree = Mushtree.nearest()
+print(tree and tree.id)
+```
 
 ## Mushtree.open
 
@@ -130,7 +172,7 @@ Definition:
 ```luau
 function Mushtree.open(tree: Loc?, walk: boolean?): boolean
 ```
-Opens the list: closes any other main screen interface with Escape, then uses the nearest magic mushtree (or `tree`), walking closer first unless `walk` is false, and waits for the list. True when it is open, also if it already was. If the click opened a menu on something else, the "Use" option is taken when what's hovered is a mushtree.
+Clears other main screen interfaces with Escape, then "Use"s `tree` (default `nearest()`), walking closer unless `walk` is false. If the click missed but a mushtree is hovered, picks "Use" from the menu. Waits for the list plus `SETTLE_MS`. True when open, or already was.
 
 Example:
 ```luau
@@ -141,5 +183,3 @@ if Mushtree.open() then
 	Mushtree.close()
 end
 ```
-
-`SETTLE_MS` is the pause (minimum and maximum, in milliseconds) `open` makes after it finds the list open: the game ignores a key pressed in the first moments after the list appears.

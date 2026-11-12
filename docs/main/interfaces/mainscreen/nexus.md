@@ -1,12 +1,10 @@
 # Main.Interfaces.Mainscreen.Nexus
 
-The Portal Nexus in a player's house (group 17, `telenexus_teleport` in the cache): teleports in two lists, opened by "Teleport Menu".
+The Portal Nexus teleport list in a player's house (group 17, cache `telenexus_teleport`), opened by "Teleport Menu". Rows read like `B :  Marim`; the letter is also the key. Names are abbreviated ("Fenken' Castle"), so `find` matches loosely. What a Nexus holds can be read without opening it via `House.nexus_teleports`.
 
 ```luau
 local Nexus = require("@lib/main/interfaces/mainscreen/nexus")
 ```
-
-Each row is like `B :  Marim`, and its letter is also its key. The list's names are short ("Fenken' Castle"), so `find` is loose. The rows scroll in a view far shorter than the list, and below the view a click would land on the floor, so `select` scrolls first and only clicks once the menu offers that row. What a Nexus holds can be read without opening it: `House.nexus_teleports`.
 
 ## Nexus.is_open
 
@@ -18,8 +16,6 @@ Whether the list is open.
 
 Example:
 ```luau
-local Nexus = require("@lib/main/interfaces/mainscreen/nexus")
-
 print(Nexus.is_open())
 ```
 
@@ -29,12 +25,10 @@ Definition:
 ```luau
 function Nexus.open(): (boolean, string?)
 ```
-Opens the list, going to the Nexus's floor and walking to it. False and why.
+Reaches the Nexus via `House.reach` (changing floor if needed), uses "Teleport Menu" and waits for the list. True at once if already open; otherwise false plus a reason.
 
 Example:
 ```luau
-local Nexus = require("@lib/main/interfaces/mainscreen/nexus")
-
 print(Nexus.open())
 ```
 
@@ -44,12 +38,10 @@ Definition:
 ```luau
 function Nexus.destinations(): { Destination }?
 ```
-Every teleport of the open list, including those scrolled out of view, each with `key`, `name` and `area`. Nil when it isn't open.
+Every teleport across both lists, including rows scrolled out of view, each with `key`, `name` and `area` (click widget). Nil when not open.
 
 Example:
 ```luau
-local Nexus = require("@lib/main/interfaces/mainscreen/nexus")
-
 for _, d in ipairs(Nexus.destinations() or {}) do
 	print(d.key, d.name)
 end
@@ -61,12 +53,10 @@ Definition:
 ```luau
 function Nexus.find(name: string): Destination?
 ```
-The teleport called `name` in the open list: the exact name, else the same place by `House.same_place` ("Fenken' Castle" for "Fenkenstrain's Castle").
+The teleport called `name` (case-insensitive), else the same place by `House.same_place` ("Fenken' Castle" for "Fenkenstrain's Castle"). Nil when absent or not open.
 
 Example:
 ```luau
-local Nexus = require("@lib/main/interfaces/mainscreen/nexus")
-
 print(Nexus.find("Fenkenstrain's Castle") ~= nil)
 ```
 
@@ -76,12 +66,10 @@ Definition:
 ```luau
 function Nexus.select(name: string): boolean
 ```
-Scrolls to a teleport of the open list and clicks it once the menu offers it. True once the list has gone: the trip follows.
+Scrolls the row into view, hovers it and clicks only once the menu offers that row (a click below the view would hit the floor). True once the list closes; the trip itself isn't waited for.
 
 Example:
 ```luau
-local Nexus = require("@lib/main/interfaces/mainscreen/nexus")
-
 print(Nexus.select("Barrows"))
 ```
 
@@ -91,11 +79,9 @@ Definition:
 ```luau
 function Nexus.close(): boolean
 ```
-Closes the list.
+Closes the list via `Toplevel.close`. True once closed.
 
 Example:
 ```luau
-local Nexus = require("@lib/main/interfaces/mainscreen/nexus")
-
 print(Nexus.close())
 ```

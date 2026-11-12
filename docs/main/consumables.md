@@ -1,14 +1,12 @@
 # Main.Consumables
 
-Everything a player eats, drinks or otherwise uses up for its effect: food, potions and their barbarian mixes, brews, ales, raid and minigame supplies. For each, what it does to every stat it touches, and the timed effects and cures it gives (its `special`). The game keeps none of this in the client or its cache, so it's a hand-kept list: 544 families, 940 item ids.
+A hand-kept list of everything the player eats, drinks or uses up for its effect (food, potions, mixes, brews, raid and minigame supplies): what it does to each stat and the timed effects and cures it gives (`special`). The client holds none of this.
 
 ```luau
 local Consumables = require("@lib/main/consumables")
 ```
 
-How long a timed effect has left is read from the vars the game's buff bar reads (CS2 `buff_bar_get_value`), scaled the way RuneLite's timers plugin scales them.
-
-Gear that changes an amount (holy wrench, ring of endurance, sunlight cuffs, Castle Wars bracelets) and league relics aren't counted.
+Timed effects are read from the vars the game's buff bar reads. Gear that changes an amount (holy wrench, ring of endurance, sunlight cuffs, Castle Wars bracelets) and league relics aren't counted.
 
 ## Types
 
@@ -45,11 +43,11 @@ export type Outcome = { from: number, low: number, high: number }
 
 `Levels` are skills by name (as `Host.game_state().skills` names them), plus `"Run energy"` and `"Special attack"` in percent with a real level of 100.
 
-A `Change` moves one stat by `flat` plus `percent` of the stat's real level (its current level with `of_current`), the percent part rounded toward zero. A negative amount lowers the stat, but not below 0. A positive one raises it up to the real level, or up to the real level plus the amount with `boost`. A stat already above that cap stays where it is. `up_to` makes the flat part random, from `flat` to `up_to`. `later` is how many ticks after the rest it lands (the second part of hunter meats). `amount`, when there, replaces `flat` and `percent`, for anglerfish, bream, the moonlight potion and the like.
+A `Change` moves one stat by `flat` plus `percent` of its real level (current level with `of_current`), the percent rounded toward zero. Negative lowers it to no less than 0; positive raises it to the real level, or real plus the amount with `boost`; a stat already above that cap stays. `up_to` makes `flat` random in `flat..up_to`. `later` delays it that many ticks (hunter meats). `amount` replaces `flat` and `percent` (anglerfish, bream, moonlight potion).
 
-A `Consumable` is a family of ids that do the same thing: the doses of a potion, most-full first, and the copies of an item that minigames and modes have. `option` is the inventory option that uses it: `Eat`, `Drink`, or another like `Invigorate`, `Guzzle`, `Apply`, `Crack` or `Heal`. `combo` foods (karambwan, the Gauntlet's paddlefish) ignore the delay other food sets. Names can repeat across families with different effects (`Cooked chicken` is also the undead one).
+A `Consumable` is a family of ids with the same effect (a potion's doses, most-full first, plus minigame copies). `option` is the inventory option that uses it (`Eat`, `Drink`, `Guzzle`, `Apply`, ...). `combo` foods (karambwan, Gauntlet paddlefish) ignore the food delay. Names can repeat across families.
 
-A `Special`'s `ticks` is how long one dose lasts, when known. Over-time effects (silk dressing, blessed crystal scarab, Menaphite remedy, prayer regeneration) have their first application as a change and the rest as their special.
+A `Special`'s `ticks` is one dose's duration, when known. Over-time effects put their first application in `changes` and the rest in `special`.
 
 ## Consumables.LIST
 
@@ -59,7 +57,7 @@ Definition:
 Consumables.LIST: { Consumable }
 ```
 
-Every family. Read it, don't change it.
+Every family. Read-only.
 
 ## Consumables.get
 
@@ -69,7 +67,7 @@ Definition:
 function Consumables.get(id: number): Consumable?
 ```
 
-The family an item id is in, or nil when using it doesn't do anything this list knows of.
+The family an item id is in, or nil when it isn't a known consumable.
 
 Example:
 
@@ -90,6 +88,13 @@ function Consumables.levels(): Levels?
 
 The player's levels now, as `result` takes them. Nil while the game state or the special attack varp can't be read.
 
+Example:
+
+```luau
+local levels = Consumables.levels()
+print(levels and levels.Prayer.level)
+```
+
 ## Consumables.result
 
 Definition:
@@ -98,7 +103,7 @@ Definition:
 function Consumables.result(id: number, levels: Levels?): { [string]: Outcome }?
 ```
 
-What using the item would leave each stat it touches at: `from` the level before, `low` and `high` after (the same unless the amount is random), with every change applied in order, the later ones included. `levels` defaults to `Consumables.levels()`. Nil for an id that isn't a consumable or when the levels can't be read. A change to a stat missing from `levels` is skipped.
+Each touched stat's level before (`from`) and after (`low`..`high`, equal unless random) using the item, every change applied in order, `later` ones included. `levels` defaults to `Consumables.levels()`; stats missing from it are skipped. Nil for a non-consumable or unreadable levels.
 
 Example:
 
@@ -119,7 +124,7 @@ Definition:
 function Consumables.raising(stat: string, at: number, levels: Levels?): { Consumable }
 ```
 
-Every family that would raise `stat` if it were at `at`, other levels as in `levels` (default the player's). Food is `raising("Hitpoints", 1)`. Prayer restores are `raising("Prayer", 0)`. Boosts are `raising(stat, real)` with the stat's real level. Empty when the levels can't be read.
+Every family that would raise `stat` if it were at `at`, other levels from `levels` (default the player's). Food: `raising("Hitpoints", 1)`; prayer restores: `raising("Prayer", 0)`; boosts: `raising(stat, real)`. Empty when levels can't be read.
 
 Example:
 
@@ -159,7 +164,7 @@ Definition:
 function Consumables.remaining(name: string): number?
 ```
 
-How many ticks a special has left, 0 when it isn't active, from the var the game's buff bar reads. Nil for a special with no var, or when the var can't be read. Most vars count in steps (30 ticks for antipoison and antifire, 25 for overloads), so the figure is up to one step high. `absorption` gives points left, not ticks.
+Ticks a special has left, 0 when inactive. Nil for a special with no var or an unreadable var. Most vars count in steps (see the table), so the figure can be up to one step high. `absorption` gives points, not ticks.
 
 | Special                                                                                                                                        | Given by                                                | Per dose     | Read from                                                     |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------ | ------------------------------------------------------------- |
@@ -200,8 +205,8 @@ end
 
 ## What isn't covered
 
-- The spicy stew is listed with no changes: what it does depends on the spices in it.
-- Kebabs, super kebabs and the Varlamorian kebab have random effects. They're listed with the wiki's typical heal (3 + 7%, 4 + 10%).
-- Xeric's aid and revitalisation potions other than (+) are left out, since their formulas aren't published. Quest-only items are also left out.
-- Super restore and sunlight moths don't restore Sailing, as in RuneLite's lists.
-- Every id's name and option were checked against the client's cache on 2026-11-08. No amount or timer has been watched in a real use yet.
+- Spicy stew has no changes: its effect depends on its spices.
+- Kebabs have random effects; they're listed with the typical heal (3 + 7%, 4 + 10%).
+- Xeric's aid and revitalisation potions other than (+), and quest-only items, are left out.
+- Super restore and sunlight moths don't restore Sailing.
+- Names and options were checked against the cache on 2026-11-08; no amount or timer has been verified in live use.

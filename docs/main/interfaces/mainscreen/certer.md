@@ -1,16 +1,12 @@
 # Main.Interfaces.Mainscreen.Certer
 
-The certer's quiz: a picture of an item and three answers, "Is this: A helmet. / A fish. / A bowl.", opened by "Talk-to" on the random event's NPC (group 184, `macro_certer` in the cache). `Tasks.handle_randoms` runs it for Niles, Miles and Giles.
+The certer random event's quiz (group 184): a rotating item picture and three answers ("Is this: A helmet. / A fish. / A bowl."), opened by "Talk-to" on the event NPC. [Randoms.handle](../../antiban/randoms.md) runs it for Niles, Miles and Giles.
 
 ```luau
 local Certer = require("@lib/main/interfaces/mainscreen/certer")
 ```
 
-The picture is a rotating model. `Host.widget_model` gives its id, which says which of the quiz's items it is (`macro_quiz_*` in the cache), and so its category. The answer is the one line whose words fit the category. With none or several, or a picture that isn't known, nothing is guessed, because what a wrong answer does isn't known.
-
-One quiz has been answered, Giles's, armour with "A helmet". Niles and Miles haven't been seen. After it Giles says one line in the chat, gives a reward (a Kebab that time), and leaves when the line is continued. The other categories' words in `WORDS` are expected ones that haven't been seen.
-
-An answer has `letter`, `text` and `button` (where to hover and click).
+The picture's model id (`Host.widget_model`) maps to a category in `MODELS`; the answer is the single line containing a word from that category's `WORDS`. With no match, several, or an unknown model, nothing is guessed. Only Giles's armour quiz has been seen live; afterwards he says one line, gives a reward and leaves once it is continued. An `Answer` is `{ letter: string, text: string, button: Widget }`.
 
 ## Constants
 
@@ -32,7 +28,7 @@ Certer.POLL_MS = 50
 Certer.SETTLE_MS = 150
 Certer.READ_MS = { 1200, 3200 }
 ```
-The interface piece numbers, the option that opens the quiz, a button's option before its letter, and the waits: for `wait_open`, for a hover to show the menu, for the quiz to go after a click, for the chat after it, between looks, for the menu to follow the mouse, and a moment to read the question before answering.
+Component ids, the NPC option, the answer menu prefix (`Select option A`), and wait lengths; `READ_MS` is the random pause before answering.
 
 ## Certer.MODELS
 
@@ -41,7 +37,12 @@ Definition:
 export type Category = "food" | "weapon" | "armour" | "tool" | "jewel"
 Certer.MODELS: { [number]: Category }
 ```
-The quiz's items by the model id of their picture.
+Picture model id to category.
+
+Example:
+```luau
+print(Certer.MODELS[8833])
+```
 
 ## Certer.WORDS
 
@@ -49,7 +50,12 @@ Definition:
 ```luau
 Certer.WORDS: { [Category]: { string } }
 ```
-The words of an answer that fit each category, matched as whole words. Add to these when a quiz is logged with "no answer fits".
+Whole words that mark an answer as each category. Extend when a quiz logs "no answer fits".
+
+Example:
+```luau
+print(table.concat(Certer.WORDS.armour, ", "))
+```
 
 ## Certer.is_open
 
@@ -59,13 +65,23 @@ function Certer.is_open(): boolean
 ```
 Whether the quiz is open.
 
+Example:
+```luau
+print(Certer.is_open())
+```
+
 ## Certer.wait_open
 
 Definition:
 ```luau
 function Certer.wait_open(timeout_ms: number?): boolean
 ```
-Whether the quiz is open, polled for up to `timeout_ms` (`OPEN_TIMEOUT_MS` by default).
+Polls `is_open` for up to `timeout_ms` (default `OPEN_TIMEOUT_MS`).
+
+Example:
+```luau
+print(Certer.wait_open(2000))
+```
 
 ## Certer.model
 
@@ -75,6 +91,11 @@ function Certer.model(): number?
 ```
 The model id of the picture, nil when the quiz isn't open.
 
+Example:
+```luau
+print(Certer.model())
+```
+
 ## Certer.category
 
 Definition:
@@ -83,13 +104,25 @@ function Certer.category(): Category?
 ```
 The category of the item in the picture, nil when the quiz isn't open or its model isn't one of `MODELS`.
 
+Example:
+```luau
+print(Certer.category())
+```
+
 ## Certer.answers
 
 Definition:
 ```luau
 function Certer.answers(): { Answer }?
 ```
-The three answers, in order. Nil when the quiz isn't open.
+The visible answers, A first. Nil when the quiz isn't open.
+
+Example:
+```luau
+for _, answer in ipairs(Certer.answers() or {}) do
+	print(answer.letter, answer.text)
+end
+```
 
 ## Certer.correct
 
@@ -97,7 +130,7 @@ Definition:
 ```luau
 function Certer.correct(): Answer?
 ```
-The answer that fits the picture's category. Exactly one must, or it is nil and the reason is logged.
+The one answer fitting the picture's category; nil (with the reason logged) when the model is unknown or zero or several fit.
 
 Example:
 ```luau
@@ -113,7 +146,15 @@ Definition:
 ```luau
 function Certer.select(answer: Answer): boolean
 ```
-Clicks an answer's button and waits for the quiz to go. The click only happens once the menu under the mouse offers that button.
+Hovers the answer, clicks once the menu offers `Select option <letter>`, and waits for the quiz to close. False (logged) otherwise.
+
+Example:
+```luau
+local answer = Certer.correct()
+if answer then
+	Certer.select(answer)
+end
+```
 
 ## Certer.finish_chat
 
@@ -121,7 +162,12 @@ Definition:
 ```luau
 function Certer.finish_chat(timeout_ms: number?): boolean
 ```
-Continues the chat the quiz ends with, until it has been clear for a moment or `timeout_ms` (`CHAT_TIMEOUT_MS` by default) is up, by click if a key doesn't take. True when at least one line was continued.
+Continues the post-quiz chat until no continue prompt remains or `timeout_ms` (default `CHAT_TIMEOUT_MS`) passes, falling back to a click if the key doesn't take. True when at least one line was continued.
+
+Example:
+```luau
+Certer.finish_chat()
+```
 
 ## Certer.close_button
 
@@ -131,13 +177,23 @@ function Certer.close_button(): Widget?
 ```
 The close button, nil when the quiz isn't open.
 
+Example:
+```luau
+print(Certer.close_button() ~= nil)
+```
+
 ## Certer.close
 
 Definition:
 ```luau
 function Certer.close(key_probability: number?): boolean
 ```
-Closes the quiz without answering: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
+Closes the quiz unanswered by Escape (chance `key_probability`, nil or 0 uses the biometric default) or the close button; see [Toplevel.close](toplevel.md). True if already closed.
+
+Example:
+```luau
+Certer.close(0.5)
+```
 
 ## Certer.open
 
@@ -145,7 +201,17 @@ Definition:
 ```luau
 function Certer.open(npc: Npc): (boolean, string?)
 ```
-Opens the quiz with "Talk-to" on the event's NPC. True when it is open, also if it already was. When it didn't work the second result says why.
+"Talk-to" on the event NPC, then waits for the quiz. True if open (or already was); otherwise false and a reason.
+
+Example:
+```luau
+local Npcs = require("@lib/main/entities/npcs")
+
+local npc = (Npcs.find("Giles") or {})[1]
+if npc then
+	print(Certer.open(npc))
+end
+```
 
 ## Certer.solve
 
@@ -153,7 +219,7 @@ Definition:
 ```luau
 function Certer.solve(): (boolean, string?)
 ```
-Answers the open quiz and finishes the chat after it. With no answer that fits, the quiz is closed unanswered. When it didn't work the second result says why.
+Pauses `READ_MS`, selects `correct()` and finishes the chat. With no fitting answer it closes the quiz unanswered. False and a reason on failure.
 
 Example:
 ```luau

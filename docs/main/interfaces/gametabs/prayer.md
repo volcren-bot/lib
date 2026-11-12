@@ -1,16 +1,10 @@
 # Main.Interfaces.Gametabs.Prayer
 
-The prayer tab: which prayers are active, what you can activate, and switching them on and off.
+The standard prayer book and its quick prayers (not the ruinous powers book). State comes from varbits, so reads work with the tab closed; toggles click the prayer's slot in group 541 and wait for the varbit. A prayer is a name where case, spaces and punctuation are ignored (`"Protect from Melee"`, `"protect_from_melee"`), or an `Info`; multi-prayer functions take one or a list.
 
 ```luau
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 ```
-
-Nothing here looks at the screen's colours. Whether a prayer is active is read from its game setting (a varbit), so it works with the tab closed. Activating and deactivating click the prayer's slot in the tab (component group 541) and wait for the setting to change.
-
-A prayer is given by its name. Case, spaces and underscores don't matter, so `"Protect from Melee"`, `"protect_from_melee"` and `"protectfrommelee"` all work. An `Info` returned by these functions can be passed instead of a name. Functions that take several prayers accept one prayer or a list.
-
-The standard prayer book is covered, with its quick prayers. The ruinous powers book is not.
 
 ## Constants
 
@@ -26,7 +20,7 @@ Prayer.SETUP_GROUP = 77
 Prayer.SETUP_SLOTS = 4
 Prayer.SETUP_DONE = 5
 ```
-The prayer tab's interface (its slots are components 9 to 37), then the quick prayer parts: the prayer orb on the minimap (component 160:20), the settings that hold the selected quick prayers (a bitmask) and whether they are on, and the setup panel (group 77) with its slots (the children of 77:4) and its Done button.
+The prayer tab (slots 9 to 37), the minimap prayer orb, the quick prayer bitmask and on/off varbits, and the quick setup panel with its slot layer and Done button.
 
 ## Types
 
@@ -47,7 +41,7 @@ export type Info = {
 }
 export type PrayerRef = string | Info
 ```
-A prayer. `key` is its snake_case name (`"protect_from_melee"`), `child` its slot in group 541, `varbit` the game setting that is 1 while it is active, `level` the Prayer level it needs and `defence` the Defence level it needs besides. `unlock` is the setting that is 1 once the prayer is unlocked, for Rigour, Augury and Preserve. `upgrade` is the setting of the upgraded prayer that takes this slot once it is unlocked: Deadeye for Eagle Eye, Mystic Vigour for Mystic Might and Zeal for Piety. The upgrades are prayers of their own in `Prayer.PRAYERS` (`deadeye`, `mystic_vigour`, `zeal`), with `replaces` naming the prayer whose slot and quick prayer bit they take, `unlock` their unlock setting (16097, 16098, 16578) and, for Zeal, the `attack` and `strength` levels it needs besides.
+`key` is the snake_case name, `child` the slot in group 541, `varbit` is 1 while active, `level`/`defence`/`attack`/`strength` are required real levels, `unlock` the varbit that is 1 once unlocked (Rigour, Augury, Preserve and the upgrades). `upgrade` is the varbit of the prayer that takes the slot once unlocked (Eagle Eye to Deadeye, Mystic Might to Mystic Vigour, Piety to Zeal); those upgrades are their own entries, with `replaces` naming the base whose slot and quick bit they share.
 
 ## Prayer.PRAYERS
 
@@ -55,7 +49,7 @@ Definition:
 ```luau
 Prayer.PRAYERS: { Info }
 ```
-Every prayer, in the order of the tab.
+Every prayer in tab order, then the three upgrades.
 
 Example:
 ```luau
@@ -72,7 +66,7 @@ Definition:
 ```luau
 function Prayer.prayer(prayer: PrayerRef): Info?
 ```
-Looks a prayer up by name. Returns `nil` (and logs) for a name that isn't a prayer.
+Looks a prayer up by name (an `Info` passes through); logs and returns nil when unknown.
 
 Example:
 ```luau
@@ -102,13 +96,13 @@ Definition:
 ```luau
 function Prayer.open(timeout_ms: number?): boolean
 ```
-Opens the prayer tab. Returns `true` if it is open in the end.
+Opens the prayer tab via `SidePanels.open`; true once open.
 
 Example:
 ```luau
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
-assert(Prayer.open())
+Prayer.open()
 ```
 
 ## Prayer.points
@@ -117,7 +111,7 @@ Definition:
 ```luau
 function Prayer.points(): (number?, number?)
 ```
-Your prayer points and your Prayer level (the points when full).
+Current prayer points and the Prayer level (`Player.prayer`).
 
 Example:
 ```luau
@@ -133,7 +127,7 @@ Definition:
 ```luau
 function Prayer.widget(prayer: PrayerRef): Widget?
 ```
-The prayer's slot in the tab. `nil` when the interface isn't loaded.
+The prayer's slot widget; nil when the interface isn't loaded or the name is unknown.
 
 Example:
 ```luau
@@ -148,7 +142,7 @@ Definition:
 ```luau
 function Prayer.is_visible(prayer: PrayerRef): boolean
 ```
-Whether the prayer's slot is showing. It is hidden while the tab is closed, and when the prayer filters hide the prayer.
+Whether the slot shows; false while the tab is closed or the prayer filters hide it.
 
 Example:
 ```luau
@@ -163,7 +157,7 @@ Definition:
 ```luau
 function Prayer.is_unlocked(prayer: PrayerRef): boolean
 ```
-Whether the prayer is unlocked. Only Rigour, Augury and Preserve are checked, the rest are `true`.
+Whether the prayer's `unlock` varbit is set; true for prayers without one.
 
 Example:
 ```luau
@@ -178,7 +172,7 @@ Definition:
 ```luau
 function Prayer.is_on(prayer: PrayerRef): boolean
 ```
-Whether the prayer is active. Eagle Eye, Mystic Might and Piety also count as active while their upgrade is, so a script asking for the base gets what the slot holds; an upgrade counts only when it is on itself.
+Whether the prayer is active. A base with an upgrade (Eagle Eye, Mystic Might, Piety) also counts while its upgrade is on; an upgrade counts only itself.
 
 Example:
 ```luau
@@ -191,17 +185,15 @@ print(Prayer.is_on("Protect from Melee"))
 
 Definition:
 ```luau
-function Prayer.is_active(prayers: PrayerRef | { PrayerRef }): boolean
+function Prayer.is_active(prayers: PrayerRef | { read PrayerRef }): boolean
 ```
-Whether all the prayers are active.
+Whether all the given prayers are on; false if any name is unknown.
 
 Example:
 ```luau
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
-if Prayer.is_active({ "Piety", "Protect from Melee" }) then
-	print("both are on")
-end
+print(Prayer.is_active({ "Piety", "Protect from Melee" }))
 ```
 
 ## Prayer.is_any_active
@@ -210,7 +202,7 @@ Definition:
 ```luau
 function Prayer.is_any_active(): boolean
 ```
-Whether any prayer is active.
+Whether any prayer is on.
 
 Example:
 ```luau
@@ -225,7 +217,7 @@ Definition:
 ```luau
 function Prayer.active(): { Info }
 ```
-Every active prayer.
+Every prayer that `is_on`.
 
 Example:
 ```luau
@@ -242,7 +234,7 @@ Definition:
 ```luau
 function Prayer.can_activate(prayer: PrayerRef): boolean
 ```
-Whether you have what the prayer needs: prayer points, the Prayer level, the Defence level (the real one) and the unlock. Quest requirements (Chivalry and Piety need King's Ransom) can't be read, so those are only found out when the activation fails.
+Whether you have prayer points, the real Prayer, Defence, Attack and Strength levels it needs, and its unlock. Quest requirements (Chivalry, Piety) aren't readable and only show as a failed activation.
 
 Example:
 ```luau
@@ -257,7 +249,7 @@ Definition:
 ```luau
 function Prayer.hover(prayer: PrayerRef): boolean
 ```
-Opens the tab and moves the mouse over the prayer's slot. Returns `false` if the slot isn't showing.
+Opens the tab and moves the mouse over the slot; false when the slot isn't showing.
 
 Example:
 ```luau
@@ -272,7 +264,7 @@ Definition:
 ```luau
 function Prayer.set(prayer: PrayerRef, active: boolean): boolean
 ```
-Turns one prayer on or off and waits for it to change. Does nothing if it is already so. Returns `false` if it can't be activated, its slot isn't showing, or it didn't change.
+Turns one prayer on or off via "Activate"/"Deactivate" and waits up to 2 s. True at once when already so; false when it can't be activated, its slot is hidden (check the filters) or it didn't change.
 
 Example:
 ```luau
@@ -285,26 +277,24 @@ Prayer.set("Protect from Melee", true)
 
 Definition:
 ```luau
-function Prayer.activate(prayers: PrayerRef | { PrayerRef }): boolean
+function Prayer.activate(prayers: PrayerRef | { read PrayerRef }): boolean
 ```
-Turns on each of the prayers that is off. Tries all of them, and returns `true` if all are active in the end.
+`set` each prayer on, trying all; true when all succeeded.
 
 Example:
 ```luau
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
-if not Prayer.activate({ "Piety", "Protect from Melee" }) then
-	print("couldn't turn the prayers on")
-end
+Prayer.activate({ "Piety", "Protect from Melee" })
 ```
 
 ## Prayer.deactivate
 
 Definition:
 ```luau
-function Prayer.deactivate(prayers: PrayerRef | { PrayerRef }): boolean
+function Prayer.deactivate(prayers: PrayerRef | { read PrayerRef }): boolean
 ```
-Turns off each of the prayers that is on. Returns `true` if all are off in the end.
+`set` each prayer off, trying all; true when all succeeded.
 
 Example:
 ```luau
@@ -319,7 +309,7 @@ Definition:
 ```luau
 function Prayer.deactivate_all(): boolean
 ```
-Turns off every active prayer.
+Deactivates every active prayer.
 
 Example:
 ```luau
@@ -334,7 +324,7 @@ Definition:
 ```luau
 Prayer.QUICK_ORDER: { string }
 ```
-The keys of the prayers in the order of the quick prayer setup's slots. The selected quick prayers are a bitmask of them, where bit 0 is the first.
+Prayer keys in quick setup slot order; bit 0 of the quick bitmask is the first. Upgrades use their base's bit.
 
 Example:
 ```luau
@@ -349,7 +339,7 @@ Definition:
 ```luau
 function Prayer.is_quick_selected(prayer: PrayerRef): boolean
 ```
-Whether the prayer is one of your quick prayers. Reads a game setting, so no panel has to be open.
+Whether the prayer is a selected quick prayer, from the varbit.
 
 Example:
 ```luau
@@ -364,15 +354,13 @@ Definition:
 ```luau
 function Prayer.quick_prayers(): { Info }
 ```
-Your quick prayers.
+Every selected quick prayer.
 
 Example:
 ```luau
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
-for _, p in ipairs(Prayer.quick_prayers()) do
-	print(p.name)
-end
+print(#Prayer.quick_prayers())
 ```
 
 ## Prayer.is_quick_active
@@ -381,7 +369,7 @@ Definition:
 ```luau
 function Prayer.is_quick_active(): boolean
 ```
-Whether the quick prayers are on.
+Whether quick prayers are on.
 
 Example:
 ```luau
@@ -396,7 +384,7 @@ Definition:
 ```luau
 function Prayer.set_quick_active(active: boolean): boolean
 ```
-Turns the quick prayers on or off from the minimap orb and waits for it to change. Turning them on needs prayer points and at least one quick prayer, otherwise it returns `false`.
+Toggles quick prayers from the orb and waits up to 2 s. Turning on fails without prayer points or any selected quick prayer.
 
 Example:
 ```luau
@@ -426,13 +414,13 @@ Definition:
 ```luau
 function Prayer.open_quick_setup(): boolean
 ```
-Opens the quick prayer setup from the orb's right-click menu.
+Opens the setup via the orb's "Setup" option; true at once when open.
 
 Example:
 ```luau
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
-assert(Prayer.open_quick_setup())
+Prayer.open_quick_setup()
 ```
 
 ## Prayer.close_quick_setup
@@ -441,7 +429,7 @@ Definition:
 ```luau
 function Prayer.close_quick_setup(): boolean
 ```
-Closes the quick prayer setup with its Done button.
+Closes the setup with Done; true at once when not open.
 
 Example:
 ```luau
@@ -454,15 +442,13 @@ Prayer.close_quick_setup()
 
 Definition:
 ```luau
-function Prayer.set_quick_prayers(prayers: PrayerRef | { PrayerRef }): boolean
+function Prayer.set_quick_prayers(prayers: PrayerRef | { read PrayerRef }): boolean
 ```
-Makes these your quick prayers: opens the setup, deselects the other prayers, selects the ones missing and closes it. Returns `true` if the quick prayers are exactly these in the end. Prayers you can't use yet can't be selected, and prayers that exclude each other (Thick Skin and Rock Skin, Burst of Strength and Superhuman Strength...) can't be selected together, so it returns `false` for those.
+Makes exactly these the quick prayers: opens the setup only if something differs, deselects the extras, selects the missing ones and closes it. False when any wanted prayer didn't end up selected, such as one you can't use yet or two that exclude each other.
 
 Example:
 ```luau
 local Prayer = require("@lib/main/interfaces/gametabs/prayer")
 
-if not Prayer.set_quick_prayers({ "Piety", "Protect from Melee" }) then
-	print("couldn't set the quick prayers")
-end
+Prayer.set_quick_prayers({ "Piety", "Protect from Melee" })
 ```

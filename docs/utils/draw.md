@@ -1,12 +1,12 @@
 # Utils.Draw
 
-Drawing shapes on top of the game. Handy for seeing what a script is looking at or about to click. Drawings stay until you call `Draw.clear`. To redraw everything at once without flicker, wrap the drawing in `Draw.batch`.
+Debug shapes on the game overlay. Drawings stay until `Draw.clear`; wrap redraws in `Draw.batch` to avoid flicker.
 
 ```luau
 local Draw = require("@lib/utils/draw")
 ```
 
-Colors are tables with `r`, `g`, `b` (0 to 255) and an optional `a` for transparency. Every drawing function takes an optional color and uses red when you leave it out.
+A `Color` is `{ r, g, b, a? }` (0 to 255). Every color argument defaults to red.
 
 ## Colors
 
@@ -22,7 +22,7 @@ Definition:
 ```luau
 function Draw.color(r: number, g: number, b: number, a: number?): Color
 ```
-Makes a color. `a` is how solid it is (255, the default, is fully solid).
+Makes a color; `a` defaults to 255 (opaque).
 
 Example:
 ```luau
@@ -38,7 +38,7 @@ Definition:
 ```luau
 function Draw.rect(x1: number, y1: number, x2: number, y2: number, color: Color?)
 ```
-Draws a rectangle from its top-left corner to its bottom-right corner.
+Rectangle from top-left to bottom-right.
 
 Example:
 ```luau
@@ -53,7 +53,7 @@ Definition:
 ```luau
 function Draw.box(box: Area, color: Color?)
 ```
-Draws a rectangle given as `{ x, y, width, height }`, like the position and size of an interface element.
+Rectangle from `{ x, y, width, height }`, such as a widget's bounds.
 
 Example:
 ```luau
@@ -72,7 +72,7 @@ Definition:
 ```luau
 function Draw.button(button: Corners, color: Color?)
 ```
-Draws a rectangle given as `{ x1, y1, x2, y2 }`.
+Rectangle from `{ x1, y1, x2, y2 }`.
 
 Example:
 ```luau
@@ -87,7 +87,7 @@ Definition:
 ```luau
 function Draw.line(a: Point, b: Point, color: Color?)
 ```
-Draws a line between two points.
+Line between two points.
 
 Example:
 ```luau
@@ -102,7 +102,7 @@ Definition:
 ```luau
 function Draw.lines(segments: { { Point } }, color: Color?)
 ```
-Draws many lines in one go. Each segment is a pair of points. This is much faster than calling `Draw.line` in a loop.
+Many point-pair segments in one call; much faster than looping `Draw.line`.
 
 Example:
 ```luau
@@ -120,7 +120,7 @@ Definition:
 ```luau
 function Draw.polygon(points: { Point }, color: Color?)
 ```
-Draws the outline of a shape with any number of corners.
+Closed polygon outline.
 
 Example:
 ```luau
@@ -135,7 +135,7 @@ Definition:
 ```luau
 function Draw.quad(quad: Quad, color: Color?)
 ```
-Draws the outline of a four-cornered shape, such as a tile on screen.
+Quad outline, such as a projected tile.
 
 Example:
 ```luau
@@ -155,7 +155,7 @@ Definition:
 ```luau
 function Draw.cuboid(cuboid: { bottom: Quad, top: Quad }, color: Color?)
 ```
-Draws a 3D box from its bottom and top quads.
+3D box outline from its bottom and top quads.
 
 Example:
 ```luau
@@ -176,15 +176,12 @@ Definition:
 ```luau
 function Draw.clear()
 ```
-Removes everything drawn so far.
+Clears the overlay.
 
 Example:
 ```luau
 local Draw = require("@lib/utils/draw")
-local Host = require("@lib/host")
 
-Draw.rect(20, 20, 120, 80)
-Host.sleep(2000)
 Draw.clear()
 ```
 
@@ -194,21 +191,16 @@ Definition:
 ```luau
 function Draw.batch(paint: () -> ())
 ```
-Runs `paint` and shows everything it draws at once, as one update. Inside it, the drawing functions and `Draw.clear` don't draw straight away; they're saved and sent together when `paint` returns. Use it when you redraw the overlay over and over: without it, every shape is a separate update, so the game can show the overlay empty or half drawn between them. A batch inside a batch joins the outer one, and if `paint` errors nothing is drawn.
+Runs `paint`, collecting its drawing calls (including `Draw.clear`) and sending them as one `Host.draw_batch` update, so the overlay is never shown half drawn. Nested batches join the outer one; if `paint` errors nothing is drawn.
 
 Example:
 ```luau
 local Draw = require("@lib/utils/draw")
-local Host = require("@lib/host")
 
-for i = 0, 100 do
-	Draw.batch(function()
-		Draw.clear()
-		Draw.rect(20 + i, 20, 120 + i, 80)
-		Draw.line({ x = 20 + i, y = 20 }, { x = 120 + i, y = 80 }, Draw.GREEN)
-	end)
-	Host.sleep(20)
-end
+Draw.batch(function()
+	Draw.clear()
+	Draw.rect(20, 20, 120, 80)
+end)
 ```
 
 ## Draw.text
@@ -217,14 +209,11 @@ Definition:
 ```luau
 function Draw.text(text: string, x: number, y: number, size: number?, color: Color?): number
 ```
-Draws digits, `.`, `-`, `#` and `/` as lines, starting at the top left corner (`x`, `y`). `size` is the height of a digit in pixels (16 by default). There are no letters. Returns the x where the text ends, so you can go on from there.
+Draws digits and `.`, `-`, `#`, `/` (no letters) as lines from top-left (`x`, `y`), `size` px tall (default 16). Returns the end x.
 
 Example:
 ```luau
 local Draw = require("@lib/utils/draw")
 
-Draw.batch(function()
-	Draw.clear()
-	Draw.text("#1 0.82", 100, 100, 20, Draw.YELLOW)
-end)
+Draw.text("#1 0.82", 100, 100, 20, Draw.YELLOW)
 ```

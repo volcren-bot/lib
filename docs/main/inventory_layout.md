@@ -1,14 +1,14 @@
 # Main.InventoryLayout
 
-Inventory layouts: what an `inventory` form field gives a script, checked against and filled from the bank, with the rune pouch's runes.
+Inventory layouts from a form's `inventory` field: checked against the inventory and filled from the bank, rune pouch included.
 
 ```luau
 local InventoryLayout = require("@lib/main/inventory_layout")
 ```
 
-The user makes layouts in the loader, on the Inventory tab of the script's page: it reads the inventory from the client (and the runes in the rune pouch when the inventory holds one), keeps the layouts per script, and the form's `inventory` field picks one (see `Host.form` in [Host](../host.md)). A layout is positional, each item with its slot, but what matters to the bank is how much of each item it holds: a stack's range, or the number of copies of an item that doesn't stack. What counts as an item is its `ids`, or for a dose or charge item its accepted `doses` by name (see [LayoutItem](layout_item.md)), so four slots of `Prayer potion(4)` accepting doses 4 and 3 want four potions of either dose.
+The user builds layouts per script on the loader's Inventory tab, read from the client with the rune pouch's runes; the form's `inventory` field picks one (see `Host.form` in [Host](../host.md)). A layout is positional, but the bank cares about amounts: a stack's range, or the number of copies of a non-stacking item. An item is its `ids`, or for dose/charge items its accepted `doses` (see [LayoutItem](layout_item.md)), so four `Prayer potion(4)` slots accepting doses 4 and 3 want four potions of either dose.
 
-A field's `required` items are in every layout the user makes, padlocked: the user can drag them to another slot but not remove or change them, and they come with `locked = true`. A layout with no room for them (a full one saved before the script asked for them) can't be picked until the user frees a slot.
+A field's `required` items appear padlocked in every layout (`locked = true`); the user can move but not change them. A layout without room for them can't be picked.
 
 ```luau
 local Host = require("@lib/host")
@@ -18,16 +18,13 @@ local InventoryLayout = require("@lib/main/inventory_layout")
 local values = Host.form({
 	title = "Herblore",
 	fields = {
-		-- the vials of water start in slot 0; the user adds the rest
 		{ id = "inventory", kind = "inventory", label = "Inventory", required = { { ids = { 227 }, slot = 0 } } },
 	},
 })
 local layout = values and values.inventory
-if layout and Bankmain.open() then
-	if InventoryLayout.withdraw(layout) then
-		Bankmain.close()
-		InventoryLayout.reorder(layout)
-	end
+if layout and Bankmain.open() and InventoryLayout.withdraw(layout) then
+	Bankmain.close()
+	InventoryLayout.reorder(layout)
 end
 ```
 
@@ -39,7 +36,7 @@ InventoryLayout.SIZE = 28
 InventoryLayout.POUCH_TIMEOUT_MS = 2500
 InventoryLayout.POLL_MS = 50
 ```
-The inventory's size, how long to wait for the pouch to hold the layout's runes once they are withdrawn, and between looks. The pouch's own data is in [Runepouch](interfaces/mainscreen/runepouch.md).
+Inventory size; how long to wait for withdrawn runes to reach the pouch ([Runepouch](interfaces/mainscreen/runepouch.md)); poll interval.
 
 ## Types
 
@@ -57,7 +54,7 @@ export type Entry = {
 	label: string,
 }
 ```
-A layout is `{ name, slots, pouch? }`: the filled slots, each a `LayoutItem` with its `slot`, and the pouch's runes (`LayoutItem`s) when the layout holds a pouch. An `Entry` is one item as the bank sees it: what counts as it in the order to take it, its range when it stacks, and how many slots want it.
+A layout is `{ name, slots, pouch? }`: filled slots (`LayoutItem`s with `slot`) and the pouch's runes when it holds a pouch. An `Entry` is one item as the bank sees it: accepted items in withdraw order, its stack range, and how many slots want it.
 
 ## InventoryLayout.from_client
 
@@ -65,7 +62,12 @@ Definition:
 ```luau
 function InventoryLayout.from_client(name: string?): Layout?
 ```
-A layout of what the inventory holds now, with the pouch's runes when it holds a pouch. Nil when the inventory can't be read. `stackable` is only known for a stack of more than one, which wants exactly what it holds.
+A layout of the current inventory and pouch runes. Nil when the inventory can't be read. `stackable` is only known for stacks over one, which want exactly what they hold.
+
+Example:
+```luau
+local layout = InventoryLayout.from_client("current")
+```
 
 ## InventoryLayout.entries
 
@@ -73,7 +75,14 @@ Definition:
 ```luau
 function InventoryLayout.entries(layout: Layout): { Entry }
 ```
-The layout's items as the bank sees them: slots that want the same thing make one entry, `copies` the number of slots.
+The layout grouped by item: slots wanting the same thing are one entry, `copies` the slot count.
+
+Example:
+```luau
+for _, e in ipairs(InventoryLayout.entries(layout)) do
+	print(e.label, e.copies)
+end
+```
 
 ## InventoryLayout.matches
 
@@ -81,7 +90,14 @@ Definition:
 ```luau
 function InventoryLayout.matches(layout: Layout): boolean?
 ```
-Whether the inventory holds the layout: each stack in its range (any amount but none when both ends are 0), at least the number of copies of each other item, counting every accepted dose, and the pouch its runes in their ranges (a rune over its `max` counts, since the pouch can't give back part of a stack). Slots don't count: see `reorder`. Nil when the inventory can't be read.
+Whether the inventory holds the layout, ignoring slots: each stack in range (both ends 0 means any nonzero amount), enough copies of everything else counting all accepted doses, and pouch runes in range (over `max` is fine, since the pouch can't return part of a stack). Nil when the inventory can't be read.
+
+Example:
+```luau
+if InventoryLayout.matches(layout) then
+	Bankmain.close()
+end
+```
 
 ## InventoryLayout.deposit_diff
 
@@ -89,7 +105,12 @@ Definition:
 ```luau
 function InventoryLayout.deposit_diff(layout: Layout): boolean
 ```
-With the bank open, deposits everything that isn't in the layout, which includes doses the layout doesn't accept (so a carried `Prayer potion(1)` goes back when only 4 and 3 count), and what the inventory holds beyond the layout: a stack over its `max`, and copies past the layout's number, the doses taken last going back first. True when all of it went in.
+With the bank open, deposits everything not in the layout (unaccepted doses included) and any excess: stacks over `max` and copies past the count, last-accepted doses first. True when all of it went in.
+
+Example:
+```luau
+InventoryLayout.deposit_diff(layout)
+```
 
 ## InventoryLayout.withdraw
 
@@ -97,7 +118,16 @@ Definition:
 ```luau
 function InventoryLayout.withdraw(layout: Layout): boolean
 ```
-With the bank open, makes the inventory hold the layout: deposits what doesn't belong (`deposit_diff`), puts the layout's runes in the pouch, then takes what each item is missing: a stack below its `min` up to its `max` (all the bank has when both are 0 and the inventory holds none), and missing copies of the other items in the order of their accepted doses, each dose as far as the bank has it. True when the layout matches at the end. Everything the layout doesn't list is deposited, gear waiting to be worn included, so with an equipment layout too, get that worn first (`EquipmentLayout.prepare`) and fill the inventory after. The pouch comes out of the bank first when the inventory holds none; then its panel is opened in the bank (`BankPouch.open`), each rune the pouch is missing is withdrawn straight into it (`BankPouch.withdraw`), and the panel is dismissed before the rest is withdrawn. A pouch panel already open is dismissed first, since it covers the inventory. Before taking anything it works out each item's amount: amounts the 1, 5 and 10 buttons can't give (and below the bank's stock) that more than one item needs are taken first, one amount after another, so the X button is set once and the rest are plain clicks; an amount only one item needs is taken with `Withdraw-X` from the item's menu without touching the X button (or with X when it already holds that amount). See `Bankmain.withdraw`. When the last item to take doesn't stack, isn't withdrawn as notes and is missing at least as many as the inventory has free slots, and the selected quantity button already withdraws that many or more (`Bankmain.selected_amount`), it is just left-clicked (`Bankmain.withdraw_selected`): an item that doesn't stack only takes what fits.
+With the bank open, makes the inventory match: `deposit_diff`, fill the pouch, then withdraw what is missing (a stack under `min` up to `max`, all of it when both are 0 and none is held; missing copies in accepted-dose order). True when the layout matches at the end.
+
+Everything unlisted is deposited, so wear an equipment layout first (`EquipmentLayout.prepare`). The pouch is withdrawn if not carried, its bank panel opened (`BankPouch.open`), runes withdrawn into it (`BankPouch.withdraw`) and the panel dismissed; an already-open panel is dismissed first. Amounts the 1/5/10 buttons can't give that several items share are taken first so the X button is set once; a one-off amount uses `Withdraw-X` from the menu (see `Bankmain.withdraw`). A last non-stacking item that fills the free slots is left-clicked when the selected quantity covers it (`Bankmain.withdraw_selected`).
+
+Example:
+```luau
+if Bankmain.open() and not InventoryLayout.withdraw(layout) then
+	print("bank is missing items")
+end
+```
 
 ## InventoryLayout.reorder
 
@@ -105,4 +135,9 @@ Definition:
 ```luau
 function InventoryLayout.reorder(layout: Layout): boolean
 ```
-Drags the items into the layout's slots, one slot at a time from the first, with the inventory tab open; a slot that holds anything counting as its item (any accepted dose) is left alone. True when every item of the layout sits where it says, or there was nothing to move; false when an item the layout wants in a slot isn't in the inventory outside the slots that already hold it for the layout.
+Drags items into the layout's slots from the first slot on, with the inventory tab open; a slot already holding an accepted item is left alone. True when every item sits in its slot; false when a wanted item isn't in the inventory outside the slots already holding it.
+
+Example:
+```luau
+InventoryLayout.reorder(layout)
+```

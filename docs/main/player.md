@@ -1,12 +1,10 @@
 # Main.Player
 
-Information about your own character: name, position, plane, run energy, health, poison and whether you are walking.
+Your own character: name, position, instance, stats, combat and movement waits. Readers return `nil` when the value can't be read (for example while logged out).
 
 ```luau
 local Player = require("@lib/main/player")
 ```
-
-Most functions return the value, or `nil` and an error message when it can't be read.
 
 ## Constants
 
@@ -14,19 +12,17 @@ Definition:
 ```luau
 Player.STILL_MS = 400
 Player.WALK_TIMEOUT = 20000
-```
-`STILL_MS` is how long (in milliseconds) you must stay in one place to count as stopped. `WALK_TIMEOUT` is how long the waiting functions wait for you to arrive before giving up.
-
-```luau
+Player.IDLE_MS = 300
 Player.HIT_KINDS = { [16] = true, [12] = true, [43] = true }
 Player.COMBAT_MS = 6000
 Player.INTERACTING = 0
 ```
-These are what `Player.attacking` and `Player.is_attacked` go by:
-
-- `HIT_KINDS`: the hitsplat kinds of a hit that involves you, dealt or taken. 16 is damage and 12 a block (both seen live). 43 is a max hit, which hasn't been seen live.
-- `COMBAT_MS`: how long a landed hit keeps a fight going, set longer than the slowest attacks take.
-- `INTERACTING`: your interaction state while you act on an NPC.
+- `STILL_MS`: ms on one tile to count as stopped (`wait_still`).
+- `WALK_TIMEOUT`: default timeout of the `wait_*` functions.
+- `IDLE_MS`: ms without moving or animating to count as idle (`wait_idle`).
+- `HIT_KINDS`: hitsplat kinds that count as a hit: 16 damage, 12 block, 43 max hit (not yet seen live).
+- `COMBAT_MS`: how long a landed hit keeps a fight going.
+- `INTERACTING`: your interaction state while acting on an NPC.
 
 ## Player.is_logged_in
 
@@ -34,13 +30,13 @@ Definition:
 ```luau
 function Player.is_logged_in(): boolean
 ```
-Tells you whether you are logged in and in the game.
+Whether you are logged in and in the game.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("logged in:", Player.is_logged_in())
+print(Player.is_logged_in())
 ```
 
 ## Player.name
@@ -49,7 +45,7 @@ Definition:
 ```luau
 function Player.name(): string?
 ```
-Your character's display name.
+Your display name.
 
 Example:
 ```luau
@@ -64,7 +60,7 @@ Definition:
 ```luau
 function Player.position(): Position.Position?
 ```
-Where you are standing, as a [Position](position.md), including the plane.
+Your tile as a [Position](position.md), plane included.
 
 Example:
 ```luau
@@ -82,7 +78,7 @@ Definition:
 ```luau
 function Player.map_chunks(): { Position.Chunk }?
 ```
-The 64x64 map chunks the scene around you is built from, as the game client lists them. Outdoors these are the chunks around you; in an instance they are the *source* chunks the server copied, not the chunks the instance sits on. Tempoross, for example, is always a copy of chunk 47, 44 (id 12076), wherever the instance is. `nil` when they can't be read, for example while logged out.
+The 64x64 chunks the scene is built from, as the client lists them. In an instance these are the *source* chunks the server copied (Tempoross is always chunk 47, 44, id 12076), not where the instance sits.
 
 Example:
 ```luau
@@ -99,7 +95,7 @@ Definition:
 ```luau
 function Player.in_instance(): boolean
 ```
-Whether you are inside an instance (a minigame, raid or other private copy of an area). It reads the game client's own "this scene is an instance" flag. With an agent that doesn't have the flag it falls back to your coordinates (`Position.in_instance`). `false` when neither can be read.
+Whether you are in an instance. Reads the client's instance flag, falling back to `Position.in_instance` on your coordinates; `false` when neither can be read.
 
 Example:
 ```luau
@@ -116,14 +112,14 @@ Definition:
 ```luau
 function Player.instance_chunks(): { Position.Chunk }?
 ```
-The 64x64 map chunks the instance you are in was copied from, as the game client lists them. `nil` when you are not in an instance or the chunks can't be read. Instances sit at different coordinates every time, so this is how to tell which one you are in.
+The source chunks of the instance you are in; `nil` outside instances. Instances move every time, so this identifies which one you are in.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
 for _, chunk in ipairs(Player.instance_chunks() or {}) do
-	print(chunk.x, chunk.y, chunk:id())
+	print(chunk:id())
 end
 ```
 
@@ -133,14 +129,13 @@ Definition:
 ```luau
 function Player.instance_id(): number?
 ```
-The id (`x * 256 + y`, see `Chunk.id`) of the map chunk the instance you are in was copied from, when it is a copy of a single chunk. `nil` outside instances, when the chunks can't be read, or when the instance is built from more than one chunk (use `Player.instance_chunks` then). Tempoross is always chunk 47, 44: id 12076.
+The `Chunk.id` (`x * 256 + y`) of the instance's source chunk when it copies exactly one chunk; `nil` outside instances or for multi-chunk instances (use `instance_chunks`).
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-local TEMPOROSS = 12076
-if Player.instance_id() == TEMPOROSS then
+if Player.instance_id() == 12076 then
 	print("in a Tempoross game")
 end
 ```
@@ -151,15 +146,13 @@ Definition:
 ```luau
 function Player.plane(): number?
 ```
-The plane (floor) you are on: 0 is the ground floor, 1 the floor above, up to 3.
+Your floor, 0 (ground) to 3.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-if Player.plane() == 1 then
-	print("upstairs")
-end
+print(Player.plane() == 1)
 ```
 
 ## Player.run_energy
@@ -168,13 +161,13 @@ Definition:
 ```luau
 function Player.run_energy(): number?
 ```
-Your run energy as a percentage from 0 to 100.
+Run energy, 0 to 100.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("run energy:", Player.run_energy())
+print(Player.run_energy())
 ```
 
 ## Player.weight
@@ -183,13 +176,13 @@ Definition:
 ```luau
 function Player.weight(): number?
 ```
-The weight you are carrying.
+The weight you carry.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("weight:", Player.weight())
+print(Player.weight())
 ```
 
 ## Player.hitpoints
@@ -198,7 +191,7 @@ Definition:
 ```luau
 function Player.hitpoints(): (number?, number?)
 ```
-Your current hitpoints, followed by your real (unboosted) level.
+Current hitpoints and real (unboosted) level.
 
 Example:
 ```luau
@@ -214,7 +207,7 @@ Definition:
 ```luau
 function Player.prayer(): (number?, number?)
 ```
-Your current prayer points, followed by your real (unboosted) level.
+Current prayer points and real (unboosted) level.
 
 Example:
 ```luau
@@ -230,13 +223,13 @@ Definition:
 ```luau
 function Player.is_running(): boolean
 ```
-Whether run mode is switched on.
+Whether run mode is on.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("running:", Player.is_running())
+print(Player.is_running())
 ```
 
 ## Player.special_attack
@@ -245,13 +238,13 @@ Definition:
 ```luau
 function Player.special_attack(): number?
 ```
-Your special attack energy as a percentage from 0 to 100.
+Special attack energy, 0 to 100.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("special:", Player.special_attack())
+print(Player.special_attack())
 ```
 
 ## Player.special_attack_enabled
@@ -260,13 +253,13 @@ Definition:
 ```luau
 function Player.special_attack_enabled(): boolean
 ```
-Whether the special attack is currently switched on.
+Whether the special attack is switched on.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("special on:", Player.special_attack_enabled())
+print(Player.special_attack_enabled())
 ```
 
 ## Player.poison
@@ -275,7 +268,7 @@ Definition:
 ```luau
 function Player.poison(): string?
 ```
-Your poison status: `"healthy"`, `"poisoned"` or `"envenomed"`.
+`"healthy"`, `"poisoned"` or `"envenomed"`.
 
 Example:
 ```luau
@@ -290,13 +283,13 @@ Definition:
 ```luau
 function Player.is_moving(sample_ms: number?): boolean
 ```
-Tells you whether the server moved you to another tile in the last game tick, or in the one being received. It is exact and returns straight away; see `Host.movement`. With an agent that doesn't track the server tile, it compares your position before and after a short wait (`sample_ms`, 100 by default) instead.
+Whether the server moved you a tile in the last or incoming tick (`Host.movement`), exact and immediate. Without server tracking it compares your position across a `sample_ms` wait (default 100); `false` when the position can't be read.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("moving:", Player.is_moving())
+print(Player.is_moving())
 ```
 
 ## Player.destination
@@ -305,14 +298,13 @@ Definition:
 ```luau
 function Player.destination(): Tile?
 ```
-The tile you are walking to (where the flag on the minimap is). `nil` when you aren't walking anywhere. It clears on the server's last step, a few tiles before you get there: use [`Player.in_transit`](#playerin_transit) to know whether you have stopped.
+The minimap flag tile you are walking to, or `nil`. It clears on the server's last step, a few tiles early: use [`Player.in_transit`](#playerin_transit) to know you have stopped.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-local to = Player.destination()
-print(if to then `walking to {to.x}, {to.y}` else "not walking")
+print(Player.destination())
 ```
 
 ## Player.in_transit
@@ -321,13 +313,13 @@ Definition:
 ```luau
 function Player.in_transit(): boolean
 ```
-Whether you are still on the way somewhere: you have a destination, or the client still has steps of your path to animate. Anything aimed on screen has to allow for this, because the camera keeps following you until those steps are done.
+Whether you have a destination or the client still has path steps to animate. The camera follows you until then, so on-screen aiming must allow for it.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print(if Player.in_transit() then "on the way" else "arrived")
+print(Player.in_transit())
 ```
 
 ## Player.animation
@@ -336,7 +328,7 @@ Definition:
 ```luau
 function Player.animation(): number?
 ```
-The id of the animation the player is playing, or `-1` when there is none: an obstacle, a search, an attack. Walking and running are not animations (the client reports them as the pose). `nil` when it can't be read.
+Your current animation id, `-1` for none. Walking and running are poses, not animations.
 
 Example:
 ```luau
@@ -351,7 +343,7 @@ Definition:
 ```luau
 function Player.pose(): number?
 ```
-The id of the player's pose: what it does when no animation plays, like standing, walking or riding a magic carpet. Nil when the player can't be found.
+Your pose id (standing, walking, riding a carpet); `nil` when you can't be found.
 
 Example:
 ```luau
@@ -366,20 +358,14 @@ Definition:
 ```luau
 function Player.attacking(): Host.Npc?
 ```
-The NPC the player is fighting, or `nil`. It takes all three of these:
-
-1. **Acting on an NPC:** the player's interaction state is `Player.INTERACTING` (0). The client sets it to 2 once the NPC dies and to 3 once the player walks off or the action ends, so a stale target never counts.
-2. **In the scene:** that NPC is still there.
-3. **Hits landing:** one of the player's hits (`Player.HIT_KINDS`) landed on it within `Player.COMBAT_MS`, or one of the player's projectiles is flying at it. The client often stores only where a projectile starts, so one that leaves the player's tile for the target counts as the player's. Projectiles show up as soon as the attack starts, before they leave, so a long shot counts while it flies.
-
-It is `nil` while the player walks up to an NPC it clicked, until the first hit or projectile. A thrall's hits on the target count as the player's.
+The NPC you are fighting, or `nil`. All of: your interaction state is `INTERACTING` (2 after the NPC dies, 3 after you walk off), the NPC is in the scene, and one of your `HIT_KINDS` landed on it within `COMBAT_MS` or your projectile is flying at it (one leaving your tile counts as yours). `nil` while walking up before the first hit; thrall hits count as yours.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
 local npc = Player.attacking()
-print(if npc then `fighting {npc.name}` else "not fighting")
+print(if npc then npc.name else "not fighting")
 ```
 
 ## Player.is_attacked
@@ -388,15 +374,13 @@ Definition:
 ```luau
 function Player.is_attacked(): boolean
 ```
-Whether the player is being attacked: a hit on it (`Player.HIT_KINDS`, a miss included) within `Player.COMBAT_MS`, or any projectile flying at it. An NPC that only walks up to the player doesn't count until it attacks.
+Whether a hit (`HIT_KINDS`, misses included) landed on you within `COMBAT_MS` or a projectile is flying at you. An NPC walking up doesn't count.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-if Player.is_attacked() then
-	print("under attack")
-end
+print(Player.is_attacked())
 ```
 
 ## Player.in_combat
@@ -405,7 +389,7 @@ Definition:
 ```luau
 function Player.in_combat(): boolean
 ```
-Whether the player is attacking an NPC (`Player.attacking`) or being attacked (`Player.is_attacked`).
+`attacking() ~= nil or is_attacked()`.
 
 Example:
 ```luau
@@ -422,7 +406,7 @@ Definition:
 ```luau
 function Player.restore_with(drink: () -> boolean, timeout_ms: number): (boolean, string?)
 ```
-Runs `drink`, a click that restores the player such as a pool's "Drink", and waits up to `timeout_ms` for it to take: hitpoints, prayer or run energy going up, or all of them already full. False and why. `House.restore` and `Ferox.restore` use it.
+Runs `drink` (a restoring click such as a pool's "Drink") and waits up to `timeout_ms` for hitpoints, prayer or run energy to rise, or all to be full. Returns `false` and why on failure. Used by `House.restore` and `Ferox.restore`.
 
 Example:
 ```luau
@@ -443,16 +427,13 @@ Definition:
 ```luau
 function Player.is_animating(): boolean
 ```
-Whether the player is playing an animation (see `Player.animation`).
+Whether `Player.animation()` is set and not `-1`.
 
 Example:
 ```luau
-local Host = require("@lib/host")
 local Player = require("@lib/main/player")
 
-while Player.is_animating() do
-	Host.sleep(50)
-end
+print(Player.is_animating())
 ```
 
 ## Player.wait_idle
@@ -461,13 +442,13 @@ Definition:
 ```luau
 function Player.wait_idle(timeout_ms: number?, on_poll: (() -> ())?): boolean
 ```
-Waits until the player has neither moved nor played an animation for `Player.IDLE_MS` (300 ms), so a crossing is over. Returns `false` if that hasn't happened after `timeout_ms` (20 seconds by default). `on_poll`, if given, is called on every check, to log what the player is doing meanwhile.
+Waits until you neither move nor animate for `IDLE_MS`; `false` after `timeout_ms` (default `WALK_TIMEOUT`). `on_poll` runs on every check.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("idle:", Player.wait_idle(8000))
+print(Player.wait_idle(8000))
 ```
 
 ## Player.wait_still
@@ -476,13 +457,13 @@ Definition:
 ```luau
 function Player.wait_still(timeout_ms: number?): boolean
 ```
-Waits until you have stopped moving. Returns `false` if you are still moving after `timeout_ms` (20 seconds by default).
+Waits until your model stays on one spot for `STILL_MS`; `false` after `timeout_ms` (default `WALK_TIMEOUT`) or when the position can't be read.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("stopped:", Player.wait_still(5000))
+print(Player.wait_still(5000))
 ```
 
 ## Player.wait_server_still
@@ -491,13 +472,13 @@ Definition:
 ```luau
 function Player.wait_server_still(timeout_ms: number?): boolean
 ```
-Waits until the server stops moving you: it returns at the first game tick that leaves you on the same tile, which can be before your character's model has finished walking there (`Player.wait_still` waits for that). Returns `false` if you are still moving after `timeout_ms` (20 seconds by default). With an agent that doesn't track the server tile, it does what `Player.wait_still` does.
+Returns at the first tick the server leaves you on the same tile, possibly before your model finishes walking; `false` after `timeout_ms` (default `WALK_TIMEOUT`). Without server tracking it behaves like `wait_still`.
 
 Example:
 ```luau
 local Player = require("@lib/main/player")
 
-print("stopped:", Player.wait_server_still(5000))
+print(Player.wait_server_still(5000))
 ```
 
 ## Player.wait_walk
@@ -506,7 +487,7 @@ Definition:
 ```luau
 function Player.wait_walk(timeout_ms: number?): boolean
 ```
-Call this right after clicking somewhere. If the click didn't make you walk it returns straight away, otherwise it waits until you arrive and stand still. Returns `false` if you are still on your way after `timeout_ms`.
+Call right after a click: returns `true` at once if there is no destination, otherwise waits for it to clear and then `wait_still`. `false` after `timeout_ms` (default `WALK_TIMEOUT`).
 
 Example:
 ```luau
@@ -514,5 +495,5 @@ local Player = require("@lib/main/player")
 local Walker = require("@lib/main/walker")
 
 Walker.click_tile(assert(Walker.relative(5, 0)))
-print("arrived:", Player.wait_walk())
+print(Player.wait_walk())
 ```

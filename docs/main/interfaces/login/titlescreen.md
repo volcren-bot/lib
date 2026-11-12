@@ -1,83 +1,89 @@
 # Main.Interfaces.Login.TitleScreen
-The login screens (welcome, credentials, errors, ...) and where their buttons are drawn.
 
-## TitleScreen
-Definition:
-```luau
-local TitleScreen: { WELCOME: number, CREDENTIALS: number, PLAY_NOW: number, ... }
-```
-The title screen helper. The constants (`WELCOME`, `CREDENTIALS`, `INVALID_CREDENTIALS`, `ERROR`,
-`PLAY_NOW`, `SIGN_OUT`, `TERMS`, `DISCONNECTED`, `CONNECTION_ERROR`) are the ids of the screens
-the client can show.
+The login screens and where their buttons are drawn, computed from the client's login layout (`Host.game_state().login`) and its scale.
 
-Example:
 ```luau
 local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
-
-print(TitleScreen.name(TitleScreen.PLAY_NOW))
+local Host = require("@lib/host")
+local Mouse = require("@lib/utils/input/mouse")
 ```
 
-## TitleScreen.Button
+## Constants
+
+Definition:
+```luau
+TitleScreen.WELCOME = 0
+TitleScreen.CREDENTIALS = 2
+TitleScreen.INVALID_CREDENTIALS = 3
+TitleScreen.ERROR = 9
+TitleScreen.PLAY_NOW = 10
+TitleScreen.SIGN_OUT = 11
+TitleScreen.TERMS = 12
+TitleScreen.DISCONNECTED = 24
+TitleScreen.CONNECTION_ERROR = 39
+```
+The login screen ids (`login.screen`) with known buttons.
+
+## Types
+
 Definition:
 ```luau
 export type Button = {
 	name: string,
 	label: string,
-	x1: number, y1: number, x2: number, y2: number,
-	center_x: number, center_y: number,
+	x1: number,
+	y1: number,
+	x2: number,
+	y2: number,
+	center_x: number,
+	center_y: number,
 }
 ```
-A button on the current screen: its name, the text on it, and its corners and center in pixels.
+A button: its key (`"play_now"`, `"try_again"`, ...), the text on it, and its corners and center in client pixels.
 
 ## TitleScreen.name
+
 Definition:
 ```luau
 function TitleScreen.name(screen: number): string?
 ```
-Gets the readable name of a screen id, or `nil` if it isn't one we know.
+The readable name of a screen id, or `nil` if unknown.
 
 Example:
 ```luau
-local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
-
-print(TitleScreen.name(TitleScreen.CREDENTIALS)) -- credentials
+print(TitleScreen.name(TitleScreen.CREDENTIALS)) --> credentials
 ```
 
 ## TitleScreen.buttons
+
 Definition:
 ```luau
 function TitleScreen.buttons(login: LoginLayout): { [string]: Button }
 ```
-Gets every button on the screen you're on, by name. Empty if the screen isn't one we know.
+Every button on the current screen by name. Empty for an unknown screen.
 
 Example:
 ```luau
-local Host = require("@lib/host")
-local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
-
-local state = Host.game_state()
-if state and state.login then
-	for name, button in TitleScreen.buttons(state.login) do
-		print(name, button.label, button.center_x, button.center_y)
+local login = Host.game_state().login
+if login then
+	for name, button in TitleScreen.buttons(login) do
+		print(name, button.center_x, button.center_y)
 	end
 end
 ```
 
 ## TitleScreen.button
+
 Definition:
 ```luau
 function TitleScreen.button(login: LoginLayout, name: string): Button?
 ```
-Gets one button of the screen you're on by name, or `nil` if it has no such button.
+One button of the current screen by name, or `nil` if the screen has none.
 
 Example:
 ```luau
-local Host = require("@lib/host")
-local TitleScreen = require("@lib/main/interfaces/login/titlescreen")
-local Mouse = require("@lib/utils/input/mouse")
-
-local state = Host.game_state()
-local button = state and state.login and TitleScreen.button(state.login, "play_now")
+local login = Host.game_state().login
+local button = login and TitleScreen.button(login, "play_now")
 if button then
 	Mouse.click(button)
 end

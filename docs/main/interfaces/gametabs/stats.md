@@ -1,12 +1,19 @@
 # Main.Interfaces.Gametabs.Stats
 
-Your skill levels and experience.
+Skill levels and experience, read from game state, and hovering skills in the stats tab. Names are case-insensitive (`"Mining"`); a `Skill` has `name`, `level` (boosted), `real_level` and `xp`.
 
 ```luau
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 ```
 
-Skills are looked up by name (not case sensitive), like `"Mining"` or `"Hitpoints"`. A skill has `name`, `level` (current, including boosts), `real_level` and `xp`.
+## Constants
+
+Definition:
+```luau
+Stats.GROUP = 320
+Stats.CHILDREN: { [string]: number }
+```
+The stats tab and each lowercase skill name's child (1 to 24, attack to sailing, plus `total = 25`).
 
 ## Stats.Skill
 
@@ -14,7 +21,7 @@ Definition:
 ```luau
 export type SkillName = "Attack" | "Strength" | "Defence" | "Ranged" | "Prayer" | "Magic" | "Runecraft" | "Construction" | "Hitpoints" | "Agility" | "Herblore" | "Thieving" | "Crafting" | "Fletching" | "Slayer" | "Hunter" | "Mining" | "Smithing" | "Fishing" | "Cooking" | "Firemaking" | "Woodcutting" | "Farming" | "Sailing"
 ```
-Every skill, as the game names it. `Stats.Skill` is a frozen table of them (`Stats.Skill.Herblore`), so a misspelled skill is a type error. The functions here that take a name accept these, and so does `Lamp`.
+Every skill name. `Stats.Skill` is a frozen table of them (`Stats.Skill.Herblore`), so typos are type errors.
 
 Example:
 ```luau
@@ -29,15 +36,14 @@ Definition:
 ```luau
 function Stats.total_experience(skills: { Skill }?): number?
 ```
-The sum of the experience of all the skills in the list you give it.
+Sum of `xp` over the given skills; nil when given nil.
 
 Example:
 ```luau
 local Host = require("@lib/host")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
-local state = Host.game_state()
-print(Stats.total_experience(state and state.skills))
+print(Stats.total_experience(Host.game_state().skills))
 ```
 
 ## Stats.total_level
@@ -46,15 +52,14 @@ Definition:
 ```luau
 function Stats.total_level(skills: { Skill }?): number?
 ```
-The sum of the real levels of all the skills in the list you give it.
+Sum of `real_level` over the given skills; nil when given nil.
 
 Example:
 ```luau
 local Host = require("@lib/host")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
-local state = Host.game_state()
-print(Stats.total_level(state and state.skills))
+print(Stats.total_level(Host.game_state().skills))
 ```
 
 ## Stats.get
@@ -63,16 +68,14 @@ Definition:
 ```luau
 function Stats.get(name: string): Skill?
 ```
-One skill, with all its numbers.
+One skill by name; nil when unknown.
 
 Example:
 ```luau
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
 local mining = Stats.get("Mining")
-if mining then
-	print(mining.level, mining.real_level, mining.xp)
-end
+print(mining and mining.xp)
 ```
 
 ## Stats.level
@@ -81,13 +84,13 @@ Definition:
 ```luau
 function Stats.level(name: string): number?
 ```
-The current level of a skill, including any boost or drain.
+Current level including boosts and drains.
 
 Example:
 ```luau
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
-print("current strength:", Stats.level("Strength"))
+print(Stats.level("Strength"))
 ```
 
 ## Stats.real_level
@@ -96,13 +99,13 @@ Definition:
 ```luau
 function Stats.real_level(name: string): number?
 ```
-The real level of a skill, ignoring boosts and drain.
+Base level, ignoring boosts and drains.
 
 Example:
 ```luau
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
-print("real strength:", Stats.real_level("Strength"))
+print(Stats.real_level("Strength"))
 ```
 
 ## Stats.xp
@@ -111,13 +114,13 @@ Definition:
 ```luau
 function Stats.xp(name: string): number?
 ```
-The experience of a skill.
+The skill's experience.
 
 Example:
 ```luau
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
-print("mining xp:", Stats.xp("Mining"))
+print(Stats.xp("Mining"))
 ```
 
 ## Stats.hover
@@ -126,13 +129,13 @@ Definition:
 ```luau
 function Stats.hover(name: string): boolean
 ```
-Opens the stats tab and moves the mouse over a skill's box (`"total"` is the box under them). The names are the keys of `Stats.CHILDREN`, which maps each skill to its child of the tab's group (`Stats.GROUP`, 320): 1 to 24 in columns, attack to sailing. Returns nil and a reason for an unknown name or when the box isn't there.
+Opens the stats tab and moves the mouse over a `CHILDREN` key's box (`"total"` included). False for an unknown name or a missing or hidden box.
 
 Example:
 ```luau
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
-print(Stats.hover("Fishing"))
+Stats.hover("Fishing")
 ```
 
 ## Stats.hover_async
@@ -141,11 +144,11 @@ Definition:
 ```luau
 function Stats.hover_async(name: string): boolean
 ```
-Like `Stats.hover`, but queues opening the tab and moving over the skill's box as async input and returns at once. Returns `false` for an unknown name or when the box isn't there.
+`hover` queued as async input; returns at once. False for an unknown name or missing box.
 
 Example:
 ```luau
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 
-print(Stats.hover_async("Fishing"))
+Stats.hover_async("Fishing")
 ```

@@ -1,6 +1,6 @@
 # Main.Interfaces.Widgets
 
-Working with individual pieces of the game's interface (buttons, text, icons, panels). Each piece is identified by a group number and a child number, written like `149:0`.
+Individual interface widgets (buttons, text, sprites, layers), addressed by group and child, written `149:0`.
 
 ```luau
 local Widgets = require("@lib/main/interfaces/widgets")
@@ -17,7 +17,7 @@ Widgets.SPRITE = 5
 Widgets.MODEL = 6
 Widgets.CHECKBOX_SPRITE = 1215
 ```
-The kinds of interface pieces (the `kind` of a widget) and the picture number of an unticked checkbox.
+Widget `kind` values, and the first sprite of the checkbox set.
 
 ## Widgets.get
 
@@ -25,14 +25,12 @@ Definition:
 ```luau
 function Widgets.get(group: number, child: number): Widget?
 ```
-Looks up an interface piece. Returns `nil` when it isn't open.
+The widget, nil when not open.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
 local w = Widgets.get(149, 0)
-print(if w then `{w.width}x{w.height} at {w.x}, {w.y}` else "not open")
+print(w and `{w.width}x{w.height} at {w.x}, {w.y}`)
 ```
 
 ## Widgets.is_open
@@ -41,13 +39,11 @@ Definition:
 ```luau
 function Widgets.is_open(group: number, child: number): boolean
 ```
-Whether an interface piece currently exists on screen.
+Whether the widget exists.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
-print("open:", Widgets.is_open(149, 0))
+print(Widgets.is_open(149, 0))
 ```
 
 ## Widgets.center
@@ -56,14 +52,11 @@ Definition:
 ```luau
 function Widgets.center(w: Area): (number, number)
 ```
-The middle point `x, y` of an interface piece.
+Centre `x, y` of an area.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
-local x, y = Widgets.center({ x = 100, y = 100, width = 40, height = 20 })
-print(x, y) -- 120 110
+print(Widgets.center({ x = 100, y = 100, width = 40, height = 20 })) -- 120 110
 ```
 
 ## Widgets.contains
@@ -72,12 +65,10 @@ Definition:
 ```luau
 function Widgets.contains(w: Area, x: number, y: number): boolean
 ```
-Whether a point is inside an interface piece.
+Whether the point is inside the area.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
 print(Widgets.contains({ x = 100, y = 100, width = 40, height = 20 }, 110, 105)) -- true
 ```
 
@@ -87,12 +78,10 @@ Definition:
 ```luau
 function Widgets.click(group: number, child: number, button: Button?): boolean
 ```
-Clicks an interface piece, somewhere inside it. Returns `false` if it isn't open.
+Clicks a random point inside the widget; `false` when not open.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
 print(Widgets.click(149, 0))
 ```
 
@@ -102,12 +91,10 @@ Definition:
 ```luau
 function Widgets.click_async(group: number, child: number, button: Button?): boolean
 ```
-Like `Widgets.click`, but queues the move and click as async input and returns at once. Returns `false` if the interface isn't open.
+`Widgets.click` queued as async input; returns at once.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
 print(Widgets.click_async(149, 0))
 ```
 
@@ -117,16 +104,12 @@ Definition:
 ```luau
 function Widgets.checkbox(w: Widget): string?
 ```
-Reads a checkbox and tells you if it is `"unticked"`, `"crossed"` or `"ticked"`. Returns `nil` if the piece isn't a checkbox.
+`"unticked"`, `"crossed"` or `"ticked"`; nil when the widget isn't a checkbox sprite.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
 local w = Widgets.get(149, 0)
-if w then
-	print(Widgets.checkbox(w))
-end
+print(w and Widgets.checkbox(w))
 ```
 
 ## Widgets.wait_until
@@ -135,12 +118,10 @@ Definition:
 ```luau
 function Widgets.wait_until(check: () -> boolean, timeout_ms: number, interval_ms: number?): boolean
 ```
-Calls `check` until it returns `true` or `timeout_ms` has passed, sleeping `interval_ms` (50 by default) between calls. The time counts only the sleeps, so `check` runs once more when it is up. Returns whether `check` came true.
+Polls `check` every `interval_ms` (default 50) until true. The timeout counts summed sleeps, not clock time, and `check` runs once more when it's reached.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
 print(Widgets.wait_until(function()
 	return Widgets.is_open(149, 0)
 end, 1200))
@@ -152,12 +133,10 @@ Definition:
 ```luau
 function Widgets.wait_for(check: () -> boolean, timeout_ms: number, poll_ms: number): boolean
 ```
-Calls `check` until it returns `true` or `timeout_ms` of clock time has passed, sleeping `poll_ms` between calls. The clock is read after each call, so `check` always runs at least once and once more after the last sleep. Returns whether `check` came true.
+Polls `check` every `poll_ms` until true or `timeout_ms` of clock time passes; always runs at least once, and once after the deadline's last sleep.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
 print(Widgets.wait_for(function()
 	return Widgets.is_open(149, 0)
 end, 1200, 50))
@@ -169,12 +148,10 @@ Definition:
 ```luau
 function Widgets.wait_within(check: () -> boolean, timeout_ms: number, poll_ms: number): boolean
 ```
-Calls `check` while less than `timeout_ms` of clock time has passed, sleeping `poll_ms` between calls. Unlike `wait_for`, the clock is read before each call, so nothing is checked once time is up and a `timeout_ms` of 0 checks nothing. Returns whether `check` came true in time.
+Like `wait_for` but checks the clock before each call, so nothing runs after the deadline and a 0 timeout checks nothing.
 
 Example:
 ```luau
-local Widgets = require("@lib/main/interfaces/widgets")
-
 print(Widgets.wait_within(function()
 	return Widgets.is_open(149, 0)
 end, 1200, 50))

@@ -1,8 +1,6 @@
 # Main.Antiban.Antiban
 
-The scheduler for antiban: timed tasks, breaks, sleeps and walking tasks. Schedule the tasks once when the script starts (breaks and sleeps come from the loader's config, see `sync_config`), then call `do_antiban` (or `do_walking_antiban` while walking) in your loop; the ones that are due get taken then. Breaks and sleeps log out or lose focus now and then, like a person would, and log back in afterwards.
-
-Times are in milliseconds, and the scheduling uses a running clock that freezes while antiban works, so the time spent on breaks and tasks doesn't count towards the next one.
+Schedules antiban tasks, walking tasks, async tasks, breaks and sleeps. Register tasks at startup, call `sync_config` to plan breaks and sleeps from the loader's Breaks tab, then call `do_antiban` (or `do_walking_antiban` while walking) in your loop. Times are in milliseconds on a running clock that freezes while antiban works, so time spent on tasks and breaks doesn't count towards the next one.
 
 ```luau
 local Antiban = require("@lib/main/antiban/antiban")
@@ -19,13 +17,11 @@ Antiban.HOUR = 3600000
 Antiban.DAY = 86400000
 ```
 
-Times in milliseconds, for writing intervals as `15 * Antiban.MINUTE`.
+Durations in milliseconds.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 Antiban.add_task(function() end, 15 * Antiban.MINUTE)
 ```
 
@@ -37,7 +33,7 @@ Definition:
 function Antiban.set_zoom_range(min_percent: number, max_percent: number)
 ```
 
-Limits the zoom the antiban tasks pick from, in percent of the camera's whole range (0 is as far as it goes, 100 as close). The result is in `Antiban.zoom` (`min`, `max`, raw values).
+Limits the zoom antiban tasks pick from, as a percent (clamped 0-100) of the camera's range. Stores raw values in `Antiban.zoom` (`min`, `max`).
 
 Example:
 
@@ -53,7 +49,7 @@ Definition:
 function Antiban.set_pitch_range(min_percent: number, max_percent: number)
 ```
 
-Limits the camera pitch, in percent of its whole range (0 is the lowest pitch, 100 the highest). The result is in `Antiban.pitch` (`min`, `max`, raw values).
+Limits the pitch antiban tasks pick from, as a percent (0 lowest, 100 highest). Stores raw values in `Antiban.pitch`.
 
 Example:
 
@@ -69,16 +65,12 @@ Definition:
 function Antiban.add_task(method: (async: boolean?) -> (), interval: number, randomness: number?, async: boolean?)
 ```
 
-Schedules `method` every `interval` ms, give or take `randomness` (a fraction of the interval, 0.2 by default). `method` should be a short action that won't break your script. It only runs from `do_antiban`, which calls it with `async` (`false` by default). Tasks that take `async` queue their input and return at once when it is `true`; a later blocking input cuts what is still queued short.
+Schedules `method` about every `interval` ms (gaussian, `randomness` is the std as a fraction of the interval, default 0.2). The first run is uniformly within the first interval. Runs only from `do_antiban`/`do_task`, which pass `async` to `method`. Keep `method` short and safe to run at any point of your script.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
-Antiban.add_task(function()
-	-- hover a skill, move the mouse around, ...
-end, 15 * Antiban.MINUTE)
+Antiban.add_task(AntibanTasks.hover_skills, 15 * Antiban.MINUTE)
 ```
 
 ## Antiban.add_walk_task
@@ -89,16 +81,28 @@ Definition:
 function Antiban.add_walk_task(method: (async: boolean?) -> (), interval: number, randomness: number?, async: boolean?)
 ```
 
-Like `add_task`, for tasks that are fine to do while walking. They only run from `do_walking_antiban`.
+Like `add_task`, for tasks safe while walking. Runs only from `do_walking_antiban`/`do_walk_task`.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
+Antiban.add_walk_task(AntibanTasks.random_rotate, 5 * Antiban.MINUTE)
+```
 
-Antiban.add_walk_task(function()
-	-- look at the camera, ...
-end, 5 * Antiban.MINUTE)
+## Antiban.add_async_task
+
+Definition:
+
+```luau
+function Antiban.add_async_task(method: (async: boolean?) -> (), interval: number, randomness: number?, scope: Scope?)
+```
+
+Registers a task that queues its input and returns at once, due about every `interval` ms (`randomness` default 0.2). `scope` is `"game"`, `"outside"` or `"any"` (default). Unlike `add_task`, it doesn't pause the clock or fire the start/finish callbacks.
+
+Example:
+
+```luau
+Antiban.add_async_task(AntibanTasks.tiny_camera_rotation, 25 * Antiban.SECOND, 0.4, "game")
 ```
 
 ## Antiban.delay_tasks
@@ -109,16 +113,29 @@ Definition:
 function Antiban.delay_tasks(ms: number)
 ```
 
-Pushes the due time of every task and walking task back by `ms`, as if their timers had stopped for that long. Breaks and sleeps are untouched. Useful after a stretch where no antiban could run, so the tasks don't all come due at once.
+Pushes every task, walking task and async task back by `ms`. Breaks and sleeps are untouched. Use after a stretch where antiban couldn't run so tasks don't all come due at once.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 local started = Host.time()
--- ... a minigame ...
 Antiban.delay_tasks(Host.time() - started)
+```
+
+## Antiban.apply_skips
+
+Definition:
+
+```luau
+function Antiban.apply_skips(): boolean
+```
+
+Applies "Skip next" requests from the loader's Breaks tab (`Host.antiban_skips()`): the break or sleep's next occurrence is dropped and the one after keeps its cadence. Returns true if anything was skipped. `sync_config` calls it.
+
+Example:
+
+```luau
+Antiban.apply_skips()
 ```
 
 ## Antiban.sync_config
@@ -129,29 +146,34 @@ Definition:
 function Antiban.sync_config(): boolean
 ```
 
-Breaks and sleeps are the same for every script and are set in the loader's Breaks tab, not by the script. This plans them from that config: call it once in your setup, after `Biometrics.setup_player()`. `do_antiban`, `do_break`, `do_sleep` and `break_due` call it as well, so a config the user changed while the script runs is picked up the next time one of them runs. Returns true if the plan changed.
+Plans breaks and sleeps from the loader's Breaks tab config. Call once in setup after `Biometrics.setup_player()`; `do_antiban`, `do_break`, `do_sleep` and `break_due` call it too, so config changes are picked up live. Returns true if the plan changed or a skip was applied.
 
-It also handles "Skip next" from the Breaks tab: that break or sleep's next occurrence is dropped, and the one after keeps its planned cadence (one interval, or one day for a sleep, after the skipped one). Skipping one that is due clears it. `Host.antiban_skips()` is where those requests arrive.
-
-A break or sleep that is still there after a change keeps its due time when its interval (or time of day) is unchanged, so editing the config never loses the time already waited. Anything the config leaves on Auto is picked from the account's biometrics: a sleep's time and length, a sleep's logout chance, and a break's logout chance (by its length: 1% up to 2 minutes, 2% up to 5, 5% up to 10, around 50% above that). With breaks switched off, `breaks` and `sleeps` are empty.
+An unchanged break or sleep keeps its due time across config edits. Values left on Auto come from biometrics: sleep time, length and logout chance, and break logout chance by length (1% up to 2 min, 2% up to 5, 5% up to 10, about 50% above). With breaks off, `breaks` and `sleeps` are empty.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-local Biometrics = require("@lib/main/antiban/biometrics")
-
 Biometrics.setup_player()
 Antiban.sync_config()
 ```
 
 ## Antiban.break_due
 
+Definition:
+
 ```luau
 function Antiban.break_due(): boolean
 ```
 
-Whether a break or a sleep is due, so the next `do_antiban` would take it. Lets a script avoid starting something long right before one.
+Whether a break or sleep is due, so the next `do_antiban` would take it. Use it to avoid starting something long right before one.
+
+Example:
+
+```luau
+if not Antiban.break_due() then
+	start_trip()
+end
+```
 
 ## Antiban.do_antiban
 
@@ -161,16 +183,13 @@ Definition:
 function Antiban.do_antiban(check_tasks: boolean?, check_breaks: boolean?, check_sleeps: boolean?): boolean
 ```
 
-Runs whatever is due: tasks, breaks and sleeps (pass `false` to leave one kind out). Logs back in if the client was logged out. Only call it where a break won't break your script. Returns true if anything was done.
+Runs whatever tasks, breaks and sleeps are due (pass `false` to skip a kind), then logs back in if logged out. Does nothing when antiban is already running. Call only where a break is safe. Returns true if anything ran.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 while true do
 	Antiban.do_antiban()
-	-- the rest of the script
 end
 ```
 
@@ -182,13 +201,11 @@ Definition:
 function Antiban.do_walking_antiban(): boolean
 ```
 
-Runs the walking tasks that are due. Call it while walking. Returns true if one ran.
+Runs the due walking tasks. Call while walking. Returns true if one ran.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 Antiban.do_walking_antiban()
 ```
 
@@ -200,13 +217,11 @@ Definition:
 function Antiban.do_task(): boolean
 ```
 
-Runs the tasks that are due, and returns true if one ran. `do_antiban` calls it; use it on its own only where a short action won't break your script.
+Runs the due tasks without the `do_antiban` guard or login check. Returns true if one ran.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 Antiban.do_task()
 ```
 
@@ -218,14 +233,28 @@ Definition:
 function Antiban.do_walk_task(): boolean
 ```
 
-Runs the walking tasks that are due, and returns true if one ran.
+Runs the due walking tasks. Returns true if one ran.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 Antiban.do_walk_task()
+```
+
+## Antiban.do_async_tasks
+
+Definition:
+
+```luau
+function Antiban.do_async_tasks(scope: "game" | "outside"): boolean
+```
+
+Queues the first due async task whose scope is `scope` or `"any"`. Returns false without running anything while input is still queued (`Mouse.busy()`). A later blocking input cancels what it queued, so keep tab and chat tasks out of `"game"`: a cancelled restore leaves the wrong tab open.
+
+Example:
+
+```luau
+Antiban.do_async_tasks("game")
 ```
 
 ## Antiban.do_break
@@ -236,13 +265,11 @@ Definition:
 function Antiban.do_break(): boolean
 ```
 
-Takes the breaks that are due, and returns true if one was taken.
+Takes the due breaks. Returns true if one was taken.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 Antiban.do_break()
 ```
 
@@ -254,13 +281,11 @@ Definition:
 function Antiban.do_sleep(): boolean
 ```
 
-Takes the sleeps that are due, and returns true if one was taken.
+Takes the due sleeps. Returns true if one was taken.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 Antiban.do_sleep()
 ```
 
@@ -272,14 +297,11 @@ Definition:
 function Antiban.take_break(task: Break)
 ```
 
-Takes the break `task` now, whether it's due or not. Waits out its length (about `task.length`, with its randomness), with the chance of logging out and losing focus. The `on_breaking` callback runs every 5 seconds meanwhile.
+Takes `task` now, due or not. Blocks for about `task.length` (gaussian), logs out with `task.logout_chance`, loses focus half the time, and calls `on_breaking` every 5 seconds.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
-Antiban.sync_config()
 Antiban.take_break(Antiban.breaks[1])
 ```
 
@@ -291,14 +313,11 @@ Definition:
 function Antiban.take_sleep(task: Sleep)
 ```
 
-Takes the sleep `task` now, whether it's due or not. Same as `take_break`, with the `on_sleeping` callback every 5 minutes.
+Like `take_break` for a sleep: loses focus 70% of the time and calls `on_sleeping` every 5 minutes. Reschedules for the next day at `task.time`.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
-Antiban.sync_config()
 Antiban.take_sleep(Antiban.sleeps[1])
 ```
 
@@ -310,13 +329,11 @@ Definition:
 function Antiban.lose_focus(): boolean
 ```
 
-Moves the mouse off the game canvas, to one side, the way a player does when they click away from the game. An approximation: the game isn't told it lost focus. Breaks and sleeps call it at random.
+Moves the mouse just off either side of the game canvas. The client isn't actually told it lost focus. Breaks and sleeps call it at random.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 Antiban.lose_focus()
 ```
 
@@ -328,13 +345,11 @@ Definition:
 function Antiban.time_running_at_clock(value: string, randomness: number?): number
 ```
 
-The running time at which the time of day `value` ("HH:MM:SS") next comes, with the gaussian `randomness` after it. Used for sleeps; returns a value in the same units as the sleeps' `next`.
+The running-clock time when the time of day `value` ("HH:MM:SS") next comes, plus gaussian `randomness`. Same units as a sleep's `next`.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 local due = Antiban.time_running_at_clock("01:30:45", 0.1)
 ```
 
@@ -346,14 +361,12 @@ Definition:
 function Antiban.time_until_break(task: Break): string
 ```
 
-How long until the break is due, as "HH:MM:SS". Useful for showing the user.
+Time until `task` is due, as "HH:MM:SS".
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
-print("next break in", Antiban.time_until_break(Antiban.breaks[1]))
+print(Antiban.time_until_break(Antiban.breaks[1]))
 ```
 
 ## Antiban.time_until_sleep
@@ -364,14 +377,12 @@ Definition:
 function Antiban.time_until_sleep(task: Sleep): string
 ```
 
-How long until the sleep is due, as "HH:MM:SS".
+Time until `task` is due, as "HH:MM:SS".
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
-print("next sleep in", Antiban.time_until_sleep(Antiban.sleeps[1]))
+print(Antiban.time_until_sleep(Antiban.sleeps[1]))
 ```
 
 ## Antiban.simulate_breaks
@@ -382,13 +393,11 @@ Definition:
 function Antiban.simulate_breaks(botting_days: number?)
 ```
 
-Simulates `botting_days` (1000 by default) days with the breaks set up and prints how long the script runs for per day on average.
+Simulates `botting_days` (default 1000) of the planned breaks and prints the average runtime per day.
 
 Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 Antiban.sync_config()
 Antiban.simulate_breaks()
 ```
@@ -408,68 +417,12 @@ Antiban.on_breaking: ((task: Break, countdown: Countdown) -> ())?
 Antiban.on_sleeping: ((task: Sleep, countdown: Countdown) -> ())?
 ```
 
-Set any of these to run your own code at those points. `on_start_*` and `on_finish_*` run once per event. `on_breaking` runs every 5 seconds during a break and `on_sleeping` every 5 minutes during a sleep. Their `countdown.finish` (in `Host.time` ms) can be changed to make the event longer or shorter.
+Optional hooks. `on_start_*`/`on_finish_*` run once per event; `on_breaking` runs every 5 seconds and `on_sleeping` every 5 minutes. Changing `countdown.finish` (`Host.time` ms) lengthens or shortens the event.
 
-Example, walking to a safe spot before a break:
+Example:
 
 ```luau
-local Antiban = require("@lib/main/antiban/antiban")
-
 Antiban.on_start_break = function(task)
-	-- walk somewhere safe, ...
+	walk_to_safe_spot()
 end
-```
-
-## Limitations
-
-- No skill field, and no debugging switches. The skills live in `antiban_tasks` (`Tasks.skills`), and the rest belongs to the scripts that use them or isn't implemented yet (the bank task, and so on).
-- No pausing of the client's timers. The running clock covers it.
-- `lose_focus` only moves the mouse off the canvas (see above).
-
-## Antiban.add_async_task
-
-Definition:
-
-```luau
-function Antiban.add_async_task(method: (async: boolean?) -> (), interval: number, randomness: number?, scope: Scope?)
-```
-
-Registers a task that queues its input and returns at once, due about every `interval` ms (gaussian, `randomness` defaults to 0.2). `scope` is `"game"`, `"outside"` or `"any"` (default). `do_async_tasks` calls it with `async = true`. Unlike `add_task`, it doesn't pause the clock or fire the start/finish hooks.
-
-Example:
-
-```luau
-Antiban.add_async_task(AntibanTasks.tiny_camera_rotation, 25 * Antiban.SECOND, 0.4, "game")
-Antiban.add_async_task(AntibanTasks.random_tab, 40 * Antiban.SECOND, 0.4, "outside")
-```
-
-## Antiban.do_async_tasks
-
-Definition:
-
-```luau
-function Antiban.do_async_tasks(scope: "game" | "outside"): boolean
-```
-
-Queues the first due async task whose scope is `scope` or `"any"`, and returns true if one ran. It returns false without running anything while input is still queued (`Mouse.busy()`). Call it from the script's loop; a later blocking input cancels what it queued. Keep tab and chat tasks out of the `"game"` scope, since a cancelled restore step leaves the wrong tab open.
-
-Example:
-
-```luau
-if Biometrics.random_boolean(0.4) then
-	Antiban.do_async_tasks("game")
-end
-```
-
-## Antiban.apply_skips
-
-Definition:
-```luau
-function Antiban.apply_skips(): boolean
-```
-TODO...
-
-Example:
-```luau
-
 ```

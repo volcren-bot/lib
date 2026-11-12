@@ -1,6 +1,6 @@
 # Main.Interfaces.Chatbox.Chatbox
 
-The chat area at the bottom of the screen, and the dialogues, option menus and message boxes that show up in it. Use it to find out which dialogue is open and to read what it says.
+The dialogues, option menus and message boxes open in the chat area: which are open and what they say. All functions return `nil` (or `false`) when the open interfaces can't be read.
 
 ```luau
 local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
@@ -22,7 +22,7 @@ Chatbox.OBJECTBOX_DOUBLE = 11
 Chatbox.LEVELUP_DISPLAY = 233
 Chatbox.RECOMMEND_SURVEY = 709
 ```
-The interface numbers of the chat area and of the common dialogues that appear in it: the skill choice menu, option lists, the NPC and player speech boxes, message boxes, item boxes, the level-up display and the survey.
+The chat area (`GROUP`), its dialogue slot (`MODAL`), and the dialogues that open there: make menu, option menu, NPC and player speech, message box, item boxes, level-up display and survey.
 
 ## Chatbox.interfaces
 
@@ -30,14 +30,12 @@ Definition:
 ```luau
 function Chatbox.interfaces(): { number }?
 ```
-The numbers of every dialogue currently open in the chat area, the level up display included wherever it is open.
+Every interface open in the chat area's dialogue slot, plus the level-up display wherever it is open.
 
 Example:
 ```luau
-local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
-
 for _, group in ipairs(Chatbox.interfaces() or {}) do
-	print("open:", group)
+	print(group)
 end
 ```
 
@@ -47,12 +45,10 @@ Definition:
 ```luau
 function Chatbox.interface(): number?
 ```
-The number of the first open dialogue, or `nil` if there is none.
+The first open dialogue, or `nil` when none is open.
 
 Example:
 ```luau
-local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
-
 print(Chatbox.interface())
 ```
 
@@ -62,12 +58,10 @@ Definition:
 ```luau
 function Chatbox.interface_name(): string?
 ```
-The readable name of the first open dialogue.
+The game's name for the first open dialogue.
 
 Example:
 ```luau
-local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
-
 print(Chatbox.interface_name())
 ```
 
@@ -77,13 +71,11 @@ Definition:
 ```luau
 function Chatbox.is_open(interface: number | string): boolean
 ```
-Whether a specific dialogue is open, given by its number or its name.
+Whether a dialogue is open, by interface number or by name (case-insensitive).
 
 Example:
 ```luau
-local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
-
-print("level-up showing:", Chatbox.is_open(Chatbox.LEVELUP_DISPLAY))
+print(Chatbox.is_open(Chatbox.LEVELUP_DISPLAY))
 ```
 
 ## Chatbox.text
@@ -92,14 +84,9 @@ Definition:
 ```luau
 function Chatbox.text(): string?
 ```
-Everything the open dialogues say (speech, options, messages) as one text with one line per entry, top to bottom. It's an empty text when nothing is open.
+The visible text of every open dialogue, one line per non-empty text, tags kept. Empty when nothing is open.
 
 Example:
 ```luau
-local Chatbox = require("@lib/main/interfaces/chatbox/chatbox")
-
-local text = Chatbox.text()
-if text and text ~= "" then
-	print(text)
-end
+print(Chatbox.text())
 ```

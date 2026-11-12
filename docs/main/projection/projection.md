@@ -1,10 +1,12 @@
 # Main.Projection.Projection
 
-Turning places in the world into places on your screen: the outline of a tile, or a box standing on the ground.
+Projects world positions to screen pixels: tile outlines and ground-standing boxes.
 
 ```luau
 local Projection = require("@lib/main/projection/projection")
 ```
+
+Fine coordinates are local to the loaded area, 128 per tile, with negative `z` going up. An `at` tile projects as seen once the player stands there (give it a `plane` field for another floor); a `shift` projects as seen once the camera has moved that many fine units.
 
 ## Constants
 
@@ -12,7 +14,7 @@ Definition:
 ```luau
 Projection.TILE = 128
 ```
-The size of one tile in the game's fine coordinates.
+Fine units per tile.
 
 ## Projection.base
 
@@ -20,28 +22,24 @@ Definition:
 ```luau
 function Projection.base(): Tile?
 ```
-The world tile at the corner of the area the game currently has loaded. Mostly useful internally for converting between world and loaded-area coordinates.
+World tile at the loaded area's corner; nil when not logged in.
 
 Example:
 ```luau
-local Projection = require("@lib/main/projection/projection")
-
 local base = Projection.base()
-print(if base then `{base.x}, {base.y}` else "unavailable")
+print(base and `{base.x}, {base.y}`)
 ```
 
 ## Projection.points
 
 Definition:
 ```luau
-function Projection.points(points: { FinePoint }): { Point }?
+function Projection.points(points: { FinePoint }, at: Tile?): { Point }?
 ```
-Converts points in the loaded area (in fine coordinates, 128 per tile, with a negative `z` going up) into screen pixels.
+Screen pixels of fine points, optionally as seen from `at` (via `arrival` and `shifted`).
 
 Example:
 ```luau
-local Projection = require("@lib/main/projection/projection")
-
 local screen = Projection.points({ { x = 6400, y = 6400, z = 0 } })
 print(screen and screen[1].x, screen and screen[1].y)
 ```
@@ -50,17 +48,16 @@ print(screen and screen[1].x, screen and screen[1].y)
 
 Definition:
 ```luau
-function Projection.tile(tile: Tile, height: number?): Quad?
+function Projection.tile(tile: Tile, height: number?, at: Tile?): Quad?
 ```
-The four corners on screen of a world tile, as a quad. `height` lifts the quad above the ground.
+Screen quad of a world tile's corners, raised by `height` fine units, optionally as seen from `at`.
 
 Example:
 ```luau
-local Projection = require("@lib/main/projection/projection")
 local Walker = require("@lib/main/walker")
 
 local quad = Projection.tile(assert(Walker.relative(1, 0)))
-print(quad and quad.top.x, quad and quad.top.y)
+print(quad and quad.top.x)
 ```
 
 ## Projection.cuboid
@@ -76,19 +73,15 @@ function Projection.cuboid(
 	shift: FinePoint?
 ): Cuboid?
 ```
-A box standing on the ground, centered on a point, as a bottom and a top quad on screen. `size` is its width in tiles (1 by default) and `height` its height (200 by default). `at` shows it as seen once the player stands on that tile (see `Projection.arrival`); give it a `plane` field when the player will be on another floor, `shift` as seen once the camera has moved that far (see `Projection.shifted`).
+A ground-standing box centred on the fine point, as `bottom` and `top` quads. `size` in tiles (default 1), `height` in fine units (default 200). `shift`, when given, wins over `at`.
 
 Example:
 ```luau
 local Host = require("@lib/host")
-local Projection = require("@lib/main/projection/projection")
 
-local state = Host.game_state()
-local me = state and state.position
-if me then
-	local box = Projection.cuboid(me.local_x, me.local_y)
-	print(box and box.top.top.x)
-end
+local me = Host.game_state().position
+local box = me and Projection.cuboid(me.local_x, me.local_y)
+print(box and box.top.top.x)
 ```
 
 ## Projection.bounds
@@ -97,19 +90,15 @@ Definition:
 ```luau
 function Projection.bounds(cuboid: Cuboid): Box
 ```
-The smallest rectangle on screen that contains the whole box.
+Smallest screen box enclosing the cuboid.
 
 Example:
 ```luau
 local Host = require("@lib/host")
-local Projection = require("@lib/main/projection/projection")
 
-local me = (Host.game_state() or {}).position
+local me = Host.game_state().position
 local cuboid = me and Projection.cuboid(me.local_x, me.local_y)
-if cuboid then
-	local box = Projection.bounds(cuboid)
-	print(box.x1, box.y1, box.x2, box.y2)
-end
+print(cuboid and Projection.bounds(cuboid).x1)
 ```
 
 ## Projection.box_on_screen
@@ -118,12 +107,11 @@ Definition:
 ```luau
 function Projection.box_on_screen(box: Box): boolean
 ```
-Whether a rectangle is fully inside the game window.
+Whether the box is fully inside the client.
 
 Example:
 ```luau
 local Geometry = require("@lib/utils/math/geometry")
-local Projection = require("@lib/main/projection/projection")
 
 print(Projection.box_on_screen(Geometry.Box.new(10, 10, 100, 100)))
 ```
@@ -134,11 +122,10 @@ Definition:
 ```luau
 function Projection.on_screen(quad: Quad): boolean
 ```
-Whether all four corners of a quad are inside the game window.
+Whether all four corners are inside the client.
 
 Example:
 ```luau
-local Projection = require("@lib/main/projection/projection")
 local Walker = require("@lib/main/walker")
 
 local quad = Projection.tile(assert(Walker.position()))
@@ -151,31 +138,29 @@ Definition:
 ```luau
 function Projection.arrival(at: Tile): FinePoint?
 ```
-The fine offset the camera moves by once the player stands on `at` instead of where they are, in the same frame as the points. The camera follows the player's fine position (its focal point), so `Projection.points` with `at` projects the points with the camera moved by this offset (see `Projection.shifted`).
+Fine offset the camera focal point moves by once the player stands on `at`. Nil when not logged in.
 
 Example:
 ```luau
-local Projection = require("@lib/main/projection/projection")
 local Walker = require("@lib/main/walker")
 
 local here = assert(Walker.position())
-local shift = Projection.arrival({ x = here.x + 5, y = here.y })
+print(Projection.arrival({ x = here.x + 5, y = here.y }))
 ```
 
 ## Projection.shifted
 
 Definition:
 ```luau
-function Projection.shifted(points: { FinePoint }, shift: FinePoint): { Point }?
+function Projection.shifted(points: { FinePoint }, shift: FinePoint, plane: number?): { Point }?
 ```
-Like `Projection.points`, but as the camera will show the points once it has moved by `shift` (fine units, x and y). The camera follows the player, so this is the view after the player walks that far: it also rises and falls with the ground under the player, while the points keep their own ground. Pair it with `Walker.ahead` to see where things will be a moment from now while walking.
+`points` as seen after the camera moves by `shift` (x, y), optionally on `plane`. The camera also follows the ground height under the player while points keep their own. Pair with `Walker.ahead` to predict positions while walking.
 
 Example:
 ```luau
-local Projection = require("@lib/main/projection/projection")
 local Walker = require("@lib/main/walker")
 
 local shift = Walker.ahead(300)
 local soon = shift and Projection.shifted({ { x = 6400, y = 6400, z = 0 } }, shift)
-print(soon and soon[1].x, soon and soon[1].y)
+print(soon and soon[1].x)
 ```

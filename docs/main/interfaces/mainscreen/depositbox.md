@@ -1,6 +1,6 @@
 # Main.Interfaces.Mainscreen.DepositBox
 
-The bank's item deposit box (interface group 192). Its 28 slots show your inventory, which is what the deposits come from, and its 11 equipment slots show your worn items. The buttons under them deposit the inventory, the worn items or the looting bag, and the quantity buttons on the right set how many one click deposits.
+The bank deposit box (group 192): your 28 inventory slots, 11 worn slots, buttons that deposit the inventory, worn items or looting bag, and quantity buttons that set what one slot click deposits.
 
 ```luau
 local DepositBox = require("@lib/main/interfaces/mainscreen/depositbox")
@@ -17,7 +17,7 @@ DepositBox.QUANTITY_BUTTONS = { ONE = 35, FIVE = 36, TEN = 37, CUSTOM = 38, ALL 
 DepositBox.QUANTITY_ALL = 0
 DepositBox.QUANTITY_ALL_BUT_ONE = -1
 ```
-The interface group, the name of the deposit box loc, and the components of the buttons (`DEPOSIT_BUTTONS` and `QUANTITY_BUTTONS` are the components' child ids in group 192). Quantities of 0 or less mean all of the item, `QUANTITY_ALL_BUT_ONE` included.
+The group, the deposit box object name, and the button children. Any quantity of 0 or less deposits all, `QUANTITY_ALL_BUT_ONE` included.
 
 ## DepositBox.items
 
@@ -25,7 +25,12 @@ Definition:
 ```luau
 DepositBox.items: Inv
 ```
-The inventory as the deposit box shows it (container 93, 28 slots). Every function of [Inv](../inv.md) works on it, such as `DepositBox.items.indices_of("Logs")`, `DepositBox.items.hover_slot(slot)` or `DepositBox.items.items()`.
+The inventory as the box shows it (container 93, 28 slots); every [Inv](../inv.md) function works on it.
+
+Example:
+```luau
+print(DepositBox.items.indices_of("Logs"))
+```
 
 ## DepositBox.equipment
 
@@ -33,7 +38,12 @@ Definition:
 ```luau
 DepositBox.equipment: Inv
 ```
-The worn items as the deposit box shows them (container 94, 14 slots, of which 11 are on the box). Everything [Inv](../inv.md) has works on it.
+Worn items as the box shows them (container 94, 14 slots, 11 shown); an [Inv](../inv.md).
+
+Example:
+```luau
+print(DepositBox.equipment.items())
+```
 
 ## DepositBox.is_open
 
@@ -41,12 +51,11 @@ Definition:
 ```luau
 function DepositBox.is_open(): boolean
 ```
-Whether the deposit box is open.
+Whether the box is open (group open and its title contains "deposit").
 
 Example:
 ```luau
-local open = DepositBox.is_open()
-print(open)
+print(DepositBox.is_open())
 ```
 
 ## DepositBox.title
@@ -55,7 +64,12 @@ Definition:
 ```luau
 function DepositBox.title(): string?
 ```
-The deposit box's title, such as "The Bank of Gielinor - Item Deposits".
+The box's title text, `nil` when it isn't loaded.
+
+Example:
+```luau
+print(DepositBox.title())
+```
 
 ## DepositBox.wait_open
 
@@ -63,7 +77,12 @@ Definition:
 ```luau
 function DepositBox.wait_open(timeout_ms: number?): boolean
 ```
-Waits up to `timeout_ms` (3 seconds by default) for the deposit box to open. Returns false when it didn't.
+Waits up to `timeout_ms` (3000 by default) for the box to open.
+
+Example:
+```luau
+DepositBox.wait_open()
+```
 
 ## DepositBox.bounds
 
@@ -71,7 +90,12 @@ Definition:
 ```luau
 function DepositBox.bounds(): Box?
 ```
-The deposit box's panel, in interface units.
+The box's panel.
+
+Example:
+```luau
+print(DepositBox.bounds())
+```
 
 ## DepositBox.slots_area
 
@@ -79,7 +103,12 @@ Definition:
 ```luau
 function DepositBox.slots_area(): Box?
 ```
-The area of the inventory slot grid.
+The inventory slot grid.
+
+Example:
+```luau
+print(DepositBox.slots_area())
+```
 
 ## DepositBox.find_item_boundaries
 
@@ -87,7 +116,12 @@ Definition:
 ```luau
 function DepositBox.find_item_boundaries(): { Box }?
 ```
-The boxes of the inventory slots that hold an item, in slot order.
+The boxes of occupied inventory slots, in slot order.
+
+Example:
+```luau
+print(#(DepositBox.find_item_boundaries() or {}))
+```
 
 ## DepositBox.quantity_of
 
@@ -95,7 +129,7 @@ Definition:
 ```luau
 function DepositBox.quantity_of(amount: number): Quantity
 ```
-The quantity button an amount uses: 1, 5 and 10 have their own buttons, 0 or less is `"ALL"`, anything else is `"CUSTOM"`.
+The button for an amount: 1, 5, 10 have their own, 0 or less is `"ALL"`, the rest `"CUSTOM"`.
 
 Example:
 ```luau
@@ -108,7 +142,12 @@ Definition:
 ```luau
 function DepositBox.quantity_selected(quantity: Quantity): boolean
 ```
-Whether the quantity button is the default one: its frame is lit.
+Whether the quantity button is lit (the current default).
+
+Example:
+```luau
+print(DepositBox.quantity_selected("ALL"))
+```
 
 ## DepositBox.select_quantity
 
@@ -116,7 +155,12 @@ Definition:
 ```luau
 function DepositBox.select_quantity(quantity: Quantity): boolean
 ```
-Makes `quantity` the default by clicking its button, unless it already is, and waits for it to light.
+Clicks the quantity button unless lit, and waits up to 1800 ms for it to light.
+
+Example:
+```luau
+DepositBox.select_quantity("TEN")
+```
 
 ## DepositBox.select_quantity_async
 
@@ -124,13 +168,11 @@ Definition:
 ```luau
 function DepositBox.select_quantity_async(quantity: Quantity, force: boolean?): boolean
 ```
-Like `DepositBox.select_quantity`, but queues the click as async input and returns at once, without waiting for the button to light. Returns `true` if the quantity is selected or the click was queued, `false` if its button isn't there. `force` clicks even when it is selected now, for a quantity that an earlier queued click leaves.
+Queues the click as async input and returns at once. `true` if already lit or queued, `false` if the button is missing. `force` clicks even when lit, for when an earlier queued click will change it.
 
 Example:
 ```luau
-local DepositBox = require("@lib/main/interfaces/mainscreen/depositbox")
-
-print(DepositBox.select_quantity_async("ALL"))
+DepositBox.select_quantity_async("ALL")
 ```
 
 ## DepositBox.click_button
@@ -139,7 +181,12 @@ Definition:
 ```luau
 function DepositBox.click_button(button: DepositButton): boolean
 ```
-Clicks one of the deposit buttons: `"WORN"` (deposit worn items), `"INVENTORY"` (deposit inventory) or `"LOOT"` (empty containers, the looting bag). Does nothing unless the box is open.
+Clicks `"WORN"`, `"INVENTORY"` or `"LOOT"` (empty containers). `false` when the box isn't open.
+
+Example:
+```luau
+DepositBox.click_button("INVENTORY")
+```
 
 ## DepositBox.deposit_inventory
 
@@ -149,13 +196,23 @@ function DepositBox.deposit_inventory(): boolean
 ```
 Clicks "Deposit inventory".
 
+Example:
+```luau
+DepositBox.deposit_inventory()
+```
+
 ## DepositBox.deposit_loot_bag
 
 Definition:
 ```luau
 function DepositBox.deposit_loot_bag(): boolean
 ```
-Clicks "Empty containers", which deposits the looting bag.
+Clicks "Empty containers", depositing the looting bag.
+
+Example:
+```luau
+DepositBox.deposit_loot_bag()
+```
 
 ## DepositBox.deposit_equipment
 
@@ -165,17 +222,22 @@ function DepositBox.deposit_equipment(): boolean
 ```
 Clicks "Deposit worn items".
 
+Example:
+```luau
+DepositBox.deposit_equipment()
+```
+
 ## DepositBox.close
 
 Definition:
 ```luau
 function DepositBox.close(key_probability: number?, timeout_ms: number?): boolean
 ```
-Closes the box and waits for it to close (`timeout_ms` for each try, 3 ticks by default). It presses Escape with the chance `key_probability` (by default the `Biometrics.ESCAPE` probability; `1` always, `0` never), unless the client's "Esc to close" setting is off. If that doesn't close it, or Escape isn't used, it clicks the close button, up to 3 times. See `Toplevel.close`.
+Closes the box via `Toplevel.close`: Escape with chance `key_probability` (default the Escape biometric; 1 always, 0 never), else the close button. `timeout_ms` per try, 1800 by default.
 
 Example:
 ```luau
-DepositBox.close(0) -- with the mouse
+DepositBox.close(0)
 ```
 
 ## DepositBox.deposit
@@ -184,11 +246,11 @@ Definition:
 ```luau
 function DepositBox.deposit(item: Item, quantity: number?, use_quantity_buttons: boolean?): boolean
 ```
-Deposits `quantity` of `item` from your inventory (all of it when `quantity` is 0 or less or nil). It picks one of the item's slots at random. With `use_quantity_buttons` (the default) it sets the quantity button first and then clicks the slot; without, it uses the slot's menu (`Deposit-1`, `Deposit-5`, `Deposit-10`, `Deposit-All`, or `Deposit-X` and the amount typed into the chat). Returns false when your inventory has none of the item.
+Deposits `quantity` (all when `nil` or 0 or less) of `item` from a random one of its slots. With `use_quantity_buttons` (default) it sets the quantity button then clicks; otherwise it uses the slot menu (`Deposit-N`, `Deposit-All`, or `Deposit-X` and types the amount). `false` when none is held.
 
 Example:
 ```luau
-DepositBox.deposit("Lobster", 0, true)
+DepositBox.deposit("Lobster")
 ```
 
 ## DepositBox.deposit_array
@@ -197,11 +259,11 @@ Definition:
 ```luau
 function DepositBox.deposit_array(entries: { Entry }, use_quantity_buttons: boolean?): boolean
 ```
-Deposits each entry, an item name or `{ item = ..., quantity = ... }`, and carries on past a failure. Returns true when all of them went in, and the first error otherwise.
+Deposits each entry (an item or `{ item, quantity }`), continuing past failures. `true` only if all succeeded.
 
 Example:
 ```luau
-DepositBox.deposit_array({ "Lobster", { item = "Swordfish", quantity = 5 } }, true)
+DepositBox.deposit_array({ "Lobster", { item = "Swordfish", quantity = 5 } })
 ```
 
 ## DepositBox.deposit_different
@@ -210,11 +272,11 @@ Definition:
 ```luau
 function DepositBox.deposit_different(keep: Item | { Item }, use_quantity_buttons: boolean?): boolean
 ```
-Deposits every inventory item that isn't one of `keep`, all of each kind. Returns true when there was nothing else to deposit or all of it went in.
+Deposits all of every item kind not in `keep`, stopping at the first failure. `true` when nothing else remains to deposit.
 
 Example:
 ```luau
-DepositBox.deposit_different({ "Abyssal whip", "Bandos chestplate", "Bandos tassets" })
+DepositBox.deposit_different({ "Abyssal whip", "Bandos chestplate" })
 ```
 
 ## DepositBox.hover
@@ -223,7 +285,7 @@ Definition:
 ```luau
 function DepositBox.hover(loc: Loc?, walk: boolean?): boolean
 ```
-Hovers the deposit box loc, which is the closest one on the loaded map by default. With `walk` (the default) it walks close to the loc first.
+Hovers `loc` or the nearest deposit box, walking close first unless `walk` is false.
 
 Example:
 ```luau
@@ -236,7 +298,7 @@ Definition:
 ```luau
 function DepositBox.open(loc: Loc?, walk: boolean?): boolean
 ```
-Opens the deposit box by picking its "Deposit" option on the loc (the closest one by default). It walks there unless `walk` is false, and waits up to 3 seconds for the box to show. Other main-screen interfaces are closed first with Escape.
+Clears other interfaces with Escape, then uses "Deposit" on `loc` or the nearest box (walking unless `walk` is false) and waits up to 3 seconds. If a menu opened instead, picks "Deposit" when the hover text names a deposit box.
 
 Example:
 ```luau

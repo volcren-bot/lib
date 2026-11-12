@@ -12,7 +12,7 @@ Definition:
 ```luau
 function Walker.position(): Tile?
 ```
-Your current tile. Returns `nil` and a message when you are not logged in.
+Your current tile, or `nil` when not logged in.
 
 Example:
 ```luau
@@ -28,7 +28,7 @@ Definition:
 ```luau
 function Walker.relative(dx: number, dy: number): Tile?
 ```
-The tile that is `dx` tiles east and `dy` tiles north of you (use negative numbers for west and south).
+The tile `dx` east and `dy` north of you (negative for west and south).
 
 Example:
 ```luau
@@ -44,7 +44,7 @@ Definition:
 ```luau
 function Walker.path(to: Tile, from: Tile?): { Tile }?
 ```
-Plans a walking route to a tile, starting from you (or from `from`). Both ends are included in the list.
+A walking path from you (or `from`) to `to` (`Host.find_path`), both ends included.
 
 Example:
 ```luau
@@ -61,7 +61,7 @@ Definition:
 ```luau
 function Walker.route(to: Tile, from: Tile?): Host.SceneRoute?
 ```
-The way the game will walk if you click `to`, starting from you (or from `from`): every tile, you first. It uses the area the game client has loaded around you, so it works in minigames and other instances, and knows about opened doors. `reached` is `false` when `to` can't be reached; the route then ends at the tile the game walks you to instead. Handy to check what lies on the way before clicking.
+The route the game walks if you click `to`, from you (or `from`), every tile with you first. It uses the loaded scene, so it works in instances and knows opened doors. `reached` is `false` when `to` can't be reached; the route then ends where the game would stop.
 
 Example:
 ```luau
@@ -82,7 +82,7 @@ Definition:
 ```luau
 function Walker.click_tile(tile: Tile): boolean
 ```
-Clicks a tile on the screen so your character walks there. It first turns the camera so the tile shows in the upper half of the screen (`Camera.face`), and when the tile is still off the game view or behind the interface it zooms the camera out, halfway to a far zoom and then to it, as `Clickbox.reveal` does for a thing. The mouse follows a spot near the centre of one of the tile's two triangles with [Track](../utils/input/track.md) while it goes, since the scene slides under it while you walk; the spot itself has to be reached, as one on the tile's edge can take the tile next to it. The click goes in once the game offers "Walk here" there. It then waits up to `Walker.CLICK_CHECK_MS` (700) for the walk's destination: when the walk goes to another tile (something drawn over the tile, such as a pillar, sends a click to the ground behind it) it is logged and the tile's other triangle is clicked once more, and when that walk goes elsewhere too (the whole tile is covered from this angle) the tile is clicked on the minimap. Returns `false` with a message if the tile can't be seen (off screen or behind a panel); `true` once a walk was clicked, even if the second click still goes elsewhere.
+Clicks a tile so you walk there. It turns the camera to show the tile (`Camera.face`) and zooms out in up to two steps if it's still hidden, then tracks a spot inside one of the tile's triangles ([Track](../utils/input/track.md)) and clicks once "Walk here" is offered. If the walk's destination (checked for `Walker.CLICK_CHECK_MS`, 700) is another tile because something covers it, it clicks the other triangle, then the minimap. `false` when the tile can't be clicked on screen; `true` once a walk was clicked, even if it still goes elsewhere.
 
 Example:
 ```luau
@@ -98,7 +98,7 @@ Definition:
 ```luau
 function Walker.hover_tile_async(tile: Tile, at: Tile?): boolean
 ```
-Starts moving the mouse over a tile and returns at once, so the next click is already there. It doesn't turn the camera or click. Returns `false` when the tile is off screen or behind a panel. Any other input stops the move where it got to. While you walk, the screen moves with you: pass `at`, the tile you will stand on when you click, to aim where the tile will show then.
+Starts moving the mouse over a tile and returns at once; no camera turn, no click. Pass `at`, the tile you'll stand on when clicking, to aim where the tile will show then. `false` when the tile is off screen or behind a panel. Any other input stops the move.
 
 Example:
 ```luau
@@ -115,7 +115,7 @@ Definition:
 ```luau
 function Walker.wait_arrival(tile: Tile, timeout_ms: number?): boolean
 ```
-Waits until you are standing on the tile. Gives up after `timeout_ms` (default 10000) and returns `false`.
+Waits until you stand on the tile. `false` after `timeout_ms` (default 10000) or when logged out.
 
 Example:
 ```luau
@@ -132,7 +132,7 @@ Definition:
 ```luau
 function Walker.walk_tile(tile: Tile, timeout_ms: number?): boolean
 ```
-Clicks a tile and waits until you get there. A shortcut for `click_tile` followed by `wait_arrival`.
+`click_tile` then `wait_arrival`.
 
 Example:
 ```luau
@@ -148,7 +148,7 @@ Definition:
 ```luau
 function Walker.distance(a: Tile, b: Tile): number
 ```
-Tiles between two tiles: the larger of the x and y distances, which is how many steps walking takes.
+Chebyshev distance: the larger of the x and y gaps, which is the number of steps.
 
 Example:
 ```luau
@@ -163,7 +163,7 @@ Definition:
 ```luau
 function Walker.on_minimap(tile: Tile): boolean
 ```
-Whether a tile can be clicked on the minimap: it's within `Walker.MINIMAP_REACH` (0.8) of the minimap's radius from its centre, away from the orbs and the compass on the edge.
+Whether a tile is within `Walker.MINIMAP_REACH` (0.8) of the minimap's radius, clear of the orbs and compass.
 
 Example:
 ```luau
@@ -178,7 +178,7 @@ Definition:
 ```luau
 function Walker.click_minimap(tile: Tile): boolean
 ```
-Clicks a tile on the minimap and waits (up to 1.2 s) for the client to set a destination. The server finds the way to the tile, so this works where `find_path` can't, inside instances included. Before clicking, a minimap zoom below `Walker.MINIMAP_ZOOM_MIN` (4) is raised to it, or with `MINIMAP_ZOOM_HIGHER_CHANCE` to a random higher level; a zoom at or above it is left alone. Fails when the tile isn't on the minimap at that zoom (see `on_minimap`) or the zoom can't be set.
+Clicks a tile on the minimap and waits up to 1.2 s for a destination. The server paths, so it works in instances. A minimap zoom below `Walker.MINIMAP_ZOOM_MIN` (4) is first raised to it, or with `MINIMAP_ZOOM_HIGHER_CHANCE` to a random higher level. `false` when the zoom can't be set, the tile isn't on the minimap, or no destination appears.
 
 Example:
 ```luau
@@ -194,31 +194,30 @@ Definition:
 ```luau
 function Walker.walk(to: Tile, options: WalkOptions?): boolean
 ```
-Walks to a tile, on any plane, through doors and up and down ladders and staircases. It plans with `Host.nav_plan` (every plane of the loaded scene at once, the game cache's collision beyond it) and plans again when it needs to: after a door opens or a climb, when the scene loads another area, when the player is more than `Walker.OFF_PATH` tiles off the plan, and every `Walker.REPLAN_MS` anyway (doors other players open and close).
+Walks to a tile on any plane, using transports, doors, ladders, stairs and agility shortcuts. Returns `false` when it times out, is stopped, can't plan, or stops getting closer. `Walker.DEBUG = true` logs each step.
 
-- **Walking.** It clicks the farthest plan tile the screen shows, `Walker.SCREEN_PADDING` (10%) of the game view clear of its edges (within `Walker.SCREEN_REACH`, 30; the game sets no destination for a click about 35 tiles away), or the minimap when the screen shows none (and now and then, `Walker.MINIMAP_CHANCE`). Only tiles of the scene the game has loaded count, `Walker.SCENE_MARGIN` clear of its edge (`Walker.SCENE_TILES` across): a tile past it shows on screen all the same, but a click on it walks nowhere. The next click goes in while the player still has `Walker.CLICK_AHEAD_MIN_MS` to `Walker.CLICK_AHEAD_MAX_MS` of walking left to the last one, timed from the tile the server has the player on (ahead of where it is drawn, and where the game takes the flag away), so it doesn't stop between clicks. While walking it aims where the tile will be once the mouse gets there (the camera follows the player), and it doesn't click tiles within `Walker.SETTLE_TILES` of a moving player. A tile something stands on (a door, a ladder) gives way to the tiles before it; only the last one tried uses "Walk here" from the menu. It plans from the server's tile too.
-- **Camera.** The walk turns the camera to show as much of the way ahead as it can, so each click goes far: it projects the next `Walker.STEER_TILES` plan tiles as the camera would show them turned to each of `Walker.STEER_OFFSETS` (degrees off the bearing of their mean), from where the next click will go in, and turns to one that shows at least `Walker.STEER_GAIN` tiles more of the way than now (a random one of those within `Walker.STEER_SLACK` of the most, preferring one whose neighbours do as well). It looks before setting off, after each click, and every `Walker.STEER_CHECK_MS` while running to the flag (queued then, so a turn never holds up a click); a camera more than `Walker.LOW_PITCH` below `Camera.PITCH_MAX` is raised as it turns.
-- **Tiny moves.** `Walker.FIDGET_DELAY_MIN_MS` to `Walker.FIDGET_DELAY_MAX_MS` after a click, a wait for the flag rolls for a tiny move at `Walker.FIDGET_CHANCE`, then rolls again every `Walker.FIDGET_NEXT_MIN_MS` to `Walker.FIDGET_NEXT_MAX_MS` at `Walker.FIDGET_CHANCE_DROP` less each time (made or missed) until the chance runs out, and only with `Walker.FIDGET_MIN_LEFT_MS` left before the next click. Each move is a small yaw turn or mouse move (the antiban's tiny tasks), a pitch within `Walker.FIDGET_PITCH` of `Camera.PITCH_MAX`, or a zoom 1 to 5 scroll notches (weighted by `Walker.FIDGET_ZOOM_NOTCHES`, most often 3) from the zoom it found (kept from walk to walk, so the moves don't add up). They are queued, and the camera check above turns back to the way if one turned too far from it.
-- **Doors and climbs.** The plan's next door or ladder is clicked as soon as it is within `Walker.ACTION_RANGE` and on screen (the game walks the rest), or once the walk gets next to it. A door is done when the plan no longer goes through it or the other half of it (a double door or a gate: the locs side by side along its wall), checked every `Walker.DOOR_CHECK_MS`, and the server isn't moving the player without a walk of theirs: a toll gate walks you through and shuts behind you. A door that just opened isn't clicked again for `Walker.DOOR_REOPEN_MS`, while a gate shows shut before it walks you through. When the chatbox says a door clicked "seems to be stuck" (`Walker.DOOR_STUCK`: doors opened and closed too often), the walk plans round it at once. A climb is done when the plane changes (or, for an agility shortcut that keeps the plane, when you are within `Walker.SHORTCUT_LANDED_NEAR` of the tile it lands on and nearer to it than to the tile it starts from, so the middle of a two-tile jump doesn't count). After a plane change the camera is let settle and the walk pauses a random `Walker.CLIMB_PAUSE_MIN_MS` to `Walker.CLIMB_PAUSE_MAX_MS` (0 to 1.5 ticks) before its next click; after a climb that keeps the plane (an agility shortcut or a link like a stile) it pauses `Walker.SHORTCUT_PAUSE_MS` (1200, 2 ticks) instead, so the next click doesn't go in before the obstacle is done. Neither pause is part of the route's cost. The planning happens inside the pause. One that does nothing for `Walker.ACTION_IDLE_MS` (a locked door) is tried `Walker.ACTION_ATTEMPTS` times, then planned around.
-- **Wrong plane.** When the plan can't get from the player's plane to the goal's, or a walk ends on another plane than the goal's (a plan that went up a ladder it has no way back down from), it uses `Walker.climb_toward` on the goal's plane and walks again, `Walker.CLIMB_TRIES` times at most, before the "no way" error.
+**A goal with no way raises `no way from ... to ...`** (stopping the script unless caught with `pcall`): before moving, it takes usable transports (`Transports.travel`, up to `Walker.TRANSPORT_HOPS`), then asks `Transports.walkable`, and tries `climb_toward` once when the goal is on another plane. With `transports = false` or `straight` it skips all that and returns `false` instead.
+
+How it walks (all tunable via the `Walker.*` constants in the source):
+- **Planning.** `Host.nav_plan` over the loaded scene's planes and the cache beyond; replans after a door or climb, a scene load, more than `OFF_PATH` tiles off the plan, and every `REPLAN_MS`.
+- **Clicking.** The farthest plan tile on screen (`SCREEN_PADDING` inside the view, within `SCREEN_REACH`, inside the loaded scene by `SCENE_MARGIN`), else the minimap (also at `MINIMAP_CHANCE`). The next click goes in with `CLICK_AHEAD_MIN_MS`..`CLICK_AHEAD_MAX_MS` of walking left, timed from the server tile, aiming where the tile will be when the mouse arrives.
+- **Camera.** Turns to show the most of the next `STEER_TILES` plan tiles (`STEER_OFFSETS`, needing `STEER_GAIN` more tiles, random pick within `STEER_SLACK`), before setting off, after clicks and every `STEER_CHECK_MS`; raises a pitch lower than `LOW_PITCH` below max.
+- **Fidgets.** While waiting for the flag, random small yaw, pitch, zoom or mouse moves (`FIDGET_*`), with a chance that drops each roll.
+- **Doors and climbs.** Clicked once within `ACTION_RANGE` and on screen. A door is done when the plan no longer goes through it; a "seems to be stuck" door (`DOOR_STUCK`) is planned round. A climb is done when the plane changes (a shortcut: near its landing tile). Pauses `CLIMB_PAUSE_MIN_MS`..`CLIMB_PAUSE_MAX_MS` after a plane change, `SHORTCUT_PAUSE_MS` after a same-plane obstacle. One idle for `ACTION_IDLE_MS` is retried `ACTION_ATTEMPTS` times, then avoided.
+- **Wrong plane.** If the walk ends off the goal's plane, `climb_toward` and walk again, up to `CLIMB_TRIES`.
 
 `options`:
-- `near`: done once the player is at most this many tiles away, on `plane` (default 2).
-- `timeout_ms`: gives up after this long (default `Walker.TIMEOUT_MS`, 90000, or more for a long plan: `Walker.WALK_MS_PER_TILE` for every tile planned, each time the player has moved since the last plan).
-- `on_step`: called about every 50 ms with the player's tile; returning `false` stops the walk.
-- `straight`: walk the straight line on your plane, without planning, letting the server find the way.
-- `randomize`: take a different way each walk (default true): the plan's tile costs get noise from a seed picked per walk, so planning again keeps the same way. Sometimes (`Walker.SHORTER_CHANCE`, up to `Walker.SHORTER_MAX` tiles) it also clicks short of the farthest tile it could.
-- `before_click`: called with the tile (or door or ladder) about to be clicked and your tile; returning `false` stops the walk.
-- `accept`: a menu entry besides "Walk here" that may sit on a tile, which a click may take.
-- `plane`: the plane `to` is on (default the one you are on when the walk starts, even if a transport lands on another).
-- `doors`: open the closed doors on the way (default true); `false` walks round them.
-- `climbs`: use ladders and staircases (default true); `false` stays on your plane.
-- `shortcuts`: use agility shortcuts (default true, `Transports.SHORTCUTS`), putting on a crossbow and grapple or climbing boots from the inventory when one needs them, and leaving them on: those the real Agility level allows, outside the Wilderness, that save at least `Transports.SHORTCUT_MIN_SAVING_TILES` (10) over walking round; `false` walks round them.
-- `nav`: more for `Host.nav_plan`: `door_options`, `climbs`, `allow_climbs`, `shortcut_saving`, `avoid`, `door_cost`, `climb_cost`.
-
-`Walker.DEBUG = true` logs what the walk does and how long each step takes. Returns `false` when it times out, is stopped, can't plan, or the player stops getting closer.
-
-**A goal with no way raises an error, which stops the script.** Before moving, the walk asks `Transports.walkable`: when the goal can't be walked to with the climbs and links this account can use, and no usable transport leads there, it raises `no way from ... to ...` and the account doesn't move. A walk with `transports = false` returns `false` instead, because the lib uses those for short legs that have a fallback. Catch it with `pcall` when another way is worth trying.
+- `near`: done within this many tiles on `plane` (default 2).
+- `timeout_ms`: default `Walker.TIMEOUT_MS` (90000), extended by `WALK_MS_PER_TILE` per planned tile.
+- `on_step(tile)`: called about every 50 ms; `false` stops.
+- `straight`: click the straight line on your plane and let the server path.
+- `randomize`: per-walk noise on tile costs, sometimes clicking short (`SHORTER_CHANCE`, `SHORTER_MAX`) (default true).
+- `before_click(target, here)`: `false` stops.
+- `accept(entry)`: another menu entry a tile click may take besides "Walk here".
+- `plane`: the goal's plane (default yours at the start).
+- `doors`, `climbs`, `shortcuts`: allow each (default true). Shortcuts are those your Agility level allows outside the Wilderness that save `Transports.SHORTCUT_MIN_SAVING_TILES`; needed gear in the inventory is equipped and left on.
+- `transports`: `false` to walk only, or `{ exclude, min_saving_ticks }` for `Transports.travel`.
+- `nav`: extra `Host.NavOptions`.
 
 Example:
 ```luau
@@ -229,7 +228,6 @@ local ok = Walker.walk({ x = 3164, y = 3486 }, {
 	near = 3,
 	plane = 0,
 	on_step = function(tile)
-		-- stop walking when we get low on hitpoints
 		return (Player.hitpoints() or 99) > 10
 	end,
 })
@@ -258,7 +256,7 @@ Definition:
 ```luau
 function Walker.plan(to: Tile, plane: number?, options: Host.NavOptions?): NavPlan?
 ```
-The plan `Walker.walk` starts from: `Host.nav_plan` from you to `to` on `plane` (yours by default).
+`Host.nav_plan` from you to `to` on `plane` (default yours); `nil` and a log line when there is none.
 
 Example:
 ```luau
@@ -276,7 +274,7 @@ Definition:
 ```luau
 function Walker.plain_walk(to: Tile, near: number?): boolean
 ```
-Whether the plan `Walker.walk` would take to within `near` of `to` (with the agility shortcuts and links the player may use, as `walk` allows them) gets there with no door, climb or shortcut on the way, so a click on the thing there lets the client walk the player all the way. False on a stepping stone mid-crossing, or when the shortest way is over a shortcut even though a longer one could be walked.
+Whether `walk`'s plan to within `near` of `to` needs no door, climb or shortcut, so one click on the target walks all the way. False mid-crossing on stepping stones, or when the shortest way uses a shortcut.
 
 Example:
 ```luau
@@ -291,7 +289,7 @@ Definition:
 ```luau
 function Walker.last_click(): Tile?
 ```
-The tile the player is walking to, while they are: the last tile we clicked to walk to, which is where the walk ends. The client's destination takes over when that's somewhere else (a walk we didn't start, like a click on an NPC). Nil once they've arrived.
+Where you are walking: the last tile clicked, or the client's destination when that is more than 2 tiles from it (a walk not started here). `nil` when there's no destination.
 
 Example:
 ```luau
@@ -310,9 +308,9 @@ Definition:
 Walker.WALK_MS_PER_TILE = 600
 Walker.RUN_MS_PER_TILE = 300
 
-function Walker.ahead(ms: number): FinePoint?
+function Walker.ahead(ms: number): Host.FinePoint?
 ```
-How far (fine units, x and y) the player will have moved `ms` from now: it follows the game's route (`Walker.route`) from where the player is drawn to the client's destination flag, or to the end of the server's path once the flag has cleared (it clears a few tiles before the player gets there), at running or walking speed. Zero when the player has stopped. The camera follows the player, so `Projection.shifted` with this offset shows where things will be on screen by then.
+How far in fine units you'll have moved `ms` from now, along the game's route to the flag (or the server path's end once the flag clears), at run or walk speed. Zero when standing. Pass it to `Projection.shifted` to see where things will be on screen.
 
 Example:
 ```luau
@@ -330,11 +328,13 @@ Definition:
 ```luau
 function Walker.on_screen(tile: Tile): boolean
 ```
-TODO...
+Whether the tile is fully inside the game view, `Walker.SCREEN_PADDING` from its edges and clear of interface panels.
 
 Example:
 ```luau
+local Walker = require("@lib/main/walker")
 
+print(Walker.on_screen(assert(Walker.relative(3, 0))))
 ```
 
 ## Walker.climb_toward
@@ -346,4 +346,11 @@ Walker.CLIMB_TRIES = 2
 Walker.CLIMB_TIMEOUT_MS = 6000
 function Walker.climb_toward(plane: number): boolean
 ```
-Takes the player one plane toward `plane` without a plan: the nearest clickable object on the player's plane within `CLIMB_REACH` tiles whose options (`Host.loc_shown`) hold `Climb-down` (or `Climb-up` when `plane` is above) is used, and it waits up to `CLIMB_TIMEOUT_MS` for the plane to change. False when the player is on `plane` already, there is no such object, or the plane didn't change. `Walker.walk` falls back on it when it finds no way to another plane.
+One plane toward `plane` without a plan: uses the nearest object within `CLIMB_REACH` offering `Climb-down` (or `Climb-up`) and waits up to `CLIMB_TIMEOUT_MS` for the plane to change. `false` when already there, no such object, or no change.
+
+Example:
+```luau
+local Walker = require("@lib/main/walker")
+
+print(Walker.climb_toward(0))
+```

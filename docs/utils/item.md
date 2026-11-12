@@ -1,12 +1,10 @@
 # Utils.Item
 
-Describing items by id or by name, including ranges like `"Potion (1..4)"`, and checking whether an item matches.
+Items by id or name, ranges like `"Potion (1..4)"`, and matching. An `Item` is an id (number) or a name (string).
 
 ```luau
 local Item = require("@lib/utils/item")
 ```
-
-An item is either its id (a number) or its name (a text).
 
 ## Item.name
 
@@ -14,7 +12,7 @@ Definition:
 ```luau
 function Item.name(id: number): string?
 ```
-The name of an item from its id.
+An item's name.
 
 Example:
 ```luau
@@ -29,7 +27,7 @@ Definition:
 ```luau
 function Item.names(ids: { number }): { string? }?
 ```
-The names of many items at once.
+Names of many items.
 
 Example:
 ```luau
@@ -46,14 +44,13 @@ Definition:
 ```luau
 function Item.has_amount(item: string): boolean
 ```
-Whether an item name ends with a bracket, like `"Potion (3)"`. Items with doses or charges look like this.
+Whether the name ends in a bracket, like dose or charge items (`"Potion (3)"`).
 
 Example:
 ```luau
 local Item = require("@lib/utils/item")
 
 print(Item.has_amount("Potion (3)")) -- true
-print(Item.has_amount("Logs")) -- false
 ```
 
 ## Item.spread
@@ -62,7 +59,7 @@ Definition:
 ```luau
 function Item.spread(item: Item): { Item }
 ```
-Expands a range such as `"Potion (1..4)"` into `"Potion (1)"`, `"Potion (2)"`, `"Potion (3)"`, `"Potion (4)"`. Anything else comes back as a one-item list.
+Expands `"Potion (1..4)"` into `"Potion (1)"` to `"Potion (4)"`; anything else becomes a one-item list.
 
 Example:
 ```luau
@@ -77,7 +74,7 @@ Definition:
 ```luau
 function Item.matcher(items: Item | { Item }): Matcher
 ```
-Builds a quick lookup out of one item or a list of items (ids, names and ranges). Use it with `Item.matches`.
+Builds a lookup from items (ids, names, ranges) for `Item.matches`.
 
 Example:
 ```luau
@@ -93,13 +90,12 @@ Definition:
 ```luau
 function Item.needs_names(matcher: Matcher): boolean
 ```
-Whether the matcher contains any names. If not, you can match using ids only and skip looking names up.
+Whether the matcher has names; if not, matching needs no name lookups.
 
 Example:
 ```luau
 local Item = require("@lib/utils/item")
 
-print(Item.needs_names(Item.matcher({ 995 }))) -- false
 print(Item.needs_names(Item.matcher({ "Logs" }))) -- true
 ```
 
@@ -109,7 +105,7 @@ Definition:
 ```luau
 function Item.matches(matcher: Matcher, id: number, name: string?): boolean
 ```
-Whether an item (given by id and, if known, name) is one of the items in the matcher. Names are compared ignoring upper/lower case.
+Whether the item (id, optional name) is in the matcher; names are case-insensitive.
 
 Example:
 ```luau
@@ -117,5 +113,4 @@ local Item = require("@lib/utils/item")
 
 local wanted = Item.matcher({ "Logs" })
 print(Item.matches(wanted, 1511, "Logs")) -- true
-print(Item.matches(wanted, 995, "Coins")) -- false
 ```

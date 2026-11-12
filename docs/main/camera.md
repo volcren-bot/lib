@@ -1,21 +1,16 @@
 # Main.Camera
 
-Reading and changing the camera: which way it faces, how far it tilts and how zoomed in it is.
+Reads and turns the camera: yaw, pitch and zoom. Turning is human-like: a middle-mouse drag (`"mouse"`) or held arrow keys (`"keys"`), picked by the optional `method`. A drag or zoom starts where the mouse already is if that spot is over an uncovered game view with room for the drag; otherwise the mouse moves into the game view first.
 
 ```luau
 local Camera = require("@lib/main/camera")
 ```
 
-Angles are measured in "units" where a full turn is 16384. Most functions have a `_degrees` twin that uses degrees instead. `yaw` is the left/right direction, `pitch` is how much you look down from above.
-
-Turning is done like a person would: dragging with the middle mouse button (`"mouse"`) or holding the arrow keys (`"keys"`). Functions that turn the camera take an optional `method` to pick one.
-
-A drag or a zoom starts wherever the mouse already is when it's over the game view, not covered by an interface, and (for a drag) has room for the whole drag. Only otherwise does the mouse move into the game view first.
+Angles are in units, 16384 per full turn; `_degrees` variants use degrees. Yaw is the compass direction, pitch how far it looks down from above.
 
 ## Constants
 
 Definition:
-
 ```luau
 Camera.TURN = 16384
 Camera.PITCH_MIN = 1024
@@ -24,23 +19,19 @@ Camera.ZOOM_MIN = 128
 Camera.ZOOM_MAX = 896
 Camera.ZOOM_STEP = 24
 ```
-
-The size of a full turn, the lowest and highest tilt, the farthest and closest zoom, and about how much one mouse wheel notch zooms.
+Full turn, pitch range, zoom range (farthest to closest) and the approximate zoom per wheel notch.
 
 ## Settings
 
 Definition:
-
 ```luau
 Camera.method = "mouse"
 Camera.tolerance = 64
 Camera.zoom_tolerance = 12
 ```
-
-`method` is how the camera is turned unless you say otherwise. `tolerance` and `zoom_tolerance` are how close to the target counts as "there".
+Default turning method, and how close an angle or zoom must be to count as reached.
 
 Definition:
-
 ```luau
 Camera.FACE_LIMIT = 70
 Camera.LOOK_SPREAD = 12
@@ -50,46 +41,39 @@ Camera.FACE_TASK_CHANCE = 0.05
 Camera.face_task = nil
 Camera.face_enabled = true
 ```
-
-Settings for `Camera.face`:
-- `FACE_LIMIT`: how many degrees off the camera's direction a thing can be and still count as in the upper half of the screen (90 would be the middle line).
-- `LOOK_SPREAD`: how many degrees either side of straight ahead `Camera.look_at` may leave the tile.
-- `FACE_PITCH_SLACK`: how far below `PITCH_MAX` the pitch can be and still count as the highest.
-- `FACE_CHANCES`: how likely it turns at all, by how many tiles away the thing is: `{ tiles, chance }` points in order, with straight lines between them (see `Camera.face_chance`). The default is 10% at 2 tiles or closer, 80% at 12 and always at 20 or more, so close things rarely turn the camera. Chances below 1 are varied per account by the biometrics.
-- `FACE_TASK_CHANCE` / `face_task`: the chance (also biometric) to run `face_task` after turning, instead of raising the pitch. Loading the [antiban tasks](antiban/antiban_tasks.md) sets it to `Tasks.adjust_camera`.
-- `face_enabled`: set to `false` to never turn the camera this way.
+Settings for `face` and `look_at`:
+- `FACE_LIMIT`: degrees off the camera direction that still count as the upper half of the screen.
+- `LOOK_SPREAD`: degrees of random spread either side in `look_at`.
+- `FACE_PITCH_SLACK`: how far below `PITCH_MAX` still counts as the highest pitch.
+- `FACE_CHANCES`: `{ tiles, chance }` points, linearly interpolated (`face_chance`); chances below 1 are varied per account by the biometrics.
+- `FACE_TASK_CHANCE` / `face_task`: biometric chance to run `face_task` after turning instead of raising the pitch. Loading the [antiban tasks](antiban/antiban_tasks.md) sets it to `Tasks.adjust_camera`.
+- `face_enabled`: `false` disables `face`.
 
 ## Camera.state
 
 Definition:
-
 ```luau
 function Camera.state(): CameraState?
 ```
-
-Everything about the camera in one table: position, angles, focal point and zoom.
+The whole camera: position, angles, focal point and zoom; `nil` when unreadable.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
 local cam = Camera.state()
-print(if cam then `yaw {cam.yaw}, pitch {cam.pitch}` else "unavailable")
+print(if cam then cam.yaw else "unavailable")
 ```
 
 ## Camera.yaw_to_degrees
 
 Definition:
-
 ```luau
 function Camera.yaw_to_degrees(yaw: number): number
 ```
-
-Converts a yaw to a compass bearing in degrees (0 is north, 90 is east).
+Yaw to compass bearing (0 north, 90 east).
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
@@ -99,15 +83,12 @@ print(Camera.yaw_to_degrees(12288)) -- 90
 ## Camera.degrees_to_yaw
 
 Definition:
-
 ```luau
 function Camera.degrees_to_yaw(degrees: number): number
 ```
-
-The opposite of `yaw_to_degrees`: a compass bearing to a yaw.
+Compass bearing to yaw.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
@@ -117,15 +98,12 @@ print(Camera.degrees_to_yaw(90)) -- 12288
 ## Camera.pitch_to_degrees
 
 Definition:
-
 ```luau
 function Camera.pitch_to_degrees(pitch: number): number
 ```
-
-Converts a pitch to degrees above the horizon.
+Pitch to degrees above the horizon.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
@@ -135,15 +113,12 @@ print(Camera.pitch_to_degrees(2048)) -- 45
 ## Camera.degrees_to_pitch
 
 Definition:
-
 ```luau
 function Camera.degrees_to_pitch(degrees: number): number
 ```
-
-Converts degrees above the horizon to a pitch.
+Degrees above the horizon to pitch.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
@@ -153,105 +128,87 @@ print(Camera.degrees_to_pitch(45)) -- 2048
 ## Camera.yaw
 
 Definition:
-
 ```luau
 function Camera.yaw(): number?
 ```
-
-Which way the camera faces, in units (0 is north, turning towards the west as it grows).
+Current yaw in units; 0 is north and it grows turning west.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
-print("yaw:", Camera.yaw())
+print(Camera.yaw())
 ```
 
 ## Camera.yaw_degrees
 
 Definition:
-
 ```luau
 function Camera.yaw_degrees(): number?
 ```
-
-Which way the camera faces as a compass bearing in degrees.
+Current yaw as a compass bearing.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
-print("facing", Camera.yaw_degrees(), "degrees")
+print(Camera.yaw_degrees())
 ```
 
 ## Camera.pitch
 
 Definition:
-
 ```luau
 function Camera.pitch(): number?
 ```
-
-How far the camera is tilted, in units. Higher looks more from above.
+Current pitch in units; higher looks more from above.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
-print("pitch:", Camera.pitch())
+print(Camera.pitch())
 ```
 
 ## Camera.pitch_degrees
 
 Definition:
-
 ```luau
 function Camera.pitch_degrees(): number?
 ```
-
-How far the camera is tilted, in degrees.
+Current pitch in degrees.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
-print("pitch:", Camera.pitch_degrees(), "degrees")
+print(Camera.pitch_degrees())
 ```
 
 ## Camera.zoom
 
 Definition:
-
 ```luau
 function Camera.zoom(): number?
 ```
-
-How zoomed in the camera is, from `ZOOM_MIN` (farthest) to `ZOOM_MAX` (closest).
+Current zoom, `ZOOM_MIN` (farthest) to `ZOOM_MAX` (closest).
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
-print("zoom:", Camera.zoom())
+print(Camera.zoom())
 ```
 
 ## Camera.set_yaw
 
 Definition:
-
 ```luau
 function Camera.set_yaw(yaw: number, method: Method?): boolean
 ```
-
-Turns the camera to face a direction given in units.
+Turns to `yaw` (units) and blocks until within `tolerance`.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
@@ -261,33 +218,27 @@ print(Camera.set_yaw(4096))
 ## Camera.set_yaw_degrees
 
 Definition:
-
 ```luau
 function Camera.set_yaw_degrees(degrees: number, method: Method?): boolean
 ```
-
-Turns the camera to face a compass bearing (0 north, 90 east, 180 south, 270 west).
+Turns to a compass bearing.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
-print(Camera.set_yaw_degrees(0)) -- face north
+print(Camera.set_yaw_degrees(0))
 ```
 
 ## Camera.set_pitch
 
 Definition:
-
 ```luau
 function Camera.set_pitch(pitch: number, method: Method?): boolean
 ```
-
-Tilts the camera to a pitch in units. Values outside the allowed range are limited to it.
+Tilts to `pitch` (units), clamped to `PITCH_MIN`..`PITCH_MAX`.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
@@ -297,15 +248,12 @@ print(Camera.set_pitch(Camera.PITCH_MAX))
 ## Camera.set_pitch_degrees
 
 Definition:
-
 ```luau
 function Camera.set_pitch_degrees(degrees: number, method: Method?): boolean
 ```
-
-Tilts the camera to an angle in degrees above the horizon.
+Tilts to degrees above the horizon.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
@@ -315,15 +263,12 @@ print(Camera.set_pitch_degrees(50))
 ## Camera.set_angles
 
 Definition:
-
 ```luau
 function Camera.set_angles(yaw: number, pitch: number, method: Method?): boolean
 ```
-
-Sets the direction and tilt together. With the mouse method this is a single drag.
+Sets yaw and pitch together; one drag with the mouse method.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
@@ -333,24 +278,21 @@ print(Camera.set_angles(0, 2048))
 ## Camera.set_zoom
 
 Definition:
-
 ```luau
 function Camera.set_zoom(zoom: number): boolean
 ```
-
-Zooms in or out with the mouse wheel until the camera reaches the zoom level you asked for.
+Scrolls the wheel until the zoom is within `zoom_tolerance` of `zoom` (clamped to the zoom range). `false` when unreadable, out of room, or the zoom stops changing.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
-print(Camera.set_zoom(Camera.ZOOM_MAX)) -- as close as possible
+print(Camera.set_zoom(Camera.ZOOM_MAX))
 ```
 
 ## Async turning and zooming
 
-`Camera.set_yaw_async`, `Camera.set_yaw_degrees_async`, `Camera.set_pitch_async`, `Camera.set_angles_async` and `Camera.set_zoom_async` queue the input that moves the camera and return at once, so the script keeps going while it moves (see [Mouse](../utils/input/mouse.md) for what stops queued input). They are open loop: from the camera as it is now they work out how far to drag the middle button, or how many wheel notches to scroll, and never check where the camera ends up. It lands close to the target, not exactly, and `Camera.method` is ignored (they always drag). They return `true` when the input was queued, or the camera is already there, and `false` when it couldn't be (the camera isn't readable, or there is no room to drag or scroll). Use the blocking `Camera.set_*` when it has to be exact.
+The `_async` setters queue the drag or wheel notches and return at once (see [Mouse](../utils/input/mouse.md) for what stops queued input). They are open loop: computed from the current camera, never checked, so they land near the target. They always drag, ignoring `Camera.method`. They return `true` when queued or already there, `false` when the camera is unreadable or there is no room. Use the blocking setters when it must be exact.
 
 ## Camera.set_yaw_async
 
@@ -358,7 +300,7 @@ Definition:
 ```luau
 function Camera.set_yaw_async(yaw: number): boolean
 ```
-Queues a drag that turns the camera towards `yaw`. Open loop, see above.
+Queues a drag towards `yaw`.
 
 Example:
 ```luau
@@ -373,7 +315,7 @@ Definition:
 ```luau
 function Camera.set_yaw_degrees_async(degrees: number): boolean
 ```
-Like `Camera.set_yaw_async`, with the angle in degrees.
+`set_yaw_async` in degrees.
 
 Example:
 ```luau
@@ -388,7 +330,7 @@ Definition:
 ```luau
 function Camera.set_pitch_async(pitch: number): boolean
 ```
-Queues a drag that tilts the camera towards `pitch`, kept between `Camera.PITCH_MIN` and `Camera.PITCH_MAX`. Open loop.
+Queues a drag towards `pitch`, clamped to the pitch range.
 
 Example:
 ```luau
@@ -403,7 +345,7 @@ Definition:
 ```luau
 function Camera.set_angles_async(yaw: number, pitch: number): boolean
 ```
-Queues one drag that turns towards both `yaw` and `pitch`. Open loop.
+Queues one drag towards both `yaw` and `pitch`.
 
 Example:
 ```luau
@@ -418,7 +360,7 @@ Definition:
 ```luau
 function Camera.set_zoom_async(zoom: number): boolean
 ```
-Queues the wheel notches (about `Camera.ZOOM_STEP` of zoom each) that take the zoom to `zoom`, kept between `Camera.ZOOM_MIN` and `Camera.ZOOM_MAX`. If the mouse isn't over the game view it moves there first. Open loop.
+Queues the wheel notches (`ZOOM_STEP` each) towards `zoom`, clamped to the zoom range, moving the mouse into the game view first if needed.
 
 Example:
 ```luau
@@ -430,33 +372,27 @@ Camera.set_zoom_async(Camera.ZOOM_MAX)
 ## Camera.face_chance
 
 Definition:
-
 ```luau
 function Camera.face_chance(tiles: number): number
 ```
-
-The chance (0 to 1) that `Camera.face` turns for a thing `tiles` away, read off `FACE_CHANCES`.
+The chance (0 to 1) that `face` turns for a tile `tiles` away, from `FACE_CHANCES`.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 
-print(Camera.face_chance(2), Camera.face_chance(7), Camera.face_chance(12), Camera.face_chance(25)) -- 0.1 0.45 0.8 1
+print(Camera.face_chance(2), Camera.face_chance(7), Camera.face_chance(25)) -- 0.1 0.45 1
 ```
 
 ## Camera.look_at
 
 Definition:
-
 ```luau
 function Camera.look_at(tile: Tile, from: Tile?): boolean
 ```
-
-Turns the camera so `tile` is straight ahead, give or take `LOOK_SPREAD` degrees, keeping the pitch. `from` is where the player will stand when it matters (the landing of an obstacle under way, say); it defaults to where you are now. Unlike `Camera.face`, it always turns and aims at the tile rather than just near it. `Clickbox.reveal` uses it when facing and zooming out didn't bring a thing on screen. Returns whether the camera turned; false when `from` is the tile.
+Always turns so `tile` is straight ahead from `from` (default: your tile), within a random `LOOK_SPREAD`, keeping the pitch. Returns the `set_yaw` result; `false` when `from` is the tile or unreadable. `Clickbox.reveal` uses it when `face` and zooming out didn't help.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 local Walker = require("@lib/main/walker")
@@ -467,20 +403,15 @@ print(Camera.look_at(assert(Walker.relative(4, 6))))
 ## Camera.face
 
 Definition:
-
 ```luau
 function Camera.face(tile: Tile, force: boolean?, from: Tile?): boolean
 ```
-
-Turns the camera so `tile` shows in the upper half of the game screen. The chatbox and game tabs cover less there, and you can see farther. It turns the short way, just enough that the tile ends up at most `FACE_LIMIT` degrees off the camera's direction, on the side it came from: usually close to that limit, sometimes closer to straight ahead. It doesn't aim the camera straight at the tile. In the same drag it raises the pitch to the highest. Sometimes it runs `face_task` instead (the antiban zoom and pitch task). Nothing happens when the tile is already in the upper half, when the player is standing on it, or when the `face_chance` roll for its distance fails (`force` skips the roll). `from` measures all of that from another tile instead of the player's, so the camera can be turned for where the player is about to be, such as the end of an obstacle. Returns whether the camera turned.
-
-The entities (through `Clickbox.hover`, `click`, `interact` and `approach`) and the `Walker` tile clicks call it before acting, so scripts don't need to.
+Turns the short way just enough that `tile` sits in the upper half of the screen (a random amount inside `FACE_LIMIT`, not aimed straight at it), raising the pitch to `PITCH_MAX` in the same drag. With `FACE_TASK_CHANCE` it instead turns the yaw only and then runs `face_task`. Does nothing when disabled, the tile is already in the upper half, you stand on it, or the `face_chance` roll fails (`force` skips the roll). `from` measures from another tile, such as an obstacle's landing. Returns whether it turned. Entity `hover`/`click`/`interact`/`approach` and `Walker` tile clicks call it already.
 
 Example:
-
 ```luau
 local Camera = require("@lib/main/camera")
 local Walker = require("@lib/main/walker")
 
-print(Camera.face(assert(Walker.relative(0, -5)))) -- the tile 5 south of the player
+print(Camera.face(assert(Walker.relative(0, -5))))
 ```

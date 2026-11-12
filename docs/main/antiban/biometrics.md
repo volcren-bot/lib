@@ -1,6 +1,6 @@
 # Main.Antiban.Biometrics
 
-Gives each account its own consistent "personality" so a script doesn't behave identically for everyone: mouse speed, click timings, sleep schedule and how often it makes small human-like mistakes. The personality is generated from the account name, so the same account always behaves the same way. The hash and the profile are computed by the injector (`Host.murmur2a`, `Host.biometrics_profile`). The breaks tab's Auto values (sleep time, sleep length, logout chances) come from this profile.
+A consistent per-account personality (mouse speed, click timings, sleep schedule, habits), derived from the account name so the same account always behaves the same. The profile comes from the injector (`Host.biometrics_profile`). The loader's Breaks tab Auto values come from it.
 
 ```luau
 local Biometrics = require("@lib/main/antiban/biometrics")
@@ -9,6 +9,7 @@ local Biometrics = require("@lib/main/antiban/biometrics")
 ## Constants
 
 Definition:
+
 ```luau
 Biometrics.MULTIPLIER = 0
 Biometrics.SLEEP_H = 1
@@ -32,294 +33,318 @@ Biometrics.RATING = 18
 Biometrics.LIKES = 19
 Biometrics.DISLIKES = 20
 ```
-The traits that make up a personality. Each one is a number between 0 and 255 that you read with `get_biometric` or `get_probability`.
+
+Trait indices (`Biometric`) for `get_biometric`, `get_probability` and `biometric_boolean`. Each trait is 0 to 255.
+
+Example:
+
+```luau
+print(Biometrics.get_biometric(Biometrics.MOUSE_SPEED))
+```
 
 ## Biometrics.murmur2a
 
 Definition:
+
 ```luau
 function Biometrics.murmur2a(text: string, seed: number?): number
 ```
-A fast text-scrambling function (a hash) that turns any text into a number. The same text and seed always give the same number.
+
+Deterministic MurmurHash2A of `text` (via `Host.murmur2a`).
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.murmur2a("hello", 0))
 ```
 
 ## Biometrics.hash_string
 
 Definition:
+
 ```luau
 function Biometrics.hash_string(text: string): number
 ```
-Same as `murmur2a` with the default seed.
+
+`murmur2a` with seed 0.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.hash_string("my account"))
 ```
 
 ## Biometrics.setup
 
 Definition:
+
 ```luau
 function Biometrics.setup(username: string?)
 ```
-Creates the personality for an account name and applies the matching mouse speed and click timing. Passing `nil` or an empty name forgets the current personality.
+
+Builds the personality for `username` and applies its `Mouse.speed`, `gravity`, `wind`, `press_min` and `press_max`. `nil` or `""` clears it.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 Biometrics.setup("my account")
 ```
 
 ## Biometrics.clean_name
 
 Definition:
+
 ```luau
 function Biometrics.clean_name(name: string): string
 ```
-Tidies a display name so the same account always gives the same text: special spaces and underscores become normal spaces, the ends are trimmed and everything is lowercase.
+
+Normalises a display name: non-breaking spaces and underscores become spaces, ends are trimmed, and it is lowercased.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.clean_name("  My_Account ")) -- "my account"
 ```
 
 ## Biometrics.setup_player
 
 Definition:
+
 ```luau
 function Biometrics.setup_player(): boolean
 ```
-Sets up the personality from the name of the character you are logged in as. Returns `true` when done.
+
+`setup` with the logged-in character's cleaned name. Returns false if the name is unknown or empty.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
-local ok = Biometrics.setup_player()
-print(if ok then "personality ready" else `couldn't set up`)
+```luau
+Biometrics.setup_player()
 ```
 
 ## Biometrics.seed
 
 Definition:
+
 ```luau
 function Biometrics.seed(): string?
 ```
-The account name the current personality was made from, or `nil` if none has been set up.
+
+The name the current personality came from, or nil.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
-Biometrics.setup("my account")
+```luau
 print(Biometrics.seed())
 ```
 
 ## Biometrics.hash
 
 Definition:
+
 ```luau
 function Biometrics.hash(): { number }
 ```
-The raw list of numbers that makes up the personality. If none was set up, a random one is created for this run.
+
+The 21 raw trait bytes. Without `setup`, creates a random profile for this run (and applies its mouse settings).
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(#Biometrics.hash())
 ```
 
 ## Biometrics.get_biometric
 
 Definition:
+
 ```luau
 function Biometrics.get_biometric(biometric: Biometric): number
 ```
-One trait of the personality as a number from 0 to 255.
+
+One trait, 0 to 255.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.get_biometric(Biometrics.MOUSE_SPEED))
 ```
 
 ## Biometrics.get_probability
 
 Definition:
+
 ```luau
 function Biometrics.get_probability(biometric: Biometric): number
 ```
-One trait as a number from 0 to 1.
+
+One trait scaled to 0 to 1.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.get_probability(Biometrics.SPAM_CLICK))
 ```
 
 ## Biometrics.random_double
 
 Definition:
+
 ```luau
 function Biometrics.random_double(input: number): number
 ```
-Returns a number near `input`, with a little random variation. How much it varies depends on the personality.
+
+Gaussian around `input` with std `input * MULTIPLIER` probability. Unbounded.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.random_double(100))
 ```
 
 ## Biometrics.random_integer
 
 Definition:
+
 ```luau
 function Biometrics.random_integer(input: number): number
 ```
-Like `random_double` but rounded to a whole number.
+
+`random_double`, rounded.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.random_integer(500))
 ```
 
 ## Biometrics.random_mode_double
 
 Definition:
+
 ```luau
 function Biometrics.random_mode_double(input: number, minimum: number, maximum: number): number
 ```
-Like `random_double`, but the result always stays between `minimum` and `maximum`.
+
+Like `random_double` with mode `input`, clamped to `minimum..maximum`.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.random_mode_double(300, 100, 600))
 ```
 
 ## Biometrics.random_mode_integer
 
 Definition:
+
 ```luau
 function Biometrics.random_mode_integer(input: number, minimum: number, maximum: number): number
 ```
-Like `random_mode_double` but rounded to a whole number.
+
+`random_mode_double`, rounded.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.random_mode_integer(300, 100, 600))
 ```
 
 ## Biometrics.random_boolean
 
 Definition:
+
 ```luau
 function Biometrics.random_boolean(probability: number?): boolean
 ```
-Randomly returns `true` or `false`. `probability` (0 to 1, default 0.5) is roughly how often `true` comes up, varying a little with the personality.
+
+True with roughly `probability` (default 0.5), jittered by `random_double`.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 if Biometrics.random_boolean(0.1) then
-	print("1 in 10")
+	print("rare")
 end
 ```
 
 ## Biometrics.biometric_boolean
 
 Definition:
+
 ```luau
 function Biometrics.biometric_boolean(biometric: Biometric): boolean
 ```
-Randomly returns `true` or `false` where the chance of `true` is the strength of that trait for this personality. A person with a high `SPAM_CLICK` says `true` often.
+
+True with the trait's probability.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 print(Biometrics.biometric_boolean(Biometrics.SPAM_CLICK))
 ```
 
 ## Biometrics.sleep_hour
 
 Definition:
+
 ```luau
 function Biometrics.sleep_hour(): string
 ```
-The time of day (`"HH:MM:SS"`) this personality goes to sleep, somewhere between 23:00 and 03:00.
+
+This personality's bedtime as "HH:MM:SS", between 23:00 and 03:00.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
-print("goes to bed at", Biometrics.sleep_hour())
+```luau
+print(Biometrics.sleep_hour())
 ```
 
 ## Biometrics.sleep_length
 
 Definition:
+
 ```luau
 function Biometrics.sleep_length(): number
 ```
-How many hours this personality sleeps, between 6 and 10.
+
+Hours of sleep, 6 to 10, two decimals.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
-print("sleeps", Biometrics.sleep_length(), "hours")
+```luau
+print(Biometrics.sleep_length())
 ```
 
 ## Biometrics.sleep
 
 Definition:
+
 ```luau
 function Biometrics.sleep(minimum: number, maximum: number?, dir: Random.Dir?)
 ```
-Waits for a human-like amount of time in milliseconds. With one number it waits about that long; with two it waits somewhere between them.
+
+Blocks a human-like time in ms: about `minimum` alone, or between the two biased by `dir` (default `"mean"`).
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 Biometrics.sleep(200, 600)
 ```
 
 ## Biometrics.sleep_async
 
 Definition:
+
 ```luau
 function Biometrics.sleep_async(minimum: number, maximum: number?, dir: Random.Dir?)
 ```
-Like `Biometrics.sleep`, but queues the wait behind the async input and returns at once. Blocking input cancels what is still queued.
+
+Like `sleep`, but queues the wait behind async input and returns at once. Blocking input cancels what is still queued.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 Mouse.click_async()
 Biometrics.sleep_async(200, 600)
 Mouse.click_async()
@@ -328,14 +353,15 @@ Mouse.click_async()
 ## Biometrics.click
 
 Definition:
+
 ```luau
 function Biometrics.click(button: Mouse.Button?, clicks: number?, probability: number?)
 ```
-Clicks at the current mouse position, and sometimes (`probability`, 0.08 by default) clicks a few extra times nearby like a person who double-clicks by habit. `clicks` is the most extra clicks (3 by default).
+
+Clicks at the mouse position; with chance `probability` (default 0.08) adds 1 to `clicks` (default 3) extra clicks within 5 px, like a habitual double-clicker.
 
 Example:
-```luau
-local Biometrics = require("@lib/main/antiban/biometrics")
 
+```luau
 Biometrics.click()
 ```

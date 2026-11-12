@@ -1,12 +1,10 @@
 # Main.Interfaces.Mainscreen.Canoe
 
-The canoe stations of the two rivers. A station goes through four steps, and the next one is what its menu offers: "Chop-down", "Shape-Canoe" (opens group 416, `canoeing`), "Float Log" or another canoe's name, and "Paddle Canoe" (opens the river's map: group 952, `canoe_map_dougne`, or group 953, `canoe_map_lum`).
+The canoe stations on the two rivers. A station steps through "Chop-down", "Shape-Canoe" (group 416), "Float ..." and "Paddle Canoe" (map group 952 for Ardougne, 953 for Lumbridge); its menu shows the next step, and its varbit in `Canoe.STATIONS` changes as each finishes. After a trip the canoe sinks and the station resets to "Chop-down".
 
 ```luau
 local Canoe = require("@lib/main/interfaces/mainscreen/canoe")
 ```
-
-The canoe sinks at the end of the trip, and the station you left starts again from "Chop-down". Each station's progress is also in a varbit (`Canoe.STATIONS`), which `travel` watches to tell when a step is done.
 
 | Canoe | Woodcutting | Stops |
 | --- | --- | --- |
@@ -15,19 +13,18 @@ The canoe sinks at the end of the trip, and the station you left starts again fr
 | Stable dugout | 42 | 3 |
 | Waka | 57 | 4, and the Wilderness Pond |
 
-**The axe.** A trip needs an axe the player can use, held or kept by a station's NPC. The NPC's "Store-axe" does whichever is due: it takes the held axe ("I'll hold onto that axe for you.") or gives the kept one back ("Here's your axe."). Any station's NPC gives and uses the same kept axe. No varp changes when an axe is stored, and the NPC's options stay the same, so the only way to learn that none is kept is to chop: "You need an axe which you have the required Woodcutting level to use to be able to chop down this tree." That gives `Canoe.NO_AXE`.
-
-**On the map.** Only stops the canoe reaches offer "Travel to ...", and the station you are at offers nothing. The Ardougne map's Log trip and the Lumbridge map's Waka hover were read live. The Wilderness stops are never picked by the chooser from safety, and a warning the game may show for them hasn't been seen. The option's text can be cut short ("Travel to Tree Gnome Strong"), so a click is checked by the component's id.
+A trip needs a usable axe, held or kept by any station NPC ("Store-axe" toggles between the two). Nothing shows whether an axe is kept, so a missing one is only found by chopping, which gives `Canoe.NO_AXE`. On the map only reachable stops offer "Travel to ..."; clicks are checked by component id since the option text can be truncated.
 
 ## Constants
 
 - `Canoe.Kind`: `Log`, `Dugout`, `StableDugout`, `Waka`.
 - `Canoe.KINDS`: each canoe's button in group 416 and its level.
-- `Canoe.PLACES`: each stop by the data's name: its river's map, its button and where a trip lands.
-- `Canoe.STATIONS`: each station's object id: its state varbit and its river's map.
-- `Canoe.KEEPERS`: the NPC ids of the stations (`canoeing_*` in the cache).
-- `Canoe.NO_AXE`, `Canoe.CANT_REACH`: what `travel` says went wrong.
-- `Canoe.STEP_TIMEOUT_MS`, `Canoe.SETTLED_MS`, `Canoe.TRIP_TIMEOUT_MS`, `Canoe.OPEN_TIMEOUT_MS`, `Canoe.HOVER_TIMEOUT_MS`: how long each wait lasts.
+- `Canoe.PLACES`: each stop by name: its map, button and landing tile.
+- `Canoe.STATIONS`: station object id to its state varbit and map.
+- `Canoe.KEEPERS`: station NPC ids.
+- `Canoe.NO_AXE`, `Canoe.CANT_REACH`: `travel` failure reasons.
+- `Canoe.STATION_RANGE`: tiles searched for a station or keeper.
+- `Canoe.STEP_TIMEOUT_MS`, `Canoe.SETTLED_MS`, `Canoe.TRIP_TIMEOUT_MS`, `Canoe.OPEN_TIMEOUT_MS`, `Canoe.HOVER_TIMEOUT_MS`: wait lengths.
 
 ## Canoe.kind_for_level
 
@@ -35,7 +32,7 @@ Definition:
 ```luau
 function Canoe.kind_for_level(level: number?): Kind
 ```
-The smallest canoe for a trip the data says takes this Woodcutting level. The Waka when no level is given.
+The cheapest canoe whose level is at least `level`; the Waka when `level` is nil or above every canoe.
 
 Example:
 ```luau
@@ -48,9 +45,9 @@ print(Canoe.kind_for_level(27)) -- Dugout
 
 Definition:
 ```luau
-function Canoe.station(): Host.Loc?
+function Canoe.station(): Loc?
 ```
-The nearest canoe station within `STATION_RANGE`.
+The nearest known canoe station within `STATION_RANGE`, or nil.
 
 Example:
 ```luau
@@ -64,9 +61,9 @@ print(station and station.id)
 
 Definition:
 ```luau
-function Canoe.stage(): ("chop" | "shape" | "float" | "paddle")?
+function Canoe.stage(): Stage?
 ```
-What the nearest station needs next. It hovers the station, which has to be on the screen. Nil when there's none or its menu can't be read.
+`"chop"`, `"shape"`, `"float"` or `"paddle"`: the nearest station's next step, read by hovering it (it must be on screen). Nil when there's no station or no matching menu entry.
 
 Example:
 ```luau
@@ -81,9 +78,7 @@ Definition:
 ```luau
 function Canoe.travel(place: string, kind: Kind?): (boolean, string?)
 ```
-Takes a canoe from the station beside the player to `place`, the data's name for the stop, starting from whichever step the station is on. `kind` is what to shape, the Waka by default. A canoe made earlier is used as it is, so it may be too small, which gives `CANT_REACH`.
-
-The trip takes about 20 s, through a cutscene in another part of the map, so the player's tile jumps far away and back. True once landed; else false and why.
+Runs the nearby station from its current step to a trip to `place` (a `Canoe.PLACES` key), shaping `kind` (default Waka) if needed. An existing canoe is used as is, so it may be too small (`CANT_REACH`). The trip is a ~20 s cutscene during which the player's tile jumps away. True once landed; otherwise false and a reason.
 
 Example:
 ```luau
@@ -97,9 +92,9 @@ print(ok, why)
 
 Definition:
 ```luau
-function Canoe.keeper(): Host.Npc?
+function Canoe.keeper(): Npc?
 ```
-The nearest station NPC within `STATION_RANGE`.
+The nearest station NPC within `STATION_RANGE`, or nil.
 
 Example:
 ```luau
@@ -115,7 +110,7 @@ Definition:
 ```luau
 function Canoe.swap_axe(): boolean
 ```
-Clicks "Store-axe" on the station's NPC and continues the reply: gives the held axe to them, or gets a kept one back. True once the reply has been continued.
+Clicks "Store-axe" on the nearest keeper, which stores the held axe or returns the kept one, then continues the reply. False when no keeper is near or no reply appears within `OPEN_TIMEOUT_MS`.
 
 Example:
 ```luau

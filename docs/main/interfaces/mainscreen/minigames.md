@@ -1,22 +1,15 @@
 # Main.Interfaces.Mainscreen.Minigames
 
-The minigame teleports, a spell on a 20 minute cooldown (varp 888), in its two ways. This file holds both.
+The minigame teleport (20 minute cooldown, varp 888), started two ways: the "Minigame Teleport" spell's scrolling list (group 951, a cell's "Select" starts the cast), or the Grouping view of the side channels tab (group 76 inside 707: pick an activity in the dropdown, then "Teleport to" it). Rat Pits then asks which pit in a dialogue (Ardougne, Varrock, Keldagrim, Port Sarim). Starting the cast is free and a walk click cancels it; the cooldown only starts when it finishes.
+
+The two lists differ (the dropdown has extra activities like God Wars) and spell some names differently ("Giants' Foundry"/"Giant's Foundry"), so names are compared by letters only, ignoring a trailing "Minigame Teleport". Locked teleports are untested.
+
+A `Teleport` has `name`, `location` and `area`; an `Activity` has `name`, `index` and `area`.
 
 ```luau
 local Minigames = require("@lib/main/interfaces/mainscreen/minigames")
 local Grouping = Minigames.Grouping
 ```
-
-- **The spell's list:** the "Minigame Teleport" spell opens a scrolling list (group 951, `minigames` in the cache). A cell's "Select" starts the cast.
-- **The Grouping view:** the Grouping view of the side channels tab (group 76, `grouping`, inside group 707) picks an activity from a dropdown. Its button then reads "Teleport to" that activity.
-
-Either way, Rat Pits first asks which pit in a dialogue: `Ardougne (kittens)`, `Varrock (grown cats)`, `Keldagrim (overgrown cats)`, `Port Sarim (wily cats)` or `Cancel`.
-
-Starting a cast costs nothing. The animation is 4847, as for a home teleport, and a walk click stops it. The cooldown only starts when it finishes, so every path can be tested free.
-
-The two lists differ: the dropdown has activities with no entry in the spell's list, like God Wars, and they name some differently from the transport data ("Giants' Foundry" and "Giant's Foundry", "Sorceress's Garden" and "Sorceress Garden"). So names are compared by their letters, with or without "Minigame Teleport" after them. Only an account with everything unlocked has been seen, so how a locked teleport looks isn't known.
-
-A teleport has `name`, `location` and `area` (the cell). An activity has `name`, `index` (its place in the list) and `area` (the row).
 
 ## Constants
 
@@ -51,7 +44,9 @@ Grouping.BUTTON = 32
 Grouping.NO_ACTIVITY = "Select an activity..."
 Grouping.TELEPORT = "Teleport to"
 ```
-The interface piece numbers and options, the waits, and how far a notch of the wheel scrolls, the most notches at a time and how many scrolls to try.
+- Widget children and options of both views.
+- Waits: open, hover menu, pit dialogue, poll, hover settle, random pause after opening.
+- Scrolling: pixels per wheel notch, most notches per scroll, most scrolls.
 
 ## Minigames.teleport
 
@@ -59,12 +54,10 @@ Definition:
 ```luau
 function Minigames.teleport(name: string, pit: string?, via: ("list" | "grouping")?): (boolean, string?)
 ```
-Starts the teleport by the spell's list or the Grouping view, as the account's biometrics favour unless `via` says which. `pit` answers Rat Pits ("Ardougne", "Varrock", "Keldagrim" or "Port Sarim"). The cast itself is not waited for. When it didn't work the second result says why, and a list left open is closed.
+Starts the teleport via the spell list or Grouping view (a biometric coin flip unless `via` is given), then answers the Rat Pits dialogue with `pit`. Does not wait for the cast. On failure returns `false` and a reason, closing a list it left open.
 
 Example:
 ```luau
-local Minigames = require("@lib/main/interfaces/mainscreen/minigames")
-
 local ok, why = Minigames.teleport("Rat Pits", "Varrock")
 assert(ok, why)
 ```
@@ -75,7 +68,12 @@ Definition:
 ```luau
 function Minigames.choose_pit(pit: string): boolean
 ```
-Answers the dialogue that asks which rat pit, by key or click, by click if the key doesn't take. False when it doesn't come or doesn't offer it.
+Waits up to `DIALOGUE_TIMEOUT_MS` for an option containing `pit` (ignoring case) and picks it by key or click, falling back to a click. `false` if none came.
+
+Example:
+```luau
+Minigames.choose_pit("Keldagrim")
+```
 
 ## Minigames.is_open
 
@@ -83,7 +81,12 @@ Definition:
 ```luau
 function Minigames.is_open(): boolean
 ```
-Whether the spell's list is open.
+Whether the spell list is open.
+
+Example:
+```luau
+print(Minigames.is_open())
+```
 
 ## Minigames.wait_open
 
@@ -91,7 +94,12 @@ Definition:
 ```luau
 function Minigames.wait_open(timeout_ms: number?): boolean
 ```
-Whether the list is open, polled for up to `timeout_ms` (`OPEN_TIMEOUT_MS` by default).
+Polls for the list up to `timeout_ms` (`OPEN_TIMEOUT_MS`).
+
+Example:
+```luau
+Minigames.wait_open()
+```
 
 ## Minigames.open
 
@@ -99,7 +107,12 @@ Definition:
 ```luau
 function Minigames.open(): (boolean, string?)
 ```
-Casts the spell, which opens the list, and waits for it. True when it is open, also if it already was. When it didn't work the second result says why.
+Clears other interfaces with Escape, opens the spellbook, casts the spell and waits for the list. `true` if open or already open; otherwise `false` and a reason.
+
+Example:
+```luau
+assert(Minigames.open())
+```
 
 ## Minigames.teleports
 
@@ -107,17 +120,13 @@ Definition:
 ```luau
 function Minigames.teleports(): { Teleport }?
 ```
-Every teleport in the list, top to bottom, read without hovering, including those scrolled out of view. Nil when the list isn't open.
+Every teleport in the list top to bottom, including those scrolled out of view, read without hovering. `nil` when closed.
 
 Example:
 ```luau
-local Minigames = require("@lib/main/interfaces/mainscreen/minigames")
-
-assert(Minigames.open())
 for _, t in ipairs(Minigames.teleports() or {}) do
 	print(t.name, t.location)
 end
-assert(Minigames.close())
 ```
 
 ## Minigames.find
@@ -126,7 +135,12 @@ Definition:
 ```luau
 function Minigames.find(name: string): Teleport?
 ```
-The teleport called `name`, by its letters. Nil when the list isn't open or has none.
+The teleport matching `name` by letters. `nil` when closed or absent.
+
+Example:
+```luau
+local t = Minigames.find("Giant's Foundry")
+```
 
 ## Minigames.select
 
@@ -134,7 +148,12 @@ Definition:
 ```luau
 function Minigames.select(name: string): boolean
 ```
-Clicks a teleport in the list, scrolling to it first, which starts the cast (or for Rat Pits asks which pit). The click only happens once the menu under the mouse offers that cell. False when it isn't in the list or the click didn't happen.
+Scrolls to the teleport, hovers it and clicks once the menu offers its "Select", starting the cast (or the pit dialogue). `false` if absent or not offered.
+
+Example:
+```luau
+Minigames.select("Pest Control")
+```
 
 ## Minigames.close_button
 
@@ -142,7 +161,12 @@ Definition:
 ```luau
 function Minigames.close_button(): Widget?
 ```
-The list's close button, nil when it isn't open.
+The list's close button, `nil` when closed.
+
+Example:
+```luau
+local button = Minigames.close_button()
+```
 
 ## Minigames.close
 
@@ -150,7 +174,12 @@ Definition:
 ```luau
 function Minigames.close(key_probability: number?): boolean
 ```
-Closes the list: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
+Closes the list via `Toplevel.close` (`nil` or 0 uses the Escape biometric).
+
+Example:
+```luau
+Minigames.close()
+```
 
 ## Grouping.is_open
 
@@ -158,7 +187,12 @@ Definition:
 ```luau
 function Grouping.is_open(): boolean
 ```
-Whether the Grouping view is showing.
+Whether the side channels tab shows the Grouping view.
+
+Example:
+```luau
+print(Grouping.is_open())
+```
 
 ## Grouping.open
 
@@ -166,7 +200,12 @@ Definition:
 ```luau
 function Grouping.open(): boolean
 ```
-Opens the side channels tab and its Grouping view. True when it is showing, also if it already was.
+Opens the side channels tab and, if needed, clicks its Grouping tab. `true` when showing.
+
+Example:
+```luau
+Grouping.open()
+```
 
 ## Grouping.selected
 
@@ -174,7 +213,12 @@ Definition:
 ```luau
 function Grouping.selected(): string?
 ```
-The activity chosen now, nil when none is or the view isn't showing. The game keeps the choice after it has been made.
+The chosen activity (kept by the game between uses), `nil` when none or the view isn't showing.
+
+Example:
+```luau
+print(Grouping.selected())
+```
 
 ## Grouping.list_open
 
@@ -182,7 +226,12 @@ Definition:
 ```luau
 function Grouping.list_open(): boolean
 ```
-Whether the dropdown's list is showing.
+Whether the dropdown list is showing.
+
+Example:
+```luau
+print(Grouping.list_open())
+```
 
 ## Grouping.activities
 
@@ -190,7 +239,12 @@ Definition:
 ```luau
 function Grouping.activities(): { Activity }?
 ```
-Every activity of the dropdown, top to bottom, including those scrolled out of view. Empty until its list has been shown once. Nil when the view isn't showing.
+Every dropdown activity, including those scrolled out of view. Empty until the list has been shown once; `nil` when the view isn't showing.
+
+Example:
+```luau
+print(#(Grouping.activities() or {}))
+```
 
 ## Grouping.choose
 
@@ -198,7 +252,12 @@ Definition:
 ```luau
 function Grouping.choose(name: string): boolean
 ```
-Chooses an activity in the dropdown, opening its list and scrolling to it. True at once when it is chosen already. False when it isn't in the list, which also closes the list, or the choice didn't take.
+Opens the view and dropdown, scrolls to the activity and clicks it once the menu offers it, then waits for it to be selected. `true` at once if already chosen; `false` if absent (the list is closed again) or the choice didn't take.
+
+Example:
+```luau
+Grouping.choose("Nightmare Zone")
+```
 
 ## Grouping.button
 
@@ -206,7 +265,12 @@ Definition:
 ```luau
 function Grouping.button(): Widget?
 ```
-The clickable part of the button, nil when the view isn't showing.
+The clickable part of the teleport button, `nil` when the view isn't showing.
+
+Example:
+```luau
+local button = Grouping.button()
+```
 
 ## Grouping.teleport
 
@@ -214,4 +278,9 @@ Definition:
 ```luau
 function Grouping.teleport(name: string): boolean
 ```
-Chooses the activity and clicks the button, which starts the cast (or for Rat Pits asks which pit). The click only happens once the menu under the mouse offers that activity's teleport.
+`choose`s the activity, then clicks the button once the menu offers "Teleport to <activity>", starting the cast (or the pit dialogue).
+
+Example:
+```luau
+Grouping.teleport("Soul Wars")
+```

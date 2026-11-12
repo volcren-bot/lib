@@ -1,14 +1,37 @@
 # Main.Interfaces.Mainscreen.Obelisk
 
-The Wilderness obelisks: four stones around a 3 x 3 grid, and everyone on the grid is taken when one is activated.
+The Wilderness obelisks: four stones around a 3 x 3 grid; activating one teleports everyone on the grid. A known landing needs "Set Destination" (Wilderness hard diary), a row of the list (group 187, the generic `menu` list), then "Teleport to Destination" from the grid; plain "Activate" is random, so the chooser skips the network without the diary. Another player activating first decides for everyone. House obelisks aren't supported.
 
 ```luau
 local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
 ```
 
-Only "Set Destination" makes the landing known, and it needs the Wilderness hard diary. "Activate" alone is random, so the chooser leaves the network out without the diary. A trip is "Set Destination", a row of the list (group 187, the game's generic `menu` list), then "Teleport to Destination", with the player back on the grid, because clicking a stone walks you up to it. Another player who activates a stone first decides for everyone on the grid.
+## Constants
 
-The obelisk in a player's house isn't used yet.
+Definition:
+```luau
+Obelisk.GROUP = 187
+Obelisk.LIST = 3
+Obelisk.CLOSE = 4
+Obelisk.OBJECT = "Obelisk"
+Obelisk.SET = "Set Destination"
+Obelisk.TELEPORT = "Teleport to Destination"
+Obelisk.RANGE = 8
+Obelisk.OPEN_TIMEOUT_MS = 5000
+Obelisk.CLOSE_TIMEOUT_MS = 3000
+Obelisk.POLL_MS = 50
+Obelisk.SETTLE_MS = { 250, 500 }
+Obelisk.GRID_TIMEOUT_MS = 4000
+```
+Widget ids, object name and options, stone search radius in tiles, open/close waits, poll rate, settle after opening, and the walk-back timeout.
+
+## Obelisk.Level
+
+Definition:
+```luau
+export type Level = "Level 13 Wilderness" | "Level 19 Wilderness" | "Level 27 Wilderness" | "Level 35 Wilderness" | "Level 44 Wilderness" | "Level 50 Wilderness"
+```
+The list's rows. `Obelisk.Level` is a frozen table of them (`Obelisk.Level.Level19`).
 
 ## Obelisk.stones
 
@@ -16,12 +39,10 @@ Definition:
 ```luau
 function Obelisk.stones(): { Host.Loc }
 ```
-The stones within `RANGE`, nearest first.
+Obelisks within `RANGE`, nearest first. Empty when none or your position is unknown.
 
 Example:
 ```luau
-local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
-
 print(#Obelisk.stones())
 ```
 
@@ -31,12 +52,10 @@ Definition:
 ```luau
 function Obelisk.open(): boolean
 ```
-Opens the list with "Set Destination" on the nearest stone. True once it is open.
+Uses "Set Destination" on the nearest stone and waits for the list. True once open (or already open).
 
 Example:
 ```luau
-local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
-
 print(Obelisk.open())
 ```
 
@@ -50,8 +69,6 @@ Whether the list is open.
 
 Example:
 ```luau
-local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
-
 print(Obelisk.is_open())
 ```
 
@@ -61,12 +78,10 @@ Definition:
 ```luau
 function Obelisk.destinations(): { Destination }?
 ```
-Every row of the open list, each with `name` and `row`. Nil when it isn't open.
+Rows of the open list, each with `name` and `row`. Nil when not open.
 
 Example:
 ```luau
-local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
-
 for _, d in ipairs(Obelisk.destinations() or {}) do
 	print(d.name)
 end
@@ -78,12 +93,10 @@ Definition:
 ```luau
 function Obelisk.select(level: Level): boolean
 ```
-Clicks a row of the open list and waits for it to close. True once it has. Use `Obelisk.Level`.
+Clicks the row and waits for the list to close. False when the row is absent or the list stays open.
 
 Example:
 ```luau
-local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
-
 print(Obelisk.select(Obelisk.Level.Level19))
 ```
 
@@ -93,12 +106,10 @@ Definition:
 ```luau
 function Obelisk.close(): boolean
 ```
-Closes the list. True when it isn't open any more.
+Closes the list via `Toplevel.close`. True once closed.
 
 Example:
 ```luau
-local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
-
 print(Obelisk.close())
 ```
 
@@ -108,12 +119,10 @@ Definition:
 ```luau
 function Obelisk.on_grid(): boolean
 ```
-Whether the player stands on the grid between the stones.
+Whether you stand strictly inside the four stones. False when fewer than four are in range.
 
 Example:
 ```luau
-local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
-
 print(Obelisk.on_grid())
 ```
 
@@ -123,11 +132,9 @@ Definition:
 ```luau
 function Obelisk.teleport(): boolean
 ```
-Clicks "Teleport to Destination" on the nearest stone, then walks back onto the grid if the click walked off it. The trip follows a few seconds later. True when the player is on the grid.
+Uses "Teleport to Destination" on the nearest stone, then walks back to the grid centre if the click walked you off. True when you end on the grid; false when fewer than four stones are in range. The trip follows a few seconds later.
 
 Example:
 ```luau
-local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
-
 print(Obelisk.teleport())
 ```

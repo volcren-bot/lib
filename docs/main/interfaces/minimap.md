@@ -1,6 +1,6 @@
 # Main.Interfaces.Minimap
 
-The small round map in the corner: finding where a world tile is on it, and changing its zoom.
+The round minimap: projecting tiles onto it, its zoom and the run orb.
 
 ```luau
 local Minimap = require("@lib/main/interfaces/minimap")
@@ -12,9 +12,15 @@ Definition:
 ```luau
 Minimap.ZOOM_MIN = 2
 Minimap.ZOOM_MAX = 8
+Minimap.RUN_GROUP = 160
+Minimap.RUN_CHILD = 28
+Minimap.RUN_OPTION = "Toggle Run"
+Minimap.RUN_TIMEOUT_MS = 1500
 Minimap.COMPONENTS = { [161] = 30, [164] = 30, [548] = 22 }
 ```
-The smallest and largest zoom (pixels per tile), and which interface piece holds the map for each type of game window layout.
+- `ZOOM_MIN`/`ZOOM_MAX`: zoom range in pixels per tile.
+- `RUN_*`: the run orb widget, its option and how long `set_run` waits.
+- `COMPONENTS`: minimap child per top-level layout group.
 
 ## Minimap.state
 
@@ -22,14 +28,12 @@ Definition:
 ```luau
 function Minimap.state(): MinimapState?
 ```
-The minimap's current settings (just its `zoom`).
+The minimap state (`zoom`); nil when not logged in.
 
 Example:
 ```luau
-local Minimap = require("@lib/main/interfaces/minimap")
-
 local state = Minimap.state()
-print(if state then state.zoom else "unavailable")
+print(state and state.zoom)
 ```
 
 ## Minimap.zoom
@@ -38,13 +42,11 @@ Definition:
 ```luau
 function Minimap.zoom(): number?
 ```
-How zoomed in the minimap is, from 2 to 8 (4 by default).
+Current zoom, 2 to 8 (game default 4).
 
 Example:
 ```luau
-local Minimap = require("@lib/main/interfaces/minimap")
-
-print("minimap zoom:", Minimap.zoom())
+print(Minimap.zoom())
 ```
 
 ## Minimap.widget
@@ -53,12 +55,10 @@ Definition:
 ```luau
 function Minimap.widget(state: ClientState?): Widget?
 ```
-The interface piece the minimap is drawn on, with its position and size.
+The widget the minimap is drawn on for the current layout.
 
 Example:
 ```luau
-local Minimap = require("@lib/main/interfaces/minimap")
-
 local w = Minimap.widget()
 print(w and w.x, w and w.y, w and w.width)
 ```
@@ -69,17 +69,14 @@ Definition:
 ```luau
 function Minimap.fine_to_point(fine_x: number, fine_y: number): Point?
 ```
-Where a point in the loaded area (128 per tile) shows on the minimap, in screen pixels. Points far from you land outside the minimap.
+Screen point of a local fine coordinate (128 per tile) on the minimap. Far points land outside the map.
 
 Example:
 ```luau
 local Host = require("@lib/host")
-local Minimap = require("@lib/main/interfaces/minimap")
 
 local me = Host.game_state().position
-if me then
-	print(Minimap.fine_to_point(me.local_x, me.local_y))
-end
+print(me and Minimap.fine_to_point(me.local_x, me.local_y))
 ```
 
 ## Minimap.tile_to_point
@@ -88,11 +85,10 @@ Definition:
 ```luau
 function Minimap.tile_to_point(tile: Tile): Point?
 ```
-Where a world tile shows on the minimap, in screen pixels. Useful for clicking the minimap to walk.
+Screen point of a world tile on the minimap, for minimap walking.
 
 Example:
 ```luau
-local Minimap = require("@lib/main/interfaces/minimap")
 local Mouse = require("@lib/utils/input/mouse")
 local Walker = require("@lib/main/walker")
 
@@ -108,28 +104,11 @@ Definition:
 ```luau
 function Minimap.set_zoom(zoom: number): boolean
 ```
-Zooms the minimap in or out with the mouse wheel until it reaches the zoom you asked for (kept between 2 and 8). It fails if scrolling over the minimap changes the main camera zoom instead, which happens when the game's minimap-zoom setting is off.
+Scrolls over the minimap until it reaches `zoom` (rounded, clamped to 2..8). Fails when the scroll zooms the camera instead (the game's minimap-zoom setting is off).
 
 Example:
 ```luau
-local Minimap = require("@lib/main/interfaces/minimap")
-
 print(Minimap.set_zoom(6))
-```
-
-## Minimap.set_run
-
-Definition:
-```luau
-function Minimap.set_run(enabled: boolean): boolean
-```
-Switches run on or off with the run orb ("Toggle Run" on interface 160, child 28) and waits up to 1.5 s for `Player.is_running()` to change. Returns true when run is already as asked or the change showed; false when the orb can't be read or didn't change.
-
-Example:
-```luau
-local Minimap = require("@lib/main/interfaces/minimap")
-
-Minimap.set_run(false)
 ```
 
 ## Minimap.set_zoom_async
@@ -138,10 +117,25 @@ Definition:
 ```luau
 function Minimap.set_zoom_async(zoom: number): boolean
 ```
-Like `set_zoom`, but queues the scrolls and returns at once; the next input takes over. It is open loop: single scroll notches, one per level between the current zoom and `zoom` (clamped to 2 to 8), 60 to 140 ms apart, moving over the minimap first if the mouse isn't there. One wheel event changes the zoom by one level whatever its amount, so a single multi-notch scroll doesn't work. Returns false when the minimap can't be read. Checked live: 9 jumps between 2 and 8 all landed exactly.
+Open-loop `set_zoom`: queues one wheel notch per level (each event moves one level regardless of amount), 60 to 140 ms apart, moving onto the minimap first if needed, and returns at once. `false` when the minimap can't be read.
 
 Example:
 ```luau
+local Mouse = require("@lib/utils/input/mouse")
+
 Minimap.set_zoom_async(6)
 Mouse.wait()
+```
+
+## Minimap.set_run
+
+Definition:
+```luau
+function Minimap.set_run(enabled: boolean): boolean
+```
+Toggles run with the orb and waits up to `RUN_TIMEOUT_MS` for `Player.is_running()` to match. `true` when already as asked or it changed.
+
+Example:
+```luau
+Minimap.set_run(false)
 ```

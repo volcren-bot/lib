@@ -1,284 +1,70 @@
 # Main.Interfaces.Login.LoginWorldSwitcher
-Picking the world you log in to from the login screen's world list.
 
-## LoginWorldSwitcher
-Definition:
-```luau
-local LoginWorldSwitcher: { ... }
-```
-The world switcher of the login screen. Everything below needs you to be on the login screen.
+The login screen's world list: reading worlds and switching the world you log in to. Everything returns `nil` or `false` off the login screen. Boxes are in client pixels, scaled with the login layout.
 
-Example:
 ```luau
 local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-print("current world:", LoginWorldSwitcher.current())
 ```
 
-## LoginWorldSwitcher.MEMBERS (and the other world types)
+## Constants
+
 Definition:
 ```luau
-LoginWorldSwitcher.MEMBERS: number
-```
-Flags describing a world, found in `world.types`. Besides `MEMBERS` there is `PVP`, `BOUNTY`,
-`PVP_ARENA`, `SKILL_TOTAL`, `QUEST_SPEEDRUNNING`, `HIGH_RISK`, `LAST_MAN_STANDING`, `BETA_WORLD`,
-`LEGACY_ONLY`, `EOC_ONLY`, `NOSAVE_MODE`, `TOURNAMENT_WORLD`, `FRESH_START_WORLD`, `DEADMAN` and
-`SEASONAL`. Use `has_type` to test them.
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-local world = LoginWorldSwitcher.world(301)
-if world then
-	print("members world:", LoginWorldSwitcher.has_type(world, LoginWorldSwitcher.MEMBERS))
-end
-```
-
-## LoginWorldSwitcher.DANGEROUS
-Definition:
-```luau
+LoginWorldSwitcher.MEMBERS = 0x1
+LoginWorldSwitcher.PVP = 0x4
+LoginWorldSwitcher.BOUNTY = 0x20
+LoginWorldSwitcher.PVP_ARENA = 0x40
+LoginWorldSwitcher.SKILL_TOTAL = 0x80
+LoginWorldSwitcher.QUEST_SPEEDRUNNING = 0x100
+LoginWorldSwitcher.HIGH_RISK = 0x400
+LoginWorldSwitcher.LAST_MAN_STANDING = 0x4000
+LoginWorldSwitcher.BETA_WORLD = 0x10000
+LoginWorldSwitcher.LEGACY_ONLY = 0x400000
+LoginWorldSwitcher.EOC_ONLY = 0x800000
+LoginWorldSwitcher.NOSAVE_MODE = 0x2000000
+LoginWorldSwitcher.TOURNAMENT_WORLD = 0x4000000
+LoginWorldSwitcher.FRESH_START_WORLD = 0x8000000
+LoginWorldSwitcher.DEADMAN = 0x20000000
+LoginWorldSwitcher.SEASONAL = 0x40000000
 LoginWorldSwitcher.DANGEROUS: number
+LoginWorldSwitcher.OFFLINE = -1
+LoginWorldSwitcher.FULL = 1980
 ```
-All the world types that can put your account at risk (PvP, bounty, high risk, last man standing, deadman, ...)
-combined into one flag. `switch` refuses these worlds unless `allow_dangerous_worlds` is set.
+World type flags for `world.types`, tested with `has_type`. `DANGEROUS` combines every flag except `MEMBERS`, `SKILL_TOTAL`, `LEGACY_ONLY` and `EOC_ONLY`. `OFFLINE` is an offline world's player count and `FULL` the count above which a world is full.
 
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
+## Settings
 
-local world = LoginWorldSwitcher.world(301)
-if world then
-	print("dangerous:", LoginWorldSwitcher.has_type(world, LoginWorldSwitcher.DANGEROUS))
-end
-```
-
-## LoginWorldSwitcher.allow_dangerous_worlds
 Definition:
 ```luau
-LoginWorldSwitcher.allow_dangerous_worlds: boolean
+LoginWorldSwitcher.allow_dangerous_worlds = false
 ```
-Set this to `true` to let `switch` pick dangerous worlds. It's `false` by default.
+When `false`, `switch` refuses worlds with a `DANGEROUS` flag.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
 LoginWorldSwitcher.allow_dangerous_worlds = true
-print("switched:", LoginWorldSwitcher.switch(318))
 ```
 
-## LoginWorldSwitcher.OFFLINE and LoginWorldSwitcher.FULL
-Definition:
-```luau
-LoginWorldSwitcher.OFFLINE: number
-LoginWorldSwitcher.FULL: number
-```
-What a world's player count is when it's offline, and the count above which it's full. Neither
-can be picked; `is_available` checks both for you.
+## Types
 
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-print(LoginWorldSwitcher.OFFLINE, LoginWorldSwitcher.FULL)
-```
-
-## LoginWorldSwitcher.Layout
 Definition:
 ```luau
 export type Layout = {
-	columns: number, rows: number,
-	width: number, height: number,
-	x_gap: number, y_gap: number,
-	x: number, y: number,
+	columns: number,
+	rows: number,
+	width: number,
+	height: number,
+	x_gap: number,
+	y_gap: number,
+	x: number,
+	y: number,
 }
-```
-How the world boxes are arranged on screen: the grid size, the size of a box, the gap between
-boxes and where the grid starts. Returned by `layout`.
-
-## LoginWorldSwitcher.WorldBox
-Definition:
-```luau
 export type WorldBox = {
 	index: number,
 	slot: number,
 	world: World,
 	box: Box,
 }
-```
-A world's box on screen. `index` is the world's place in `worlds()`, `slot` its place among the
-boxes shown right now, and `box` where to click. Returned by `boxes` and `find`.
-
-## LoginWorldSwitcher.state
-Definition:
-```luau
-function LoginWorldSwitcher.state(): WorldSelect?
-```
-Gets everything the client knows about the world switcher right now (open or not, current
-world, world list, scroll position, ...). Fails if you aren't on the login screen.
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-local select = LoginWorldSwitcher.state()
-if select then
-	print("open:", select.open, "current:", select.current)
-else
-	print("couldn't read")
-end
-```
-
-## LoginWorldSwitcher.is_open
-Definition:
-```luau
-function LoginWorldSwitcher.is_open(): boolean
-```
-Checks if the world list is open.
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-print("open:", LoginWorldSwitcher.is_open())
-```
-
-## LoginWorldSwitcher.wait_open
-Definition:
-```luau
-function LoginWorldSwitcher.wait_open(timeout_ms: number?): boolean
-```
-Waits until the world list is open. Gives up after `timeout_ms` (5 seconds by default) and
-returns `false`.
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-print("opened in time:", LoginWorldSwitcher.wait_open(3000))
-```
-
-## LoginWorldSwitcher.current
-Definition:
-```luau
-function LoginWorldSwitcher.current(): number?
-```
-Gets the world you're set to log in to, the number on the "World N" button.
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-print("current world:", LoginWorldSwitcher.current())
-```
-
-## LoginWorldSwitcher.worlds
-Definition:
-```luau
-function LoginWorldSwitcher.worlds(): { World }?
-```
-Gets every world, in the order the switcher lists them. The list is empty until you've opened
-the switcher once.
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-LoginWorldSwitcher.open()
-local worlds = LoginWorldSwitcher.worlds()
-print("worlds:", worlds and #worlds)
-LoginWorldSwitcher.close()
-```
-
-## LoginWorldSwitcher.world
-Definition:
-```luau
-function LoginWorldSwitcher.world(id: number): World?
-```
-Gets a world by its number, or `nil` if it isn't in the list.
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-local world = LoginWorldSwitcher.world(301)
-if world then
-	print(world.id, world.players, world.activity)
-end
-```
-
-## LoginWorldSwitcher.has_type
-Definition:
-```luau
-function LoginWorldSwitcher.has_type(world: World, types: number): boolean
-```
-Checks if a world has any of the given type flags (`MEMBERS`, `PVP`, ...).
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-local world = LoginWorldSwitcher.world(301)
-if world then
-	print("members:", LoginWorldSwitcher.has_type(world, LoginWorldSwitcher.MEMBERS))
-end
-```
-
-## LoginWorldSwitcher.is_dangerous
-Definition:
-```luau
-function LoginWorldSwitcher.is_dangerous(world: World): boolean
-```
-Checks if a world is one `switch` would refuse by default (PvP, bounty, deadman, ...).
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-local world = LoginWorldSwitcher.world(318)
-if world then
-	print("dangerous:", LoginWorldSwitcher.is_dangerous(world))
-end
-```
-
-## LoginWorldSwitcher.is_available
-Definition:
-```luau
-function LoginWorldSwitcher.is_available(world: World): boolean
-```
-Checks if a world can be joined, meaning it's neither offline nor full.
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-local world = LoginWorldSwitcher.world(301)
-if world then
-	print("available:", LoginWorldSwitcher.is_available(world))
-end
-```
-
-## LoginWorldSwitcher.layout
-Definition:
-```luau
-function LoginWorldSwitcher.layout(count: number): Layout?
-```
-Works out how `count` world boxes are arranged on screen. Returns `nil` if `count` is below 1.
-
-Example:
-```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-local layout = LoginWorldSwitcher.layout(150)
-if layout then
-	print(layout.columns, "columns of", layout.rows, "rows")
-end
-```
-
-## LoginWorldSwitcher.Buttons
-Definition:
-```luau
 export type Buttons = {
 	world: Box,
 	cancel: Box,
@@ -286,171 +72,285 @@ export type Buttons = {
 	right: Box?,
 }
 ```
-Where the switcher's buttons are: the "World N" button, the cancel button, and the scroll
-arrows (only set when you can scroll that way). Returned by `buttons`.
+`Layout` is the world grid: size, box size, gaps and origin. `WorldBox.index` is the world's place in `worlds()` and `slot` its place among the boxes shown now. `Buttons` holds the "World N" button, cancel, and the scroll arrows, set only when that direction can scroll.
+
+## LoginWorldSwitcher.state
+
+Definition:
+```luau
+function LoginWorldSwitcher.state(): WorldSelect?
+```
+The client's world select state (open, current world, worlds, scroll offset, hovered box), or `nil` off the login screen.
+
+Example:
+```luau
+local select = LoginWorldSwitcher.state()
+print(select and select.open, select and select.current)
+```
+
+## LoginWorldSwitcher.is_open
+
+Definition:
+```luau
+function LoginWorldSwitcher.is_open(): boolean
+```
+Whether the world list is open.
+
+Example:
+```luau
+print("open:", LoginWorldSwitcher.is_open())
+```
+
+## LoginWorldSwitcher.wait_open
+
+Definition:
+```luau
+function LoginWorldSwitcher.wait_open(timeout_ms: number?): boolean
+```
+Waits up to `timeout_ms` (default 5000) for the world list to open.
+
+Example:
+```luau
+print(LoginWorldSwitcher.wait_open(3000))
+```
+
+## LoginWorldSwitcher.current
+
+Definition:
+```luau
+function LoginWorldSwitcher.current(): number?
+```
+The world you'll log in to, shown on the "World N" button.
+
+Example:
+```luau
+print(LoginWorldSwitcher.current())
+```
+
+## LoginWorldSwitcher.worlds
+
+Definition:
+```luau
+function LoginWorldSwitcher.worlds(): { World }?
+```
+Every world in list order. Empty until the switcher has been opened once.
+
+Example:
+```luau
+local worlds = LoginWorldSwitcher.worlds()
+print(worlds and #worlds)
+```
+
+## LoginWorldSwitcher.world
+
+Definition:
+```luau
+function LoginWorldSwitcher.world(id: number): World?
+```
+A world by number, or `nil` if it isn't listed.
+
+Example:
+```luau
+local world = LoginWorldSwitcher.world(301)
+if world then
+	print(world.id, world.players, world.activity)
+end
+```
+
+## LoginWorldSwitcher.has_type
+
+Definition:
+```luau
+function LoginWorldSwitcher.has_type(world: World, types: number): boolean
+```
+Whether `world` has any of the flags in `types`.
+
+Example:
+```luau
+local world = LoginWorldSwitcher.world(301)
+if world then
+	print("members:", LoginWorldSwitcher.has_type(world, LoginWorldSwitcher.MEMBERS))
+end
+```
+
+## LoginWorldSwitcher.is_dangerous
+
+Definition:
+```luau
+function LoginWorldSwitcher.is_dangerous(world: World): boolean
+```
+Whether `world` has a `DANGEROUS` flag.
+
+Example:
+```luau
+local world = LoginWorldSwitcher.world(318)
+if world then
+	print("dangerous:", LoginWorldSwitcher.is_dangerous(world))
+end
+```
+
+## LoginWorldSwitcher.is_available
+
+Definition:
+```luau
+function LoginWorldSwitcher.is_available(world: World): boolean
+```
+Whether `world` is neither offline nor full.
+
+Example:
+```luau
+local world = LoginWorldSwitcher.world(301)
+if world then
+	print("available:", LoginWorldSwitcher.is_available(world))
+end
+```
+
+## LoginWorldSwitcher.layout
+
+Definition:
+```luau
+function LoginWorldSwitcher.layout(count: number): Layout?
+```
+The grid the client uses for `count` worlds, or `nil` when `count` is below 1.
+
+Example:
+```luau
+local layout = LoginWorldSwitcher.layout(150)
+if layout then
+	print(layout.columns, "columns of", layout.rows, "rows")
+end
+```
 
 ## LoginWorldSwitcher.buttons
+
 Definition:
 ```luau
 function LoginWorldSwitcher.buttons(): Buttons?
 ```
-Gets where every button of the switcher is on screen.
+Where the switcher's buttons are.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
 local buttons = LoginWorldSwitcher.buttons()
-if buttons then
-	print("can scroll right:", buttons.right ~= nil)
-else
-	print("couldn't read")
-end
+print(buttons and buttons.right ~= nil)
 ```
 
 ## LoginWorldSwitcher.boxes
+
 Definition:
 ```luau
 function LoginWorldSwitcher.boxes(): { WorldBox }?
 ```
-Gets the world boxes shown on screen right now. The switcher has to be open.
+The world boxes shown now; `nil` when the list is closed.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-LoginWorldSwitcher.open()
-local shown = LoginWorldSwitcher.boxes()
-if shown then
-	for _, b in shown do
-		print(b.slot, b.world.id, b.world.players)
-	end
+for _, b in LoginWorldSwitcher.boxes() or {} do
+	print(b.slot, b.world.id)
 end
-LoginWorldSwitcher.close()
 ```
 
 ## LoginWorldSwitcher.read
+
 Definition:
 ```luau
 function LoginWorldSwitcher.read(slot: number): number?
 ```
-Gets the world number in a visible box, where slot 1 is the top left one.
+The world in visible box `slot`, 1 being the top-left, filled column by column.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-LoginWorldSwitcher.open()
-print("top left world:", LoginWorldSwitcher.read(1))
-LoginWorldSwitcher.close()
+print(LoginWorldSwitcher.read(1))
 ```
 
 ## LoginWorldSwitcher.open
+
 Definition:
 ```luau
 function LoginWorldSwitcher.open(): boolean
 ```
-Opens the world list by clicking the "World N" button. Does nothing if it's already open.
+Clicks the "World N" button if the list is closed and waits up to 5 seconds for it to open.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-print("opened:", LoginWorldSwitcher.open())
+print(LoginWorldSwitcher.open())
 ```
 
 ## LoginWorldSwitcher.close
+
 Definition:
 ```luau
 function LoginWorldSwitcher.close(): boolean
 ```
-Closes the world list without picking a world. Does nothing if it's already closed.
+Clicks cancel if the list is open and waits up to 1.5 seconds for it to close.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-print("closed:", LoginWorldSwitcher.close())
+print(LoginWorldSwitcher.close())
 ```
 
 ## LoginWorldSwitcher.previous_page
+
 Definition:
 ```luau
 function LoginWorldSwitcher.previous_page(): boolean
 ```
-Scrolls the world list one column to the left. Returns `false` if it can't scroll that way.
+Clicks the left arrow, waits for the list to scroll, then pauses 0.4 to 1.2 seconds. `false` when closed or already at the start.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-LoginWorldSwitcher.open()
-print("scrolled:", LoginWorldSwitcher.previous_page())
-LoginWorldSwitcher.close()
+print(LoginWorldSwitcher.previous_page())
 ```
 
 ## LoginWorldSwitcher.next_page
+
 Definition:
 ```luau
 function LoginWorldSwitcher.next_page(): boolean
 ```
-Scrolls the world list one column to the right. Returns `false` if it can't scroll that way.
+Clicks the right arrow, waits for the list to scroll, then pauses 0.4 to 1.2 seconds. `false` when closed or already at the end.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-LoginWorldSwitcher.open()
-print("scrolled:", LoginWorldSwitcher.next_page())
-LoginWorldSwitcher.close()
+print(LoginWorldSwitcher.next_page())
 ```
 
 ## LoginWorldSwitcher.find
+
 Definition:
 ```luau
-function LoginWorldSwitcher.find(id: number): WorldBox | false | nil
+function LoginWorldSwitcher.find(id: number): WorldBox?
 ```
-Opens the switcher and scrolls until a world is on screen, then returns its box. Returns `false`
-(and closes the switcher) if the world isn't in the list.
+Opens the list and scrolls until world `id` is visible, then returns its box. `nil` on failure; when the world isn't listed it also closes the list.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
 local found = LoginWorldSwitcher.find(301)
-if found then
-	print("world 301 is at", found.box.x1, found.box.y1)
-end
-LoginWorldSwitcher.close()
+print(found and found.box.x1, found and found.box.y1)
 ```
 
 ## LoginWorldSwitcher.switch
+
 Definition:
 ```luau
 function LoginWorldSwitcher.switch(id: number): boolean
 ```
-Switches to a world, opening the list and scrolling as needed. Refuses dangerous worlds (unless
-`allow_dangerous_worlds` is set) and worlds that are offline or full.
+Switches to world `id` via `find`, clicking its box only once the client reports it hovered, and waits up to 1.5 seconds for the list to close on it. `true` at once when already on it; `false` for dangerous worlds (unless `allow_dangerous_worlds`), unavailable worlds or failures.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-local switched = LoginWorldSwitcher.switch(301)
-print(if switched then "now on world 301" else `couldn't switch`)
+print(LoginWorldSwitcher.switch(301))
 ```
 
 ## LoginWorldSwitcher.switch_random
+
 Definition:
 ```luau
 function LoginWorldSwitcher.switch_random(ids: { number }): boolean
 ```
-Makes sure you're on one of the given worlds, switching to a random one if you aren't. Tries up
-to 5 times.
+`true` if already on one of `ids`, otherwise switches to a random one, up to 5 attempts. `false` for an empty list.
 
 Example:
 ```luau
-local LoginWorldSwitcher = require("@lib/main/interfaces/login/login_world_switcher")
-
-print("on a good world:", LoginWorldSwitcher.switch_random({ 301, 302, 303, 304 }))
+print(LoginWorldSwitcher.switch_random({ 301, 302, 303 }))
 ```

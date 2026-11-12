@@ -1,6 +1,6 @@
 # Main.Interfaces.Gametabs.Logout
 
-Logging out of the game, and (optionally) rating it before you leave. It also handles the world switcher that can be showing instead of the logout buttons.
+Logging out, optionally rating the game first, including when the world switcher shows in place of the logout buttons.
 
 ```luau
 local Logout = require("@lib/main/interfaces/gametabs/logout")
@@ -20,7 +20,7 @@ Logout.SWITCHER_GROUP = 69
 Logout.SWITCHER_CLOSE = 5
 Logout.SWITCHER_LOGOUT = 25
 ```
-The numbers of the interface pieces involved: the tab, its buttons, the five rating stars and the world switcher shown in its place.
+The tab and its buttons, the first of five rating stars, the rating varp, and the world switcher's group, close and logout buttons.
 
 ## Logout.is_open
 
@@ -28,13 +28,13 @@ Definition:
 ```luau
 function Logout.is_open(): boolean
 ```
-Whether the logout tab is the open tab.
+Whether the logout tab is the open side panel.
 
 Example:
 ```luau
 local Logout = require("@lib/main/interfaces/gametabs/logout")
 
-print("open:", Logout.is_open())
+print(Logout.is_open())
 ```
 
 ## Logout.shows_world_switcher
@@ -43,13 +43,13 @@ Definition:
 ```luau
 function Logout.shows_world_switcher(): boolean
 ```
-Whether the logout tab currently shows the world switcher instead of the logout buttons.
+Whether the open logout tab shows the world switcher instead of its buttons.
 
 Example:
 ```luau
 local Logout = require("@lib/main/interfaces/gametabs/logout")
 
-print("switcher showing:", Logout.shows_world_switcher())
+print(Logout.shows_world_switcher())
 ```
 
 ## Logout.open
@@ -58,30 +58,30 @@ Definition:
 ```luau
 function Logout.open(): boolean
 ```
-Opens the logout tab, and closes the world switcher if it was showing.
-
-Example:
-```luau
-local Logout = require("@lib/main/interfaces/gametabs/logout")
-
-print(Logout.open())
-```
-
-## Logout.buttons
-
-Definition:
-```luau
-function Logout.buttons(): Buttons?
-```
-The buttons of the logout tab: the five rating stars (`ratings`), the world switcher button and the logout button.
+Opens the logout tab and closes the world switcher if it shows. False if it doesn't close within 1.2 s.
 
 Example:
 ```luau
 local Logout = require("@lib/main/interfaces/gametabs/logout")
 
 Logout.open()
+```
+
+## Logout.buttons
+
+Definition:
+```luau
+export type Buttons = { ratings: { Widget }, world_switcher: Widget, logout: Widget }
+function Logout.buttons(): Buttons?
+```
+The five star widgets, the world switcher button and the logout button; nil when any is missing.
+
+Example:
+```luau
+local Logout = require("@lib/main/interfaces/gametabs/logout")
+
 local buttons = Logout.buttons()
-print(if buttons then `logout button at {buttons.logout.x}, {buttons.logout.y}` else "unavailable")
+print(buttons and buttons.logout.x)
 ```
 
 ## Logout.rating
@@ -90,13 +90,13 @@ Definition:
 ```luau
 function Logout.rating(): number?
 ```
-The number of stars you gave this session (1 to 5), or 0 if you haven't rated.
+This session's rating, 1 to 5, or 0 when unrated; nil when unreadable.
 
 Example:
 ```luau
 local Logout = require("@lib/main/interfaces/gametabs/logout")
 
-print("rating:", Logout.rating())
+print(Logout.rating())
 ```
 
 ## Logout.is_rated
@@ -105,13 +105,13 @@ Definition:
 ```luau
 function Logout.is_rated(): boolean
 ```
-Whether you already gave a rating this session.
+Whether a rating was given this session.
 
 Example:
 ```luau
 local Logout = require("@lib/main/interfaces/gametabs/logout")
 
-print("rated:", Logout.is_rated())
+print(Logout.is_rated())
 ```
 
 ## Logout.rate
@@ -120,13 +120,13 @@ Definition:
 ```luau
 function Logout.rate(stars: number): boolean
 ```
-Gives the game a rating from 1 to 5 stars. Does nothing if that's already your rating.
+Clicks the star for an integer rating 1 to 5 and waits for it to register. True at once when already that rating; false for an invalid value.
 
 Example:
 ```luau
 local Logout = require("@lib/main/interfaces/gametabs/logout")
 
-print(Logout.rate(5))
+Logout.rate(5)
 ```
 
 ## Logout.logout_from_world_switcher
@@ -135,13 +135,13 @@ Definition:
 ```luau
 function Logout.logout_from_world_switcher(attempts: number?, time_ms: number?): boolean
 ```
-Logs out using the button at the bottom of the world switcher. It presses up to `attempts` times (5 by default) spread over `time_ms` (20 seconds by default). Returns `false` if the world switcher isn't showing.
+Presses the world switcher's logout button up to `attempts` times (5) spread over `time_ms` (20000) with jitter, until logged out. False when the switcher isn't showing.
 
 Example:
 ```luau
 local Logout = require("@lib/main/interfaces/gametabs/logout")
 
-print(Logout.logout_from_world_switcher())
+Logout.logout_from_world_switcher()
 ```
 
 ## Logout.logout
@@ -150,12 +150,11 @@ Definition:
 ```luau
 function Logout.logout(attempts: number?, time_ms: number?): boolean
 ```
-Logs you out. It opens the logout tab, sometimes rates the game first (how often and how high depends on the account's [Biometrics](../../antiban/biometrics.md)), then presses the logout button until you're out. Returns `true` straight away if you're already logged out.
+Opens the tab, sometimes rates the game first (chance and stars from [Biometrics](../../antiban/biometrics.md)), then presses logout as `logout_from_world_switcher` does, using the switcher's button when it shows. True at once when already logged out.
 
 Example:
 ```luau
 local Logout = require("@lib/main/interfaces/gametabs/logout")
 
-local ok = Logout.logout()
-print(if ok then "logged out" else "unavailable")
+Logout.logout()
 ```

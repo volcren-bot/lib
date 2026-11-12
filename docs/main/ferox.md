@@ -1,6 +1,6 @@
 # Main.Ferox
 
-The Ferox Enclave: a safe zone inside the Wilderness's bounds, with a bank and the Pool of Refreshment. A common place to restock and restore for an account without a house pool; the planner reaches it only when the goal is inside it (see `Transports.choose`).
+The Ferox Enclave: a Wilderness safe zone with a bank and the Pool of Refreshment. The planner only goes there when the goal is inside it (`Transports.choose`).
 
 ```luau
 local Ferox = require("@lib/main/ferox")
@@ -15,7 +15,7 @@ Ferox.POOL = "Pool of Refreshment"
 Ferox.POOL_OPTION = "Drink"
 Ferox.RESTORE_TIMEOUT_MS = 10000
 ```
-The Enclave's bounds, which are approximate, the pool's name and option, and how long `restore` waits for the walk and the drink.
+Approximate bounds, the pool's name and option, and `restore`'s timeout.
 
 ## Ferox.contains
 
@@ -53,7 +53,7 @@ Definition:
 ```luau
 function Ferox.restore(): (boolean, string?)
 ```
-Walks to the Pool of Refreshment, drinks from it and waits for it to take (`Player.restore_with`). False and why: not in the Enclave, the pool not in sight, or nothing restored.
+Walks to the pool, drinks and waits for the restore (`Player.restore_with`). `false` and why when not in the Enclave, the pool isn't in sight, or nothing restored.
 
 Example:
 ```luau

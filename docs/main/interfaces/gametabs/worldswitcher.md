@@ -1,12 +1,12 @@
 # Main.Interfaces.Gametabs.Worldswitcher
 
-Changing worlds in game with the world switcher panel: open it, read the list of worlds, scroll to one and hop to it.
+In-game world hopping through the world switcher panel in the logout tab: read the list, scroll to a world and hop.
 
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 ```
 
-A row of the list has `world`, `players`, `activity`, `types` (the world's type flags, see `LoginWorldSwitcher`), `members` (members-only world), `available` (your account can use it: not greyed out, and for skill total worlds your total level is high enough; the world you are on counts as available), `visible` (fully shown in the scrolled list) and `box` (where it is on screen).
+A `Row` has `world`, `players`, `activity`, `types` (type flags, see `LoginWorldSwitcher`), `members`, `available` (not greyed out and total level high enough; the current world always counts), `visible` (fully inside the scrolled list) and `box` (screen area).
 
 ## Constants
 
@@ -30,8 +30,11 @@ WorldSwitcher.SORT_VARP = 477
 WorldSwitcher.FREE = 0xe0e0e0
 WorldSwitcher.MEMBERS = 0xf0f000
 WorldSwitcher.UNAVAILABLE = 0x7f7f7f
+WorldSwitcher.CONFIRM_GROUP = 193
+WorldSwitcher.CONFIRM_TEXT = 2
+WorldSwitcher.CONFIRM_BUTTONS = 0
 ```
-The interface piece numbers of the panel, the setting that remembers the sort order, and the colors used to tell free, members and unavailable worlds apart.
+Panel components, the sort-order varp, the free/members/unavailable text colours, and the confirm/warning box shown before some hops.
 
 ## Settings
 
@@ -39,14 +42,11 @@ Definition:
 ```luau
 WorldSwitcher.UNSAFE_TYPES = LoginWorldSwitcher.DANGEROUS
 WorldSwitcher.UNSAFE_ACTIVITIES = { "pvp", "wilderness", "clan wars", "last man standing", "lms" }
-```
-The type flags that mark a world as dangerous, and lowercase pieces of activity text for PvP worlds the server doesn't flag (Wilderness PK, PvP Arena, Clan Wars). `rows` and `worlds` skip matching worlds unless called with `safe = false`.
-
-Definition:
-```luau
 WorldSwitcher.cooldown_ms = 7000
 ```
-After a hop that didn't start (for example because you're in combat), how long to wait before trying another hop.
+- `UNSAFE_TYPES`: type flags that make a world dangerous.
+- `UNSAFE_ACTIVITIES`: lowercase activity substrings for PvP worlds the server doesn't flag.
+- `cooldown_ms`: wait after a hop that never started (such as in combat) before another is allowed.
 
 ## WorldSwitcher.is_open
 
@@ -54,13 +54,13 @@ Definition:
 ```luau
 function WorldSwitcher.is_open(): boolean
 ```
-Whether the world switcher is showing.
+Whether the switcher shows in the logout tab.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print("open:", WorldSwitcher.is_open())
+print(WorldSwitcher.is_open())
 ```
 
 ## WorldSwitcher.current
@@ -69,13 +69,13 @@ Definition:
 ```luau
 function WorldSwitcher.current(): number?
 ```
-The number of the world you're on.
+The current world, from the client or else the panel title.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print("world", WorldSwitcher.current())
+print(WorldSwitcher.current())
 ```
 
 ## WorldSwitcher.rows
@@ -84,13 +84,12 @@ Definition:
 ```luau
 function WorldSwitcher.rows(safe: boolean?): { Row }?
 ```
-Every world in the list, top to bottom, including ones scrolled out of view. The switcher has to be open. With `safe` (the default), dangerous worlds are left out: any with a type flag in `WorldSwitcher.UNSAFE_TYPES` (PvP, bounty, high risk, deadman, tournament, beta, seasonal, fresh start, speedrunning, no-save, PvP arena, last man standing) or an activity containing one of `WorldSwitcher.UNSAFE_ACTIVITIES`. Pass `false` to get every world. Worlds the game refused to let you into (see `WorldSwitcher.blocked_worlds`) are always left out.
+Every listed world top to bottom, scrolled out of view or not; nil when the switcher isn't open. With `safe` (default) worlds matching `UNSAFE_TYPES` or `UNSAFE_ACTIVITIES` are dropped; `false` keeps them. Blocked worlds are always dropped.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-WorldSwitcher.open()
 for _, row in ipairs(WorldSwitcher.rows() or {}) do
 	print(row.world, row.players, row.activity)
 end
@@ -102,14 +101,13 @@ Definition:
 ```luau
 function WorldSwitcher.worlds(safe: boolean?): { Row }?
 ```
-Only the worlds you can currently see in the list (not scrolled out of view). `safe` works as in `rows` and is on by default.
+`rows` limited to visible rows.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-WorldSwitcher.open()
-print("shown:", #(WorldSwitcher.worlds() or {}))
+print(#(WorldSwitcher.worlds() or {}))
 ```
 
 ## WorldSwitcher.find
@@ -118,13 +116,12 @@ Definition:
 ```luau
 function WorldSwitcher.find(world: number): Row?
 ```
-The row of one world, shown or not, dangerous or not. Returns `nil` if the world isn't in the list.
+One world's row with no filtering; nil when not listed or the switcher is closed.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-WorldSwitcher.open()
 local row = WorldSwitcher.find(301)
 print(row and row.players)
 ```
@@ -135,13 +132,13 @@ Definition:
 ```luau
 function WorldSwitcher.is_loading(): boolean
 ```
-Whether the list is still empty because the worlds haven't loaded yet.
+Whether the open switcher's list is still empty.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print("loading:", WorldSwitcher.is_loading())
+print(WorldSwitcher.is_loading())
 ```
 
 ## WorldSwitcher.wait_loading
@@ -150,13 +147,13 @@ Definition:
 ```luau
 function WorldSwitcher.wait_loading(timeout_ms: number?): boolean
 ```
-Waits until the list has loaded (up to 2.4 seconds by default). Returns whether it did.
+Waits up to `timeout_ms` (2400) for the list to load.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print(WorldSwitcher.wait_loading(5000))
+WorldSwitcher.wait_loading(5000)
 ```
 
 ## WorldSwitcher.open
@@ -165,13 +162,13 @@ Definition:
 ```luau
 function WorldSwitcher.open(wait_load: boolean?): boolean
 ```
-Opens the world switcher from the logout tab and waits for the list to load (pass `false` to skip that wait). It fails if a dialogue, such as the survey, is in the way.
+Opens the logout tab and the switcher (press on the button, release over the panel title), then waits for the list unless `wait_load` is false. False when it doesn't appear, such as when the survey dialogue is in the way.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print(WorldSwitcher.open())
+WorldSwitcher.open()
 ```
 
 ## WorldSwitcher.close
@@ -180,13 +177,13 @@ Definition:
 ```luau
 function WorldSwitcher.close(): boolean
 ```
-Closes the world switcher.
+Closes the switcher with its close button; true at once when not open.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print(WorldSwitcher.close())
+WorldSwitcher.close()
 ```
 
 ## WorldSwitcher.logout
@@ -195,29 +192,28 @@ Definition:
 ```luau
 function WorldSwitcher.logout(attempts: number?, time_ms: number?): boolean
 ```
-Logs out using the button at the bottom of the world switcher. See [Logout](logout.md).
+`Logout.logout_from_world_switcher` (see [Logout](logout.md)).
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-WorldSwitcher.open()
-print(WorldSwitcher.logout())
+WorldSwitcher.logout()
 ```
 
 ## WorldSwitcher.buttons
 
 Definition:
 ```luau
+export type Buttons = { configure: Widget, close: Widget, logout: Widget, sort_world: Widget }
 function WorldSwitcher.buttons(): Buttons?
 ```
-The main buttons of the panel: `configure`, `close`, `logout` and `sort_world`.
+The panel's main buttons; nil when any is missing.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-WorldSwitcher.open()
 local buttons = WorldSwitcher.buttons()
 print(buttons and buttons.close.x)
 ```
@@ -228,13 +224,13 @@ Definition:
 ```luau
 function WorldSwitcher.is_sorted(): boolean
 ```
-Whether the list is sorted by world number, lowest first.
+Whether the list is sorted by world number ascending (`SORT_VARP` is 0).
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print("sorted:", WorldSwitcher.is_sorted())
+print(WorldSwitcher.is_sorted())
 ```
 
 ## WorldSwitcher.sort
@@ -243,14 +239,13 @@ Definition:
 ```luau
 function WorldSwitcher.sort(): boolean
 ```
-Clicks the "World" column heading until the list is sorted by world number, lowest first.
+Clicks the "World" heading (up to twice) until sorted ascending; false when the switcher is closed.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-WorldSwitcher.open()
-print(WorldSwitcher.sort())
+WorldSwitcher.sort()
 ```
 
 ## WorldSwitcher.cooldown
@@ -259,13 +254,13 @@ Definition:
 ```luau
 function WorldSwitcher.cooldown(): number
 ```
-How many milliseconds are left before another hop is allowed. 0 when you can hop.
+Milliseconds left before another hop is allowed; 0 when ready.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print("wait", WorldSwitcher.cooldown(), "ms")
+print(WorldSwitcher.cooldown())
 ```
 
 ## WorldSwitcher.wait_switch
@@ -274,13 +269,13 @@ Definition:
 ```luau
 function WorldSwitcher.wait_switch(world: number, fail_cooldown: boolean?): boolean
 ```
-After clicking a world, waits for the hop to start and finish and for you to arrive on that world. If it never starts, the cooldown begins (unless `fail_cooldown` is `false`).
+After a hop click, waits up to 1.8 s for it to start and 10 s to arrive on `world`. When it never starts, starts the cooldown unless `fail_cooldown` is false.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print(WorldSwitcher.wait_switch(301))
+WorldSwitcher.wait_switch(301)
 ```
 
 ## WorldSwitcher.switch
@@ -289,14 +284,15 @@ Definition:
 ```luau
 function WorldSwitcher.switch(world: number): boolean
 ```
-Hops to a world. Opens the switcher, sorts the list by world number (see `sort`), scrolls to the world, clicks it, confirms the "Are you sure you wish to switch to World N?" box that some worlds (activity worlds such as Tempoross's 422) ask first, and waits until you've arrived. Returns `true` at once if you're already there, and `false` while the cooldown runs or when the world is a skill total world above your total level (`next`, `previous` and `random` leave such worlds out of your list first). When the game turns the hop down, the world is added to the blocked list until the script ends and `false` is returned: either a warning shows (such as the "Bounty Hunter world" one, closed with escape or its Cancel button, a biometric picks which first) or the chat says "Please choose a different world.". A failed hop (the world isn't found, the hover never shows "Switch", or the hop never starts) is tried up to 3 times with a short random pause; if all 3 fail, a warning is logged and the world is blocked too, in case it's broken. A hop that started but didn't arrive in time isn't retried or blocked, and neither is a world greyed out in the list. A blocked world is never hopped to again, and `next`, `previous` and `random` always leave it out, `safe` or not.
+Hops to `world`: opens and sorts the switcher, scrolls to the row, clicks it, confirms the "switch to World N?" box when asked, and waits to arrive. True at once when already there. False during cooldown, for a blocked world, a skill total world above your total, or a greyed-out row.
+
+A refusal (a "World N is a..." warning, dismissed by ESC or Cancel as Biometrics picks, or the chat's "Please choose a different world.") blocks the world for the rest of the script. A hop that fails before starting (row not found, no "Switch" hover, never starts) is retried up to 3 times with a random pause, then the world is blocked too. A hop that started but didn't arrive in time is neither retried nor blocked.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-local ok = WorldSwitcher.switch(301)
-print(if ok then "hopped" else "unavailable")
+WorldSwitcher.switch(301)
 ```
 
 ## WorldSwitcher.is_blocked
@@ -305,13 +301,13 @@ Definition:
 ```luau
 function WorldSwitcher.is_blocked(world: number): boolean
 ```
-Whether the game refused a hop to this world earlier in the script (a warning before entering, or "Please choose a different world."). The list lives in memory until the script ends and has no setting to allow these worlds.
+Whether `switch` blocked this world earlier in the script; the list is in memory only and can't be overridden.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print("blocked:", WorldSwitcher.is_blocked(569))
+print(WorldSwitcher.is_blocked(569))
 ```
 
 ## WorldSwitcher.blocked_worlds
@@ -320,7 +316,7 @@ Definition:
 ```luau
 function WorldSwitcher.blocked_worlds(): { number }
 ```
-Every world blocked so far, sorted.
+Every blocked world, sorted.
 
 Example:
 ```luau
@@ -335,13 +331,13 @@ Definition:
 ```luau
 function WorldSwitcher.next(worlds: { number }, safe: boolean?): boolean
 ```
-Hops to the world after the current one in your list (or the first one if you're not on any of them). With `safe` (the default) dangerous worlds are dropped from your list first; pass `false` to keep them.
+Hops to the world after the current one in `worlds` (wrapping, or the first when not on any). Blocked worlds and those above your total level are dropped first, and dangerous ones too unless `safe` is false. True when the only remaining world is the current one.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print(WorldSwitcher.next({ 301, 302, 303 }))
+WorldSwitcher.next({ 301, 302, 303 })
 ```
 
 ## WorldSwitcher.previous
@@ -350,13 +346,13 @@ Definition:
 ```luau
 function WorldSwitcher.previous(worlds: { number }, safe: boolean?): boolean
 ```
-Hops to the world before the current one in your list (or the last one). `safe` works as in `next`.
+`next`, going to the world before (wrapping, or the last).
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print(WorldSwitcher.previous({ 301, 302, 303 }))
+WorldSwitcher.previous({ 301, 302, 303 })
 ```
 
 ## WorldSwitcher.random
@@ -365,11 +361,11 @@ Definition:
 ```luau
 function WorldSwitcher.random(worlds: { number }, safe: boolean?): boolean
 ```
-Hops to a random world from your list, other than the current one. `safe` works as in `next`.
+`next`, going to a random world other than the current one.
 
 Example:
 ```luau
 local WorldSwitcher = require("@lib/main/interfaces/gametabs/worldswitcher")
 
-print(WorldSwitcher.random({ 301, 302, 303, 304 }))
+WorldSwitcher.random({ 301, 302, 303, 304 })
 ```

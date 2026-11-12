@@ -1,126 +1,118 @@
 # Main.Interfaces.Chatbox.RecommendSurvey
 
-The "Would you recommend it to a friend?" survey that can show up in the chatbox after you log
-in. While it's open, actions like world hopping are refused, so answer or skip it first.
+The "Would you recommend it to a friend?" survey that can show in the chatbox after login. While it's open, actions like world hopping are refused, so answer or skip it first. Every function returns `false` when the survey isn't open or the click fails. Buttons are pressed by moving the mouse onto them and clicking only once the menu shows that button.
 
-Every function returns `false` if the survey isn't open and `nil` if something went wrong.
-
-## RecommendSurvey
-Definition:
-```luau
-local RecommendSurvey: { GROUP: number, ... }
-```
-The survey itself. `RecommendSurvey.GROUP` is its chatbox interface id (709); the other
-constants (`YES`, `NO`, `SKIP`, `DONT_ASK`, `DONT_ASK_BOX`, ...) are the ids of its components.
-
-Example:
 ```luau
 local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
-
-print("survey group:", RecommendSurvey.GROUP)
 ```
 
+## Constants
+
+Definition:
+```luau
+RecommendSurvey.GROUP = 709
+RecommendSurvey.FOOTNOTE = 1
+RecommendSurvey.DONT_ASK = 2
+RecommendSurvey.TITLE = 3
+RecommendSurvey.NO = 4
+RecommendSurvey.SKIP = 5
+RecommendSurvey.YES = 6
+RecommendSurvey.DONT_ASK_LABEL = 9
+RecommendSurvey.DONT_ASK_BOX = 10
+```
+The survey's interface and the components of its buttons, title and "Don't ask again" box.
+
 ## RecommendSurvey.is_open
+
 Definition:
 ```luau
 function RecommendSurvey.is_open(): boolean
 ```
-Checks if the survey is currently showing.
+Whether the survey is showing.
 
 Example:
 ```luau
-local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
-
-local open = RecommendSurvey.is_open()
-print("survey open:", open)
+print(RecommendSurvey.is_open())
 ```
 
 ## RecommendSurvey.yes
+
 Definition:
 ```luau
 function RecommendSurvey.yes(): boolean
 ```
-Answers "Yes" and waits for the survey to close.
+Answers "Yes" and waits up to 3 seconds for the survey to close.
 
 Example:
 ```luau
-local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
-
-print("answered yes:", RecommendSurvey.yes())
+print(RecommendSurvey.yes())
 ```
 
 ## RecommendSurvey.no
+
 Definition:
 ```luau
 function RecommendSurvey.no(): boolean
 ```
-Answers "No" and waits for the survey to close.
+Answers "No" and waits up to 3 seconds for the survey to close.
 
 Example:
 ```luau
-local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
-
-print("answered no:", RecommendSurvey.no())
+print(RecommendSurvey.no())
 ```
 
 ## RecommendSurvey.skip
+
 Definition:
 ```luau
 function RecommendSurvey.skip(): boolean
 ```
-Skips the survey without answering and waits for it to close.
+Skips the survey and waits up to 3 seconds for it to close.
 
 Example:
 ```luau
-local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
-
 if RecommendSurvey.is_open() then
-	print("skipped:", RecommendSurvey.skip())
+	RecommendSurvey.skip()
 end
 ```
 
 ## RecommendSurvey.dont_ask
+
 Definition:
 ```luau
 function RecommendSurvey.dont_ask(): boolean
 ```
-Checks if the "Don't ask again" box is ticked.
+Whether the "Don't ask again" box is ticked.
 
 Example:
 ```luau
-local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
-
-print("don't ask again:", RecommendSurvey.dont_ask())
+print(RecommendSurvey.dont_ask())
 ```
 
 ## RecommendSurvey.toggle_dont_ask
+
 Definition:
 ```luau
 function RecommendSurvey.toggle_dont_ask(): boolean
 ```
-Clicks the "Don't ask again" box once, flipping it. Prefer `set_dont_ask` if you want a
-specific state.
+Clicks the "Don't ask again" box once without waiting for it to change. Use `set_dont_ask` for a specific state.
 
 Example:
 ```luau
-local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
-
-print("clicked:", RecommendSurvey.toggle_dont_ask())
+print(RecommendSurvey.toggle_dont_ask())
 ```
 
 ## RecommendSurvey.set_dont_ask
+
 Definition:
 ```luau
 function RecommendSurvey.set_dont_ask(ticked: boolean): boolean
 ```
-Makes sure the "Don't ask again" box is ticked or unticked, clicking it only if needed.
+Ticks or unticks the "Don't ask again" box, clicking only if needed, and waits up to 1.2 seconds for it to change.
 
 Example:
 ```luau
-local RecommendSurvey = require("@lib/main/interfaces/chatbox/recommend_survey")
-
-if RecommendSurvey.is_open() then
-	print("ticked:", RecommendSurvey.set_dont_ask(true))
-	print("skipped:", RecommendSurvey.skip())
+if RecommendSurvey.set_dont_ask(true) then
+	RecommendSurvey.skip()
 end
 ```

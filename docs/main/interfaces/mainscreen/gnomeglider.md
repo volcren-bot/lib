@@ -1,12 +1,12 @@
 # Main.Interfaces.Mainscreen.Gnomeglider
 
-The gnome glider map: a map of the seven landing places, opened by the "Glider" option of any glider pilot (group 138, `gliders` in the cache). Each place is a model with its name beside it. The pilots are different NPCs by landing place and the NPC list gives them an empty name, so the option "Glider" is all that identifies one.
+The gnome glider map (group 138) of seven landing places, opened by "Glider" on any glider pilot. Pilots differ by place and have empty names in the NPC list, so the "Glider" option is what identifies one. Place names come from each model's `action` in memory, so nothing is hovered to read them. The current place is listed too and isn't told apart; quest-locked places were never observed.
 
 ```luau
 local Gnomeglider = require("@lib/main/interfaces/mainscreen/gnomeglider")
 ```
 
-A destination has `name` and `area` (the model: where to hover and click). Quests gate the places; this module was only seen on an account with all of them done, so how a place you can't use looks is not known. The map also lists the place you are at; this module doesn't tell it apart.
+A `Destination` has `name` and `area` (the model widget to click).
 
 ## Constants
 
@@ -26,7 +26,7 @@ Gnomeglider.PILOT_RANGE = 12
 Gnomeglider.PILOT_ASK_LIMIT = 8
 Gnomeglider.PILOT_HOVER_MS = 350
 ```
-The interface piece numbers (how many components are searched for places, and the close button), the option that opens the map, and the waits: for `wait_open`, for a hover to show the menu, for the map to go after a click, between looks, for the menu to follow the mouse, and the pause `open` makes once the map shows. The last three are for finding the pilot: how far to look, how many NPCs to ask at most, and how long to wait after hovering one.
+Widget ids (`LAST_COMPONENT` bounds the search), the pilot option, and timings. `PILOT_*` bound the pilot search: tile range, NPCs hovered at most, and the wait after each hover.
 
 ## Gnomeglider.Site
 
@@ -34,7 +34,7 @@ Definition:
 ```luau
 export type Site = "Ta Quir Priw" | "Sindarpos" | "Lemanto Andra" | "Kar-Hewo" | "Gandius" | "Lemantolly Undri" | "Ookookolly Undri"
 ```
-Every landing place, as the game names it. `Gnomeglider.Site` is a frozen table of them keyed without spaces or punctuation (`TaQuirPriw`, `Sindarpos`, `LemantoAndra`, `KarHewo`, `Gandius`, `LemantollyUndri`, `OokookollyUndri`), so a trip is `Gnomeglider.select(Gnomeglider.Site.KarHewo)` and a misspelled place is a type error.
+Every landing place. `Gnomeglider.Site` is a frozen table keyed without spaces or punctuation (`TaQuirPriw`, `KarHewo`, `OokookollyUndri`).
 
 ## Gnomeglider.is_open
 
@@ -50,7 +50,7 @@ Definition:
 ```luau
 function Gnomeglider.wait_open(timeout_ms: number?): boolean
 ```
-Whether the map is open, polled for up to `timeout_ms` (3 seconds by default).
+Waits up to `timeout_ms` (default `OPEN_TIMEOUT_MS`) for the map. False on timeout.
 
 ## Gnomeglider.destinations
 
@@ -58,12 +58,10 @@ Definition:
 ```luau
 function Gnomeglider.destinations(): { Destination }?
 ```
-The places on the map, top to bottom. The game keeps each name as its model's first menu option, which the widget exposes as `action`, so nothing is hovered. Nil when the map isn't open.
+The places on the map, top to bottom. Nil when the map isn't open.
 
 Example:
 ```luau
-local Gnomeglider = require("@lib/main/interfaces/mainscreen/gnomeglider")
-
 for _, d in ipairs(Gnomeglider.destinations() or {}) do
 	print(d.name)
 end
@@ -75,7 +73,7 @@ Definition:
 ```luau
 function Gnomeglider.names(): { string }?
 ```
-The names of the places, top to bottom. Nil when the map isn't open.
+The place names, top to bottom. Nil when the map isn't open.
 
 ## Gnomeglider.find
 
@@ -83,7 +81,7 @@ Definition:
 ```luau
 function Gnomeglider.find(name: string): Destination?
 ```
-The place called `name`, ignoring case. An exact name wins. Otherwise a name that contains the other counts, but only when exactly one place fits ("Undri" fits two, so it finds none).
+The place called `name`, case-insensitive. An exact match wins; otherwise a substring match either way counts only if exactly one place fits ("Undri" fits two, so nil).
 
 ## Gnomeglider.select
 
@@ -91,12 +89,10 @@ Definition:
 ```luau
 function Gnomeglider.select(site: Site): boolean
 ```
-Clicks the place's model, which sends the glider, and waits for the map to go. `site` is one of `Gnomeglider.Site`, so no free text is typed. The click only happens once the menu under the mouse offers the place that was asked for (the models overlap), so a wrong spot costs nothing. False when no place has that name, the menu didn't offer it, or the map stayed open. The flight is not waited for.
+Hovers the place's model, clicks only if the menu offers that place (the models overlap), and waits for the map to close. False when the place isn't found, the menu disagrees, or the map stays open. Doesn't wait for the flight.
 
 Example:
 ```luau
-local Gnomeglider = require("@lib/main/interfaces/mainscreen/gnomeglider")
-
 assert(Gnomeglider.open())
 assert(Gnomeglider.select(Gnomeglider.Site.Sindarpos), "couldn't choose Sindarpos")
 ```
@@ -115,7 +111,7 @@ Definition:
 ```luau
 function Gnomeglider.close(key_probability: number?): boolean
 ```
-Closes the map: Escape (chance `key_probability`; nil or 0 is the Escape biometric) unless "Esc to close" is off, else the close button. See `Toplevel.close`.
+Closes the map via `Toplevel.close`: Escape with chance `key_probability` (nil or 0 uses the biometric), else the close button. True when closed, also if it wasn't open.
 
 ## Gnomeglider.find_pilot
 
@@ -123,7 +119,7 @@ Definition:
 ```luau
 function Gnomeglider.find_pilot(near: Tile?, range: number?): Npc?
 ```
-The NPC within `range` tiles (`PILOT_RANGE` by default) of `near` (you by default) that offers "Glider", found by asking: each one, nearest first, is hovered and its menu read. Nil when there is none.
+Hovers up to `PILOT_ASK_LIMIT` NPCs within `range` tiles (default `PILOT_RANGE`) of `near` (default you), nearest first, and returns the first offering "Glider". Nil when none.
 
 ## Gnomeglider.open
 
@@ -131,12 +127,10 @@ Definition:
 ```luau
 function Gnomeglider.open(npc: Npc?, walk: boolean?): (boolean, string?)
 ```
-Opens the map from the nearest pilot (or `npc`), walking closer first unless `walk` is false, and waits for it. True also when it was open already. When it didn't work, the second result says why.
+Clears other interfaces with Escape, uses "Glider" on `npc` or `find_pilot()` (walking closer unless `walk` is false), and waits for the map. True when open, also if it already was; otherwise false and the reason.
 
 Example:
 ```luau
-local Gnomeglider = require("@lib/main/interfaces/mainscreen/gnomeglider")
-
 local ok, why = Gnomeglider.open()
 assert(ok, why)
 print(table.concat(Gnomeglider.names() or {}, ", "))
