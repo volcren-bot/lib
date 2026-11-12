@@ -442,3 +442,55 @@ local Geometry = require("@lib/utils/math/geometry")
 
 print(Minimenu.overlaps(Geometry.Box.new(300, 200, 340, 240)))
 ```
+
+## Minimenu.swaps
+
+Definition:
+```luau
+function Minimenu.swaps(): { Host.EntrySwap }
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Minimenu.reload_swaps
+
+Definition:
+```luau
+function Minimenu.reload_swaps()
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Minimenu.left_click_index
+
+Definition:
+```luau
+function Minimenu.left_click_index(entries: { MenuEntry }?): number?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Minimenu.left_click
+
+Definition:
+```luau
+function Minimenu.left_click(): MenuEntry?
+```
+TODO...
+
+Example:
+```luau
+
+```

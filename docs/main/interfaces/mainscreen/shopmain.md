@@ -188,3 +188,289 @@ function Shopmain.value_slot(slot: number): boolean
 function Shopmain.value_inventory_slot(slot: number): boolean
 ```
 Pick "Value" on a stock slot or an inventory slot. The price comes back as a game message ("Coal: currently costs 67 coins."), which `Host.chat_messages` lists.
+
+## Shopmain.close_button
+
+Definition:
+```luau
+function Shopmain.close_button(): Widget?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.close
+
+Definition:
+```luau
+function Shopmain.close(key_probability: number?, timeout_ms: number?): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.slots
+
+Definition:
+```luau
+function Shopmain.slots(): { Slot }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.items
+
+Definition:
+```luau
+function Shopmain.items(): { Slot }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.index_of
+
+Definition:
+```luau
+function Shopmain.index_of(items: Item | { Item }): number?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.sells
+
+Definition:
+```luau
+function Shopmain.sells(items: Item | { Item }): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.stock
+
+Definition:
+```luau
+function Shopmain.stock(items: Item | { Item }): number?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.in_stock
+
+Definition:
+```luau
+function Shopmain.in_stock(items: Item | { Item }): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.is_slot_shown
+
+Definition:
+```luau
+function Shopmain.is_slot_shown(slot: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.show_slot
+
+Definition:
+```luau
+function Shopmain.show_slot(slot: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.box
+
+Definition:
+```luau
+function Shopmain.box(slot: number): Widget?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.hover_slot
+
+Definition:
+```luau
+function Shopmain.hover_slot(slot: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.interact_slot
+
+Definition:
+```luau
+function Shopmain.interact_slot(slot: number, option: string): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.buy_slot
+
+Definition:
+```luau
+function Shopmain.buy_slot(slot: number, quantity: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.buy
+
+Definition:
+```luau
+function Shopmain.buy(item: Item, amount: number?, overshoot: boolean?): number
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.inventory_slots
+
+Definition:
+```luau
+function Shopmain.inventory_slots(): { Slot }?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.inventory_box
+
+Definition:
+```luau
+function Shopmain.inventory_box(slot: number): Widget?
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.interact_inventory_slot
+
+Definition:
+```luau
+function Shopmain.interact_inventory_slot(slot: number, option: string): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.sell_slot
+
+Definition:
+```luau
+function Shopmain.sell_slot(slot: number, quantity: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.sell
+
+Definition:
+```luau
+function Shopmain.sell(item: Item, amount: number?): number
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.value_slot
+
+Definition:
+```luau
+function Shopmain.value_slot(slot: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
+
+## Shopmain.value_inventory_slot
+
+Definition:
+```luau
+function Shopmain.value_inventory_slot(slot: number): boolean
+```
+TODO...
+
+Example:
+```luau
+
+```
