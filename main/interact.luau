@@ -72,7 +72,8 @@ function Interact.with(
 		return false, nil
 	end
 	local before = Minimenu.clicked()
-	if index == 1 and not menu then
+	local left = index == Minimenu.left_click_index(Minimenu.entries())
+	if left and not menu then
 		Mouse.click()
 	else
 		local ok = Minimenu.select(option, target)
@@ -90,9 +91,10 @@ function Interact.with(
 			return false, clicked
 		end
 	end
-	if index == 1 and not menu then
+	if left and not menu then
 		Interact.spam_click(spam, function(): boolean
-			return Minimenu.find(option, target) == 1
+			local at = Minimenu.find(option, target)
+			return at ~= nil and at == Minimenu.left_click_index(Minimenu.entries())
 		end)
 	end
 	return arrive(walk_timeout_ms), nil

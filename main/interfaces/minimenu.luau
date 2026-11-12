@@ -7,6 +7,7 @@ local sleep = Host.sleep
 local menu_layout = Host.menu_layout
 local game_state = Host.game_state
 local connection = Host.connection
+local time = Host.time
 type MenuEntry = Host.MenuEntry
 type MenuClick = Host.MenuClick
 local Geometry = require("@lib/utils/math/geometry")
@@ -19,6 +20,52 @@ local Minimenu = {}
 export type Target = string | (MenuEntry) -> boolean
 
 Minimenu.MARGIN = 40
+Minimenu.SWAPS_TTL_MS = 1000
+
+local swaps: { Host.EntrySwap } = {}
+local swaps_until = 0
+
+function Minimenu.swaps(): { Host.EntrySwap }
+	if time() >= swaps_until then
+		local ok, read = pcall(Host.entry_swaps)
+		swaps = if ok and read then read.swaps else {}
+		swaps_until = time() + Minimenu.SWAPS_TTL_MS
+	end
+	return swaps
+end
+
+function Minimenu.reload_swaps()
+	swaps_until = 0
+end
+
+local function plain(target: string): string
+	return string.lower((string.gsub(target, "%s*%(level%-?%d+%)$", "")))
+end
+
+function Minimenu.left_click_index(entries: { MenuEntry }?): number?
+	if entries == nil or entries[1] == nil then
+		return nil
+	end
+	local target = plain(entries[1].target)
+	for _, swap in ipairs(Minimenu.swaps()) do
+		if plain(swap.target) == target then
+			for _, option in ipairs(swap.options) do
+				for i, entry in ipairs(entries) do
+					if plain(entry.target) == target and string.lower(entry.option) == string.lower(option) then
+						return i
+					end
+				end
+			end
+		end
+	end
+	return 1
+end
+
+function Minimenu.left_click(): MenuEntry?
+	local entries = menu()
+	local index = Minimenu.left_click_index(entries)
+	return if entries and index then entries[index] else nil
+end
 
 function Minimenu.entries(): { MenuEntry }?
 	return menu()
@@ -33,7 +80,8 @@ function Minimenu.uptext(): string?
 	if entries == nil then
 		return nil
 	end
-	return if entries[1] then Minimenu.text(entries[1]) else ""
+	local index = Minimenu.left_click_index(entries)
+	return if index then Minimenu.text(entries[index]) else ""
 end
 
 function Minimenu.matches(entry: MenuEntry, option: string, target: Target?): boolean

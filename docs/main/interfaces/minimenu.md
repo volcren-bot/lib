@@ -59,13 +59,40 @@ Definition:
 ```luau
 function Minimenu.uptext(): string?
 ```
-The text of the top line: what the game says will happen if you left click. Empty when nothing is under the mouse.
+The text of what a left click does: the top line, or the option the client's entry swaps put in its place (`left_click_index`). The game's own up-text doesn't show swaps. Empty when nothing is under the mouse.
 
 Example:
 ```luau
 local Minimenu = require("@lib/main/interfaces/minimenu")
 
 print(Minimenu.uptext())
+```
+
+## Minimenu.swaps / Minimenu.reload_swaps
+
+Definition:
+```luau
+Minimenu.SWAPS_TTL_MS = 1000
+function Minimenu.swaps(): { EntrySwap }
+function Minimenu.reload_swaps()
+```
+The account's entry swaps from `Host.entry_swaps` (the plain ones; the ones used with the alternate key held are not applied), kept for `SWAPS_TTL_MS` so the files aren't read on every menu check. An empty list when they can't be read. `reload_swaps` makes the next call read them again. Needs host API 18; without it there are no swaps and the top line is the left click.
+
+## Minimenu.left_click_index / Minimenu.left_click
+
+Definition:
+```luau
+function Minimenu.left_click_index(entries: { MenuEntry }?): number?
+function Minimenu.left_click(): MenuEntry?
+```
+Which line a left click on what is under the mouse runs. The client's entry swaps don't change the menu it lists, only what a click does: for the object of the top line (a level suffix like `(level-2)` is ignored when comparing names), the first option of its swap that the menu offers is the one. Without a swap, or when none of its options is offered, it is the top line (1). `left_click_index` takes a list of lines (for example `Minimenu.entries()`); `left_click` reads the menu itself. `Interact.with` and `Minimenu.uptext` use it, so an option the account swapped to the left click is left clicked and not picked from the right-click menu.
+
+Example:
+```luau
+local Minimenu = require("@lib/main/interfaces/minimenu")
+
+local entry = Minimenu.left_click()
+print(entry and Minimenu.text(entry))
 ```
 
 ## Minimenu.matches

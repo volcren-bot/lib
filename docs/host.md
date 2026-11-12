@@ -341,6 +341,23 @@ if click then
 end
 ```
 
+## Host.entry_swaps
+
+Definition:
+```luau
+Host.entry_swaps: () -> EntrySwaps?
+```
+Needs host API 18. Returns the client's own entry swaps for the logged-in account, read from the files it keeps (`entryswaps.dat` and `entryswapsalt.dat` in the account's folder). `swaps` are the plain swaps and `alt` the ones used with the alternate key held; each is `{ target, options }`, where `target` is the name of the NPC, object or item as the menu shows it and `options` are the options to prefer, best first. The client acts on the first of them that the menu offers when you left click, without changing the menu: `Host.menu` and the up-text still show the unswapped order. Returns `nil` when the account isn't known yet (not logged in), without an error. The account's folder is found through the files the client has open and is remembered per client; the files are read on every call.
+
+Example:
+```luau
+local Host = require("@lib/host")
+
+for _, swap in ipairs((Host.entry_swaps() or { swaps = {} }).swaps) do
+	print(swap.target, table.concat(swap.options, ", "))
+end
+```
+
 ## Host.selected_widget
 
 Definition:

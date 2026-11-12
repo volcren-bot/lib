@@ -287,6 +287,16 @@ export type MenuEntry = {
 	submenu: boolean,
 }
 
+export type EntrySwap = {
+	target: string,
+	options: { string },
+}
+
+export type EntrySwaps = {
+	swaps: { EntrySwap },
+	alt: { EntrySwap },
+}
+
 export type MenuClick = {
 	entry: MenuEntry,
 	x: number,
@@ -755,6 +765,7 @@ return {
 	form_update = g.form_update :: () -> { [string]: any }?,
 	menu = g.menu :: () -> { MenuEntry }?,
 	menu_click = g.menu_click :: () -> MenuClick?,
+	entry_swaps = g.entry_swaps :: () -> EntrySwaps?,
 	menu_open = g.menu_open :: () -> boolean,
 	menu_layout = g.menu_layout :: () -> MenuLayout?,
 	sub_interfaces = g.sub_interfaces :: () -> { SubInterface }?,
