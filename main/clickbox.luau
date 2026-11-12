@@ -444,6 +444,24 @@ function Clickbox.reveal(clickbox: Aim, tile: () -> Tile?, what: string): boolea
 			end
 		end
 	end
+
+	Camera.look_at(at)
+	if on_screen(clickbox, what) then
+		return true
+	end
+	local pitch = Camera.pitch()
+	if pitch then
+		local lowest = Camera.PITCH_MIN + Random.int(0, 200)
+		for _, to in ipairs({ math.round((pitch + lowest) / 2), lowest }) do
+			if to < pitch - Camera.tolerance then
+				Camera.set_pitch(to)
+				pitch = Camera.pitch() or to
+				if on_screen(clickbox, what) then
+					return true
+				end
+			end
+		end
+	end
 	return false
 end
 
@@ -618,7 +636,11 @@ function Clickbox.approach(
 
 	Camera.face(at)
 	local picked_early = false
-	if not aimable(clickbox, what) and Walker.distance(me, at) > near then
+	local function on_foot(): boolean
+		local now = tile()
+		return now ~= nil and Walker.plain_walk({ x = math.floor(now.x), y = math.floor(now.y) }, near)
+	end
+	if Walker.distance(me, at) > near and not (aimable(clickbox, what) and on_foot()) then
 		local last_try: number? = nil
 		local goal = { x = math.floor(at.x), y = math.floor(at.y) }
 		local ok = Walker.walk(goal, {
@@ -641,7 +663,9 @@ function Clickbox.approach(
 				if
 					not o.settle
 					and (last_try == nil or Host.time() - last_try >= Clickbox.EARLY_RETRY_MS)
+					and on_screen(clickbox, what)
 					and aimable(clickbox, what)
+					and on_foot()
 				then
 					last_try = Host.time()
 					if Clickbox.interact(clickbox, hovered, what, option, target, tile, false, o.spam) == true then
