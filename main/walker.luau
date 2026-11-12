@@ -1379,16 +1379,80 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 	local here = Walker.here()
 	if here ~= nil then
 		local goal = { x = to.x, y = to.y, plane = opts.plane or here.plane }
-		if not Transports.walkable(here, goal, choices :: any) then
+		if
+			not Transports.walkable(here, goal, choices :: any)
+			and not (goal.plane ~= here.plane and Walker.climb_toward(goal.plane))
+		then
 			error(
 				`no way from {here.x}, {here.y} (plane {here.plane}) to {goal.x}, {goal.y} (plane {goal.plane}): it can't be walked, and no transport that can be used leads there`
 			)
 		end
 	end
-	return walk_plan(to, opts)
+	local arrived = walk_plan(to, opts)
+	for _ = 1, Walker.CLIMB_TRIES do
+		local now = Walker.here()
+		local plane = opts.plane or (now and now.plane)
+		if now == nil or plane == nil or now.plane == plane or not Walker.climb_toward(plane) then
+			break
+		end
+		arrived = walk_plan(to, opts)
+	end
+	return arrived
 end
 
 Walker.TRANSPORT_HOPS = 6
 Walker.TRANSPORT_FAILURES = 4
+Walker.CLIMB_REACH = 10
+Walker.CLIMB_TRIES = 2
+Walker.CLIMB_TIMEOUT_MS = 6000
+
+function Walker.climb_toward(plane: number): boolean
+	local here = Walker.here()
+	if here == nil or here.plane == plane then
+		return false
+	end
+	local option = if plane < here.plane then "Climb-down" else "Climb-up"
+	local Objects = lazy("./entities/objects")
+	local near: { Host.Loc } = {}
+	for _, loc in ipairs(Objects.find() or {}) do
+		if loc.plane == here.plane and Objects.distance(loc, here) <= Walker.CLIMB_REACH then
+			table.insert(near, loc)
+		end
+	end
+	local ids: { number } = {}
+	for i, loc in near do
+		ids[i] = loc.id
+	end
+	local views = if #ids > 0 then Host.loc_shown(ids) else nil
+	local best: Host.Loc? = nil
+	local best_distance = math.huge
+	for i, loc in near do
+		local view = views and views[i]
+		local distance = Objects.distance(loc, here)
+		if view and table.find(view.actions, option) and distance < best_distance then
+			best, best_distance = loc, distance
+		end
+	end
+	if best == nil then
+		Log.log(
+			"Walker",
+			`on plane {here.plane}, wanting plane {plane}: no "{option}" within {Walker.CLIMB_REACH} tiles`
+		)
+		return false
+	end
+	Log.log("Walker", `on plane {here.plane}, wanting plane {plane}: {option} on the {best.name} at {best.x}, {best.y}`)
+	if not Objects.interact(best, option) then
+		return false
+	end
+	local started = Host.time()
+	while Host.time() - started < Walker.CLIMB_TIMEOUT_MS do
+		local now = Walker.here()
+		if now and now.plane ~= here.plane then
+			return true
+		end
+		Host.sleep(100)
+	end
+	return false
+end
 
 return Walker

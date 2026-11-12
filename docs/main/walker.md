@@ -200,6 +200,7 @@ Walks to a tile, on any plane, through doors and up and down ladders and stairca
 - **Camera.** The walk turns the camera to show as much of the way ahead as it can, so each click goes far: it projects the next `Walker.STEER_TILES` plan tiles as the camera would show them turned to each of `Walker.STEER_OFFSETS` (degrees off the bearing of their mean), from where the next click will go in, and turns to one that shows at least `Walker.STEER_GAIN` tiles more of the way than now (a random one of those within `Walker.STEER_SLACK` of the most, preferring one whose neighbours do as well). It looks before setting off, after each click, and every `Walker.STEER_CHECK_MS` while running to the flag (queued then, so a turn never holds up a click); a camera more than `Walker.LOW_PITCH` below `Camera.PITCH_MAX` is raised as it turns.
 - **Tiny moves.** `Walker.FIDGET_DELAY_MIN_MS` to `Walker.FIDGET_DELAY_MAX_MS` after a click, a wait for the flag rolls for a tiny move at `Walker.FIDGET_CHANCE`, then rolls again every `Walker.FIDGET_NEXT_MIN_MS` to `Walker.FIDGET_NEXT_MAX_MS` at `Walker.FIDGET_CHANCE_DROP` less each time (made or missed) until the chance runs out, and only with `Walker.FIDGET_MIN_LEFT_MS` left before the next click. Each move is a small yaw turn or mouse move (the antiban's tiny tasks), a pitch within `Walker.FIDGET_PITCH` of `Camera.PITCH_MAX`, or a zoom 1 to 5 scroll notches (weighted by `Walker.FIDGET_ZOOM_NOTCHES`, most often 3) from the zoom it found (kept from walk to walk, so the moves don't add up). They are queued, and the camera check above turns back to the way if one turned too far from it.
 - **Doors and climbs.** The plan's next door or ladder is clicked as soon as it is within `Walker.ACTION_RANGE` and on screen (the game walks the rest), or once the walk gets next to it. A door is done when the plan no longer goes through it or the other half of it (a double door or a gate: the locs side by side along its wall), checked every `Walker.DOOR_CHECK_MS`, and the server isn't moving the player without a walk of theirs: a toll gate walks you through and shuts behind you. A door that just opened isn't clicked again for `Walker.DOOR_REOPEN_MS`, while a gate shows shut before it walks you through. When the chatbox says a door clicked "seems to be stuck" (`Walker.DOOR_STUCK`: doors opened and closed too often), the walk plans round it at once. A climb is done when the plane changes (or, for an agility shortcut that keeps the plane, when you stand on the tile it lands on, `Walker.SHORTCUT_LANDED_NEAR`). After a plane change the camera is let settle and the walk pauses a random `Walker.CLIMB_PAUSE_MIN_MS` to `Walker.CLIMB_PAUSE_MAX_MS` (0 to 1.5 ticks) before its next click; after a climb that keeps the plane (an agility shortcut or a link like a stile) it pauses `Walker.SHORTCUT_PAUSE_MS` (1200, 2 ticks) instead, so the next click doesn't go in before the obstacle is done. Neither pause is part of the route's cost. The planning happens inside the pause. One that does nothing for `Walker.ACTION_IDLE_MS` (a locked door) is tried `Walker.ACTION_ATTEMPTS` times, then planned around.
+- **Wrong plane.** When the plan can't get from the player's plane to the goal's, or a walk ends on another plane than the goal's (a plan that went up a ladder it has no way back down from), it uses `Walker.climb_toward` on the goal's plane and walks again, `Walker.CLIMB_TRIES` times at most, before the "no way" error.
 
 `options`:
 - `near`: done once the player is at most this many tiles away, on `plane` (default 2).
@@ -320,3 +321,14 @@ Example:
 ```luau
 
 ```
+
+## Walker.climb_toward
+
+Definition:
+```luau
+Walker.CLIMB_REACH = 10
+Walker.CLIMB_TRIES = 2
+Walker.CLIMB_TIMEOUT_MS = 6000
+function Walker.climb_toward(plane: number): boolean
+```
+Takes the player one plane toward `plane` without a plan: the nearest clickable object on the player's plane within `CLIMB_REACH` tiles whose options (`Host.loc_shown`) hold `Climb-down` (or `Climb-up` when `plane` is above) is used, and it waits up to `CLIMB_TIMEOUT_MS` for the plane to change. False when the player is on `plane` already, there is no such object, or the plane didn't change. `Walker.walk` falls back on it when it finds no way to another plane.
