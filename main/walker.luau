@@ -698,6 +698,16 @@ function Walker.plan(to: Tile, plane: number?, options: Host.NavOptions?): NavPl
 	return plan
 end
 
+function Walker.plain_walk(to: Tile, near: number?): boolean
+	local Transports = lazy("./transports")
+	local plan = Walker.plan(to, nil, {
+		near = near,
+		allow_climbs = Transports.allowed_climbs(),
+		shortcut_saving = Transports.SHORTCUT_MIN_SAVING_TILES,
+	})
+	return plan ~= nil and plan.reached and #plan.actions == 0
+end
+
 Walker.SCENE_LOAD_MS = 10000
 Walker.SCENE_LOAD_POLL_MS = 100
 Walker.TIMEOUT_MS = 90000
@@ -814,6 +824,7 @@ type Using = {
 	from: NavTile,
 	still_since: number?,
 	checked_at: number,
+	start: NavTile,
 	landing: NavTile?,
 }
 
@@ -931,9 +942,11 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 		local u = using :: Using
 		local now = time()
 		if u.action.kind == "climb" then
+			local to_landing = if u.landing then Walker.distance(here, u.landing :: NavTile) else math.huge
 			local landed = u.landing ~= nil
 				and here.plane == (u.landing :: NavTile).plane
-				and Walker.distance(here, u.landing :: NavTile) <= Walker.SHORTCUT_LANDED_NEAR
+				and to_landing <= Walker.SHORTCUT_LANDED_NEAR
+				and to_landing < Walker.distance(here, u.start)
 			if
 				landed
 				or here.plane ~= u.from.plane
@@ -1020,6 +1033,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			clicked_at = time(),
 			from = here,
 			checked_at = time(),
+			start = before,
 			landing = if stays then after else nil,
 		}
 		return true
