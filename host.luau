@@ -561,6 +561,7 @@ export type PlayerInfo = {
 	target_y: number,
 	interacting_npc: number,
 	interacting_player: number,
+	movement: { number },
 }
 
 export type Projectile = {

@@ -23,7 +23,7 @@ The data the functions below hand back. Each one is a plain table, so you read i
 | `Connection` | Client `version`, `protocol`, window `width`/`height` and the mouse position. |
 | `Widget` | One interface element: position, size, text, sprite, whether it is hidden and its scroll values. |
 | `ItemSlot` | One slot of an item container: `slot`, item `id` and `quantity`. |
-| `Npc` / `PlayerInfo` | A character near you: `index`, `name`, world tile and local tile. An NPC also has `animation`, the id of the animation it is playing (-1 for none). |
+| `Npc` / `PlayerInfo` | A character near you: `index`, `name`, world tile and local tile. An NPC also has `animation`, the id of the animation it is playing (-1 for none). A player has `pose` and `movement` (host API 19): the stand, turn left, turn right, walk, walk back, walk left, walk right and run poses the game set for that player, which change with the weapon. A `pose` outside `movement` is an obstacle, an emote or a ride in progress. |
 | `NpcModel` | The outline of a character or object as drawn this frame (box corners, outline and triangles). |
 | `Collision` | Part of the scene's collision map (`Host.collision`): its corner `x`, `y`, `width`, `height`, `plane` and the `flags` of each tile. |
 | `CacheLoc` | A world object as the game cache places it on the map (`name`, `x`, `y`, `plane`, `size_x`, `size_y`, `shape`, `rotation`, `actions`), loaded or not. |
@@ -1009,7 +1009,7 @@ Definition:
 ```luau
 Host.players: () -> { PlayerInfo }?
 ```
-Lists the other players loaded around you.
+Lists the other players loaded around you. Each one's `movement` lists its own stand, turn, walk and run poses (host API 19), so `table.find(p.movement, p.pose) == nil` means something other than standing or moving holds it.
 
 Example:
 ```luau
