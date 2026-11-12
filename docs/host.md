@@ -1557,7 +1557,7 @@ Host.http_request: (options: HttpRequest) -> (HttpResponse?, string?)
 ```
 Makes an HTTP request and returns the response, or `nil` and why not. `options` has a `url`, and optionally a `method` (`"GET"` by default), `headers` (a table of names to values), a text `body` (up to 1 MB) and a `timeout` in milliseconds (15000 by default, 60000 at most, redirects included). The response has `ok` (a status from 200 to 299), `status`, `headers` (lowercase names, a repeated header joined with `", "`) and `body` as text (up to 8 MB). A status like 404 is still a response: check `ok`, only a request that could not be made returns an error.
 
-The loader makes the request, and only to hosts on the whitelist in its Settings (the Volcren hosts and `prices.runescape.wiki` are always on it, the user adds others). A redirect is followed only while every host on the way is whitelisted, and an `Authorization` or `Cookie` header isn't sent to a different host than the first. Blocks the script until the response is in, and needs no client.
+The loader makes the request, and only to hosts on the whitelist in its Settings (the Volcren hosts and the wiki real-time prices API are always on it, the user adds others). A redirect is followed only while every host on the way is whitelisted, and an `Authorization` or `Cookie` header isn't sent to a different host than the first. Blocks the script until the response is in, and needs no client.
 
 Example:
 ```luau
@@ -1577,7 +1577,7 @@ Definition:
 ```luau
 Host.item_prices: (items: { number | string }) -> ({ ItemPrice? }?, string?)
 ```
-The Grand Exchange prices of items, in the order of `items`, from the game wiki's real-time prices API (`prices.runescape.wiki`, built into the loader's HTTP whitelist). Host API 17. An item is an id or a name in any case. An id the API doesn't list, like a noted or placeholder id, is looked up by its name in the client, so it gives the tradeable item of that name (without a client it stays `nil`). `nil` for an item that isn't traded on the Grand Exchange. `high`, `low` and their times are `nil` when the item was never seen bought or sold, and `value`, `high_alch`, `low_alch` and `limit` when the wiki doesn't know them.
+The Grand Exchange prices of items, in the order of `items`, from the wiki real-time prices API, which is built into the loader's HTTP whitelist. Host API 17. An item is an id or a name in any case. An id the API doesn't list, like a noted or placeholder id, is looked up by its name in the client, so it gives the tradeable item of that name (without a client it stays `nil`). `nil` for an item that isn't traded on the Grand Exchange. `high`, `low` and their times are `nil` when the item was never seen bought or sold, and `value`, `high_alch`, `low_alch` and `limit` when the wiki doesn't know them.
 
 The injector downloads the item list and the latest prices on the first call and keeps them in memory, so asking often costs nothing: a call downloads the latest prices again once they are 10 minutes old, and the item list once it is a day old. Each run keeps its own. A failed download keeps the prices it had and tries again a minute later; only a run that has none yet gets the error. The first call blocks for the download (about a megabyte), and it needs the loader, like `Host.http_request`. Use [ItemData](utils/item_data.md).
 

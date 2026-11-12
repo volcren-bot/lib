@@ -1,6 +1,6 @@
 # Utils.ItemData
 
-Grand Exchange prices, alchemy values and tradeable ids of items, from the game wiki's real-time prices API (`prices.runescape.wiki`) through [Host.item_prices](../host.md). The prices are downloaded on the first call and kept for the run, the latest prices for 10 minutes and the item list for a day, so calling these often doesn't reach the API again. The first call blocks while it downloads.
+Grand Exchange prices, alchemy values and tradeable ids of items, from the wiki real-time prices API through [Host.item_prices](../host.md). The prices are downloaded on the first call and kept for the run, the latest prices for 10 minutes and the item list for a day, so calling these often doesn't reach the API again. The first call blocks while it downloads.
 
 ```luau
 local ItemData = require("@lib/utils/item_data")
