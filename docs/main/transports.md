@@ -70,7 +70,7 @@ The first transport to use on the best way from `from` to `goal`, or nil to walk
 
 Nil when walking is possible and no transport saves `MIN_SAVING_TICKS`, when none is usable, or when the goal can't be reached at all. A goal that looks cut off but is within `CONFIRM_WALK_TILES` is asked of the planner first (`Host.nav_plan`): landmasses don't see every way through, and a goal the planner reaches is walked.
 
-Usable means the row's varbit tests hold, its skills, quests and items are met (items count in the inventory or worn), and for a spell the game says it can be cast. A transport that failed in the last `RETRY_AFTER_MS` is out.
+Usable means the row's varbit tests hold, its skills, quests and items are met (items count in the inventory or worn), and for a spell the game says it can be cast (`Magic.can_cast`, whose icons are only as fresh as the last time the spellbook was shown). A transport that failed in the last `RETRY_AFTER_MS` is out.
 
 **The Wilderness.** A trip never goes from safety into the Wilderness unless a script asks, with `options.wilderness = true` for one plan or `Transports.WILDERNESS = true` for all of them. From outside, nothing that starts or ends in it is chosen, except a trip that lands in the Ferox Enclave when the goal is inside it too (`Ferox.contains`): that's how Clan Wars and Last Man Standing are reached. The Enclave is safe, and with the goal inside, no walk through the Wilderness follows. Its bounds are approximate. Once you are in it, a trip that leaves it or stays inside it is fine, but walking out to a start in safety that leads back in isn't. A goal in the Wilderness doesn't count as asking: the walk there is on foot. The player's own house is left out: the data puts it where "Teleport to House" lands, a stand-in for an instance somewhere else. Fares are not weighed against time.
 
@@ -452,6 +452,21 @@ Example:
 local Transports = require("@lib/main/transports")
 
 print(Transports.teleport_item("Ring of dueling: Ferox Enclave"))
+```
+
+## Transports.teleport_spell
+
+Definition:
+```luau
+function Transports.teleport_spell(name: string): (boolean, boolean?)
+```
+Casts the teleport spell of the data's row called `name` ("Varrock Teleport", "Camelot Teleport: Seers'"), without planning, and waits to land, as `Transports.cast` does. The spell's own checks are the game's: `Magic.can_cast` decides, so hold the runes and be on its spellbook first. False when the data has no such row or the cast didn't work; the second result is true when trying again is pointless (no such row, a slow cast that never started).
+
+Example:
+```luau
+local Transports = require("@lib/main/transports")
+
+print(Transports.teleport_spell("Varrock Teleport"))
 ```
 
 ## Transports.whistle

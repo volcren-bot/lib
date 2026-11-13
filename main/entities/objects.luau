@@ -162,7 +162,8 @@ function Objects.interact(
 	option: string | { string },
 	walk_timeout_ms: (number | false)?,
 	face: boolean?,
-	spam: number?
+	spam: number?,
+	menu: boolean?
 ): boolean
 	return Clickbox.interact(
 		clickbox_of(loc),
@@ -172,7 +173,8 @@ function Objects.interact(
 		owned_by(loc),
 		if face == false then nil else tile_of(loc),
 		walk_timeout_ms,
-		spam
+		spam,
+		menu
 	)
 end
 

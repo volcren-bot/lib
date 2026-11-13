@@ -193,7 +193,7 @@ Definition:
 ```luau
 function Magic.can_cast(spell: SpellRef): boolean
 ```
-Whether you can cast the spell: you have the level, the runes and whatever unlocks it. This is the icon the game shows, so it works with the tab closed too.
+Whether you can cast the spell: you have the level, the runes and whatever unlocks it. This is the icon the game shows, and the game only redraws the icons while the spellbook is shown: with the tab closed it reads what they were the last time it was open. Runes taken from the bank with the tab closed still read as missing (and runes spent as held) until `Magic.open` shows the tab again, after which the icons are right even once it is closed.
 
 Example:
 ```luau

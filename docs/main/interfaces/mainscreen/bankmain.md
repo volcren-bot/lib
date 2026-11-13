@@ -278,10 +278,10 @@ Definition:
 
 ```luau
 function Bankmain.selected_amount(): number?
-function Bankmain.withdraw_selected(item: Item | { Item }): boolean
+function Bankmain.withdraw_selected(item: Item | { Item }, wait: boolean?): boolean
 ```
 
-`selected_amount` is how many a left click on an item withdraws with the quantity button selected now: 1, 5, 10, the amount X holds, or `math.huge` for All (nil when it can't be read). `withdraw_selected` shows the item and left-clicks it with whatever is selected, without touching the buttons or the menu; `true` once the bank holds less of it. [InventoryLayout.withdraw](../../inventory_layout.md#inventorylayoutwithdraw) uses it for a last item that fills the inventory.
+`selected_amount` is how many a left click on an item withdraws with the quantity button selected now: 1, 5, 10, the amount X holds, or `math.huge` for All (nil when it can't be read). `withdraw_selected` shows the item and left-clicks it with whatever is selected, without touching the buttons or the menu; `true` once the bank holds less of it, or right after the click with `wait` false, for a caller that clicks several things in a row and checks the inventory once at the end. [InventoryLayout.withdraw](../../inventory_layout.md#inventorylayoutwithdraw) uses it for a last item that fills the inventory.
 
 ## Bankmain.close
 
@@ -974,7 +974,7 @@ Example:
 Definition:
 
 ```luau
-function Bankmain.withdraw_selected(item: Item | { Item }): boolean
+function Bankmain.withdraw_selected(item: Item | { Item }, wait: boolean?): boolean
 ```
 
 TODO...

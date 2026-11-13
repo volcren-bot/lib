@@ -204,11 +204,12 @@ function Objects.interact(
 	option: string | { string },
 	walk_timeout_ms: (number | false)?,
 	face: boolean?,
-	spam: number?
+	spam: number?,
+	menu: boolean?
 ): boolean
 ```
 
-Picks `option` (or the first available of a list) on the object, retrying on a misclick and waiting for the walk it caused; `false` skips that wait. May turn the camera towards it first; `face = false` leaves the camera alone. `spam` as in `click`.
+Picks `option` (or the first available of a list) on the object, retrying on a misclick and waiting for the walk it caused; `false` skips that wait. May turn the camera towards it first; `face = false` leaves the camera alone. `spam` as in `click`. `menu = true` always picks the option from the right-click menu, even when it is the left-click one, for an object something else (a wandering character) may step in front of between the hover and the click.
 
 Example:
 

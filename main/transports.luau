@@ -2666,6 +2666,25 @@ function Transports.teleport_item(name: string): (boolean, boolean?)
 	return false, true
 end
 
+function Transports.teleport_spell(name: string): (boolean, boolean?)
+	for _, t in ipairs(rows_of("teleportation_spells")) do
+		if t.name == name then
+			local spell, option = Transports.split(t.name)
+			return Transports.cast({
+				kind = "spell",
+				transport = t,
+				id = t.name,
+				spell = spell,
+				option = option,
+				ticks = t.duration,
+				saved = 0,
+			})
+		end
+	end
+	Log.log("Transports", `no teleport spell called {name} in the data`)
+	return false, true
+end
+
 function Transports.failed_lately(choice: Choice): boolean
 	return not not_failed(choice.id or choice.transport.name)
 end

@@ -907,7 +907,7 @@ function Bankmain.selected_amount(): number?
 	return nil
 end
 
-function Bankmain.withdraw_selected(item: Item | { Item }): boolean
+function Bankmain.withdraw_selected(item: Item | { Item }, wait: boolean?): boolean
 	if not Bankmain.is_open() then
 		return false
 	end
@@ -924,6 +924,9 @@ function Bankmain.withdraw_selected(item: Item | { Item }): boolean
 	if not items.click_slot(slot) then
 		Log.log("Bankmain", `withdraw_selected: couldn't click bank slot {slot}`)
 		return false
+	end
+	if wait == false then
+		return true
 	end
 	return Widgets.wait_within(function()
 		return (items.count_ex(item) or before) < before
