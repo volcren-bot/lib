@@ -339,7 +339,7 @@ function Shopmain.buy(item: Item, amount: number?, overshoot: boolean?): number
 		if free_slots() == 0 and (held_before == 0 or (Host.item_stackable({ id }) or {})[1] ~= true) then
 			break
 		end
-		local remaining = math.min(wanted - bought, w.item_quantity)
+		local remaining = wanted - bought
 		local step = 1
 		for _, quantity in ipairs(Shopmain.QUANTITIES) do
 			if quantity <= remaining or overshoot == true then

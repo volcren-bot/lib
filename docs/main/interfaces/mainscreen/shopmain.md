@@ -268,7 +268,7 @@ Definition:
 ```luau
 function Shopmain.buy(item: Item, amount: number?, overshoot: boolean?): number
 ```
-Buys `amount` (default 1), each click the largest of `QUANTITIES` that fits what is left and in stock (`overshoot` always uses 50, possibly buying more), waiting up to 2400 ms for the inventory after each. Stops when sold out, the inventory is full (unless adding to a held stack) or a click gains nothing. Returns how many were bought.
+Buys `amount` (default 1), each click the largest of `QUANTITIES` that fits what is left, since the game caps a click at the stock, free space and coins (`overshoot` always uses 50, possibly buying more), waiting up to 2400 ms for the inventory after each. Stops when sold out, the inventory is full (unless adding to a held stack) or a click gains nothing. Returns how many were bought.
 
 Example:
 ```luau
