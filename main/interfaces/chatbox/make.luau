@@ -81,9 +81,11 @@ function Make.is_open(): boolean
 end
 
 function Make.wait_open(timeout_ms: number?): boolean
-	if Widgets.wait_until(function()
-		return Make.is_open()
-	end, timeout_ms or Make.SELECT_TIMEOUT) then
+	if
+		Widgets.wait_until(function()
+			return Make.is_open() and #(Make.amounts() or {}) > 0
+		end, timeout_ms or Make.SELECT_TIMEOUT)
+	then
 		return true
 	end
 	Log.log("Make", "the make menu never opened")

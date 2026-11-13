@@ -60,7 +60,7 @@ Definition:
 ```luau
 function Make.wait_open(timeout_ms: number?): boolean
 ```
-Waits up to `timeout_ms` (default `SELECT_TIMEOUT`) for the menu to open; logs and returns `false` on timeout.
+Waits up to `timeout_ms` (default `SELECT_TIMEOUT`) for the menu to open with its quantity buttons filled in, since the client shows the group a moment before them; logs and returns `false` on timeout.
 
 Example:
 ```luau

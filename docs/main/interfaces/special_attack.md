@@ -1,12 +1,12 @@
 # Main.Interfaces.SpecialAttack
 
-The special attack orb (minimap) and bar (Combat tab): availability, energy, cost and toggling.
+The special attack orb (minimap) and bar (Combat tab): energy, cost and toggling.
 
 ```luau
 local SpecialAttack = require("@lib/main/interfaces/special_attack")
 ```
 
-Orb and bar are hidden when the wielded weapon has no special attack; the bar shows only with the Combat tab open, the orb not at all when minimap orbs are off. Energy and the toggle come from `Player.special_attack`/`Player.special_attack_enabled`, so they work with any tab open. Costs come from cache enum `COST_ENUM` (item id to drain in tenths of a percent), read once; a weapon missing from it has no special attack. A few entries aren't plain drains (charge shields 0; some weapons 1 to 10, which `cost` returns as 0.1% to 1%).
+The orb shows whatever the weapon, so it can't tell whether the weapon has a special attack: use `cost`. The bar is hidden for weapons without one and shows only with the Combat tab open; the orb not at all when minimap orbs are off. Energy and the toggle come from `Player.special_attack`/`Player.special_attack_enabled`, so they work with any tab open. Costs come from cache enum `COST_ENUM` (item id to drain in tenths of a percent), read once; a weapon missing from it has no special attack. A few entries aren't plain drains (charge shields 0; some weapons 1 to 10, which `cost` returns as 0.1% to 1%).
 
 ## Constants
 
@@ -56,19 +56,6 @@ The Combat tab bar, nil when the tab is closed or the weapon has no special.
 Example:
 ```luau
 print(SpecialAttack.bar())
-```
-
-## SpecialAttack.available
-
-Definition:
-```luau
-function SpecialAttack.available(): boolean
-```
-Whether the orb or bar is showing, i.e. the weapon has a special attack.
-
-Example:
-```luau
-print(SpecialAttack.available())
 ```
 
 ## SpecialAttack.energy

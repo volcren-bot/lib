@@ -236,6 +236,24 @@ local function aim_quad(tile: Tile): Geometry.Quad?
 	return quad_ahead(tile, lead) or quad
 end
 
+local function halves(quad: Geometry.Quad): { Geometry.Polygon }
+	local c = Geometry.Quad.corners(quad)
+	return { { c[1], c[2], c[3] }, { c[1], c[3], c[4] } }
+end
+
+local function half_under_mouse(quad: Geometry.Quad): number?
+	local at = Mouse.position()
+	if at == nil then
+		return nil
+	end
+	for i, tri in ipairs(halves(quad)) do
+		if Geometry.Triangle.contains(tri, at) then
+			return i
+		end
+	end
+	return nil
+end
+
 local function click_projected(
 	tile: Tile,
 	accept: ((Host.MenuEntry) -> boolean)?,
@@ -252,19 +270,21 @@ local function click_projected(
 		Log.log("Walker", `tile {tile.x},{tile.y} is off the game view or behind the interface`)
 		return false, used
 	end
+	if half == nil then
+		used = half_under_mouse(quad) or used
+	end
 	local walkable = false
 	local view, blockers = walk_view(), Toplevel.blockers()
 	local function visible(p: Geometry.Point): boolean
 		return Toplevel.is_visible(Geometry.Point.new(math.round(p.x), math.round(p.y)), view, blockers)
 	end
-	for _ = 1, Walker.HOVER_ATTEMPTS do
+	for attempt = 1, Walker.HOVER_ATTEMPTS do
+		if attempt > 1 then
+			used = 3 - used
+		end
 		local followed, why = Track.hover(function(): { Geometry.Polygon }?
 			local now = Projection.tile(tile)
-			if now == nil then
-				return nil
-			end
-			local c = Geometry.Quad.corners(now)
-			return { { c[1], c[2], c[3] }, { c[1], c[3], c[4] } }
+			return if now then halves(now) else nil
 		end, used, visible)
 		if not followed then
 			Log.log("Walker", `couldn't keep the mouse on tile {tile.x},{tile.y} ({why})`)

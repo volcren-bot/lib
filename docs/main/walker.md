@@ -82,7 +82,7 @@ Definition:
 ```luau
 function Walker.click_tile(tile: Tile): boolean
 ```
-Clicks a tile so you walk there. It turns the camera to show the tile (`Camera.face`) and zooms out in up to two steps if it's still hidden, then tracks a spot inside one of the tile's triangles ([Track](../utils/input/track.md)) and clicks once "Walk here" is offered. If the walk's destination (checked for `Walker.CLICK_CHECK_MS`, 700) is another tile because something covers it, it clicks the other triangle, then the minimap. `false` when the tile can't be clicked on screen; `true` once a walk was clicked, even if it still goes elsewhere.
+Clicks a tile so you walk there. It turns the camera to show the tile (`Camera.face`) and zooms out in up to two steps if it's still hidden, then tracks a spot inside one of the tile's triangles ([Track](../utils/input/track.md)) and clicks once "Walk here" is offered. A mouse already on the tile stays in its triangle, so a pre-hover is clicked where it is; when something covers that spot, it tries the other triangle before the right-click menu. If the walk's destination (checked for `Walker.CLICK_CHECK_MS`, 700) is another tile because something covers it, it clicks the other triangle, then the minimap. `false` when the tile can't be clicked on screen; `true` once a walk was clicked, even if it still goes elsewhere.
 
 Example:
 ```luau

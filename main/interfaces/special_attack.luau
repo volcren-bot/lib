@@ -76,10 +76,6 @@ function SpecialAttack.bar(): Widget?
 	return if w ~= nil and not w.hidden and w.width > 0 then w else nil
 end
 
-function SpecialAttack.available(): boolean
-	return (SpecialAttack.orb()) ~= nil or SpecialAttack.bar() ~= nil
-end
-
 function SpecialAttack.energy(): number?
 	return Player.special_attack()
 end
