@@ -6,7 +6,7 @@ Inventory layouts from a form's `inventory` field: checked against the inventory
 local InventoryLayout = require("@lib/main/inventory_layout")
 ```
 
-The user builds layouts per script on the loader's Inventory tab, read from the client with the rune pouch's runes; the form's `inventory` field picks one (see `Host.form` in [Host](../host.md)). A layout is positional, but the bank cares about amounts: a stack's range, or the number of copies of a non-stacking item. An item is its `ids`, or for dose/charge items its accepted `doses` (see [LayoutItem](layout_item.md)), so four `Prayer potion(4)` slots accepting doses 4 and 3 want four potions of either dose.
+The user builds layouts per script on the loader's Inventory tab, read from the client with the rune pouch's runes; the form's `inventory` field picks one (see `Host.settings` in [Host](../host.md)). A layout is positional, but the bank cares about amounts: a stack's range, or the number of copies of a non-stacking item. An item is its `ids`, or for dose/charge items its accepted `doses` (see [LayoutItem](layout_item.md)), so four `Prayer potion(4)` slots accepting doses 4 and 3 want four potions of either dose.
 
 A field's `required` items appear padlocked in every layout (`locked = true`); the user can move but not change them. A layout without room for them can't be picked.
 
@@ -15,13 +15,8 @@ local Host = require("@lib/host")
 local Bankmain = require("@lib/main/interfaces/mainscreen/bankmain")
 local InventoryLayout = require("@lib/main/inventory_layout")
 
-local values = Host.form({
-	title = "Herblore",
-	fields = {
-		{ id = "inventory", kind = "inventory", label = "Inventory", required = { { ids = { 227 }, slot = 0 } } },
-	},
-})
-local layout = values and values.inventory
+-- manifest.json: { "settings": { "fields": [{ "id": "inventory", "kind": "inventory", "label": "Inventory", "required": [{ "ids": [227], "slot": 0 }] }] } }
+local layout = Host.settings().inventory
 if layout and Bankmain.open() and InventoryLayout.withdraw(layout) then
 	Bankmain.close()
 	InventoryLayout.reorder(layout)

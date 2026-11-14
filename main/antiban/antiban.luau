@@ -83,6 +83,7 @@ Antiban.on_sleeping = nil :: ((task: Sleep, countdown: Countdown) -> ())?
 
 local paused_total = 0
 local paused_at: number? = nil
+local resumed = false
 
 local function running_ms(): number
 	local now = Host.time()
@@ -349,6 +350,25 @@ function Antiban.sync_config(): boolean
 		end
 	end
 	Antiban.breaks, Antiban.sleeps = breaks, sleeps
+	if not resumed then
+		resumed = true
+		local plan = Host.antiban_resume()
+		if plan then
+			local running = running_ms()
+			for _, planned in plan.breaks do
+				local task = breaks[(planned.index or 0) + 1]
+				if task then
+					task.next = running + planned.remaining
+				end
+			end
+			for _, planned in plan.sleeps do
+				local task = sleeps[(planned.index or 0) + 1]
+				if task then
+					task.next = running + planned.remaining
+				end
+			end
+		end
+	end
 	publish(true)
 	return true
 end

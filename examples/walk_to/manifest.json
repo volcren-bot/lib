@@ -1,0 +1,72 @@
+{
+	"settings": {
+		"fields": [
+			{
+				"id": "where",
+				"kind": "choice",
+				"label": "Destination",
+				"options": [
+					"Barbarian Assault lobby",
+					"Custom tile",
+					"Edgeville bank",
+					"Lumbridge castle, top floor",
+					"Varrock sewers, by the pipe"
+				]
+			},
+			{
+				"kind": "label",
+				"text": "Custom tile (0, 0 walks to where you stand):"
+			},
+			{
+				"id": "x",
+				"kind": "number",
+				"label": "x",
+				"default": 0,
+				"integer": true
+			},
+			{
+				"id": "y",
+				"kind": "number",
+				"label": "y",
+				"default": 0,
+				"integer": true
+			},
+			{
+				"id": "plane",
+				"kind": "number",
+				"label": "plane",
+				"default": 0,
+				"integer": true,
+				"min": 0,
+				"max": 3
+			},
+			{
+				"id": "near",
+				"kind": "number",
+				"label": "near (tiles)",
+				"default": 1,
+				"integer": true,
+				"min": 0,
+				"max": 10
+			},
+			{
+				"id": "transports",
+				"kind": "check",
+				"label": "Use transports (may spend runes or coins)",
+				"default": true
+			},
+			{
+				"id": "shortcuts",
+				"kind": "check",
+				"label": "Use agility shortcuts",
+				"default": true
+			},
+			{
+				"id": "debug",
+				"kind": "check",
+				"label": "Log every step of the walk",
+				"default": false
+			}
+		]
+	}
+}

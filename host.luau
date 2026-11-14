@@ -28,6 +28,7 @@ export type PlannedBreak = {
 	remaining: number,
 	length: number,
 	at: number?,
+	index: number?,
 }
 
 export type ActiveBreak = {
@@ -764,7 +765,8 @@ return {
 		via: ("auto" | "local" | "client")?,
 		shift: { x: number, y: number, plane: number? }?
 	) -> { ScreenPoint }?,
-	form = g.form :: (spec: FormSpec) -> { [string]: any }?,
+	settings = g.settings :: () -> { [string]: any },
+	finish_requested = g.finish_requested :: () -> boolean,
 	form_update = g.form_update :: () -> { [string]: any }?,
 	menu = g.menu :: () -> { MenuEntry }?,
 	menu_click = g.menu_click :: () -> MenuClick?,
@@ -879,11 +881,13 @@ return {
 	unix_time = g.unix_time :: () -> number,
 	antiban_skips = g.antiban_skips :: () -> { { kind: string, index: number } },
 	antiban_config = g.antiban_config :: () -> AntibanConfig,
+	antiban_resume = g.antiban_resume :: () -> BreakPlan?,
 	transports = g.transports :: () -> TransportsData,
 	murmur2a = g.murmur2a :: (text: string, seed: number?) -> number,
 	biometrics_profile = g.biometrics_profile :: (name: string) -> { number },
 	report_counters = g.report_counters :: (counters: { Counter }) -> (),
 	report_warning = g.report_warning :: (text: string) -> (),
 	report_breaks = g.report_breaks :: (plan: BreakPlan) -> (),
+	report_exit = g.report_exit :: (status: "done" | "blocked", reason: string?) -> (),
 	report_stats = g.report_stats :: (experience: number, gold: number, custom: { number }?) -> (),
 }

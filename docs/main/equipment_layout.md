@@ -6,7 +6,7 @@ Equipment layouts from a form's `equipment` field: checked against the worn item
 local EquipmentLayout = require("@lib/main/equipment_layout")
 ```
 
-The user builds layouts per script on the loader's Equipment tab, read from the worn items; the form's `equipment` field picks one (see `Host.form` in [Host](../host.md)). Each worn slot is listed once as `mode = "item"` (by `ids`), `"empty"` or `"any"`. Some items have a different held id than worn id (graceful: 13624 worn, 13623 held), so the inventory and bank are searched by ids or name. Dose/charge items count by accepted `doses` and are withdrawn in that order ([LayoutItem](layout_item.md)). A worn stack (ammo) wants at least `min` and is topped up to `max`; one over `max` stays, since only all of it can be removed.
+The user builds layouts per script on the loader's Equipment tab, read from the worn items; the form's `equipment` field picks one (see `Host.settings` in [Host](../host.md)). Each worn slot is listed once as `mode = "item"` (by `ids`), `"empty"` or `"any"`. Some items have a different held id than worn id (graceful: 13624 worn, 13623 held), so the inventory and bank are searched by ids or name. Dose/charge items count by accepted `doses` and are withdrawn in that order ([LayoutItem](layout_item.md)). A worn stack (ammo) wants at least `min` and is topped up to `max`; one over `max` stays, since only all of it can be removed.
 
 A field's `required` items, each with a `slot`, replace that slot in every layout, padlocked (`locked = true`).
 
@@ -18,13 +18,8 @@ A layout can carry a combat spell. If the weapon read into it offered autocast, 
 local Host = require("@lib/host")
 local EquipmentLayout = require("@lib/main/equipment_layout")
 
-local values = Host.form({
-	title = "Slayer",
-	fields = {
-		{ id = "equipment", kind = "equipment", label = "Equipment", required = { { ids = { 11978 }, slot = 2, doses = { 6, 5, 4, 3, 2, 1 } } } },
-	},
-})
-local layout = values and values.equipment
+-- manifest.json: { "settings": { "fields": [{ "id": "equipment", "kind": "equipment", "label": "Equipment", "required": [{ "ids": [11978], "slot": 2, "doses": [6, 5, 4, 3, 2, 1] }] }] } }
+local layout = Host.settings().equipment
 if layout and not EquipmentLayout.prepare(layout) then
 	print("couldn't get the equipment on")
 end

@@ -241,32 +241,66 @@ if cam then
 end
 ```
 
-## Host.form
+## Host.settings
 
 Definition:
 ```luau
-Host.form: (spec: FormSpec) -> { [string]: any }?
+Host.settings: () -> { [string]: any }
 ```
-Shows a settings window and blocks until submitted; returns values by field id, or `nil, "cancelled"`. `title` is not shown but keys remembered values and layouts, so make it unique per script.
+The values the user set before the script started, by field id; an empty table when the script has no settings. Settings are declared, not asked for: the `settings` of the `manifest.json` beside the entry file, which the loader shows before anything starts (and, for a store script, before the session is billed). `injector run` without the loader uses the manifest's defaults.
 
-Field kinds: `label`, `check`, `number`, `text`, `choice`, `list` (ticked rows, `items = { { id, label, default } }` giving `{ id = true }`), `equipment`, `inventory`, `prayer`. The last three add a loader tab where the user captures and edits layouts; the value is the chosen `EquipmentLayout`, `InventoryLayout` or `PrayerLayout`, or nil. `equipment`/`inventory` take `required` (`LayoutRequirement`s padlocked into every layout); `prayer` takes `locked` (keys the script controls, excluded from layouts).
+`manifest.json` holds `settings` (the form below), `queueable` (the loader's queue may run the script: it starts from any safe idle state, checks `Host.finish_requested` and reports `Host.report_exit`), `goals` (`[{ "id", "label" }]`, ids of `Host.report_counters` counters a queue entry can stop at) and `finish_grace_minutes` (1 to 120, default 5: how long the queue waits after `FINISH` before stopping the script). Unknown keys are refused at upload.
 
-Field options: `enabled_by`/`disabled_by` (a check id); `row` (fields with the same name share a line, `row_gap` apart, default 24, max 500); `box_first` for `number`; `heading = 1 | 2` for `label` (spaced by `heading_gap`, default 12, max 500); `visible_when = { id, equals }` or a list of them (`equals` may be a list). Hidden fields keep and return their values.
+Field kinds: `label`, `check`, `number`, `text`, `choice`, `list` (ticked rows, `items = [{ id, label, default }]` giving `{ id = true }`), `equipment`, `inventory`, `prayer`. The last three add a loader tab where the user captures and edits layouts; the value is the chosen `EquipmentLayout`, `InventoryLayout` or `PrayerLayout`, or nil. `equipment`/`inventory` take `required` (`LayoutRequirement`s padlocked into every layout); `prayer` takes `locked` (keys the script controls, excluded from layouts). Values and layouts are remembered per script title.
+
+Field options: `enabled_by`/`disabled_by` (a check id); `row` (fields with the same name share a line, `row_gap` apart, default 24, max 500); `box_first` for `number`; `heading = 1 | 2` for `label` (spaced by `heading_gap`, default 12, max 500); `visible_when = { id, equals }` or a list of them (`equals` may be a list). Hidden fields keep and return their values. `submit` names the start button.
+
+Example `manifest.json`:
+```json
+{
+	"queueable": true,
+	"goals": [{ "id": "loops", "label": "Loops" }],
+	"settings": {
+		"fields": [
+			{ "id": "loops", "kind": "number", "label": "Loops", "default": 5, "min": 1, "max": 100, "integer": true },
+			{ "id": "fast", "kind": "check", "label": "Go fast", "default": false }
+		]
+	}
+}
+```
+
+```luau
+local values = Host.settings()
+print(values.loops, values.fast)
+```
+
+## Host.finish_requested
+
+Definition:
+```luau
+Host.finish_requested: () -> boolean
+```
+True once the loader's queue asked the script to wrap up (its goal or time limit was reached, or the user pressed Finish), and stays true. Check it at safe points, finish the current unit of work, leave the account idle somewhere safe, then return. [Handoff](main/handoff.md) wraps it.
 
 Example:
 ```luau
-local values = Host.form({
-	title = "My script",
-	submit = "Start",
-	fields = {
-		{ id = "loops", kind = "number", label = "Loops", default = 5, min = 1, max = 100, integer = true },
-		{ id = "fast", kind = "check", label = "Go fast", default = false },
-	},
-})
-if not values then
-	return
+while not Host.finish_requested() do
+	-- one kill, trip or round
 end
-print(values.loops, values.fast)
+```
+
+## Host.report_exit
+
+Definition:
+```luau
+Host.report_exit: (status: "done" | "blocked", reason: string?) -> ()
+```
+Says why the script is about to return. `"blocked"` means it can't go on but left the account safe (out of supplies, a missing requirement); the queue moves to its next entry. A clean return without it counts as `"done"`; an error, or being stopped after the grace period, as failed, which ends the queue.
+
+Example:
+```luau
+Host.report_exit("blocked", "out of food")
+return
 ```
 
 ## Host.form_update
@@ -275,7 +309,7 @@ Definition:
 ```luau
 Host.form_update: () -> { [string]: any }?
 ```
-After submit the form stays in the loader with an Update button; this returns the full new values (same shape as `Host.form`) when the user pressed it since the last call, else nil.
+While the script runs its settings stay in the loader with an Update button; this returns the full new values (same shape as `Host.settings`) when the user pressed it since the last call, else nil.
 
 Example:
 ```luau
@@ -1521,6 +1555,20 @@ Example:
 print(#Host.antiban_config().breaks)
 ```
 
+## Host.antiban_resume
+
+Definition:
+```luau
+Host.antiban_resume: () -> BreakPlan?
+```
+The break plan the previous queue entry last reported, already counted down to now, or nil outside a queue. Returned once. `Antiban` uses it so a queue breaks like one long run.
+
+Example:
+```luau
+local plan = Host.antiban_resume()
+print(plan and #plan.breaks)
+```
+
 ## Host.antiban_skips
 
 Definition:
@@ -1593,7 +1641,7 @@ Definition:
 ```luau
 Host.report_breaks: (plan: BreakPlan) -> ()
 ```
-Shows scheduled breaks and sleeps in the loader's Breaks tab, which counts down itself, so send only on change. `breaks` and `sleeps` hold `{ remaining, length, at? }` (ms; `at` is a sleep's seconds since midnight); `active` is the one in progress. Sent by `Antiban`.
+Shows scheduled breaks and sleeps in the loader's Breaks tab, which counts down itself, so send only on change. `breaks` and `sleeps` hold `{ remaining, length, at?, index? }` (ms; `at` is a sleep's seconds since midnight; `index` is its place in the loader's config, 0-based); `active` is the one in progress. Sent by `Antiban`.
 
 Example:
 ```luau

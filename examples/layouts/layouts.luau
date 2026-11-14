@@ -5,32 +5,7 @@ local Host = require("@lib/host")
 local InventoryLayout = require("@lib/main/inventory_layout")
 local PrayerLayout = require("@lib/main/prayer_layout")
 
-local values = Host.form({
-	title = "Layouts example",
-	submit = "Start",
-	fields = {
-		{ kind = "label", text = "Pick the layouts to use. Make them in the Equipment and Inventory tabs." },
-		{ id = "equipment", kind = "equipment", label = "Equipment" },
-		{
-			id = "inventory",
-			kind = "inventory",
-			label = "Inventory",
-			required = { { ids = { 2434 }, slot = 0, doses = { 4, 3 } } },
-		},
-		{ id = "prayers", kind = "prayer", label = "Prayers", locked = { "protect_from_melee" } },
-		{ id = "act", kind = "check", label = "Go to the bank and get them", default = true },
-		{
-			id = "quick",
-			kind = "check",
-			label = "Make the prayers the quick prayers (else turn them on)",
-			default = true,
-		},
-	},
-})
-if values == nil then
-	print("form cancelled")
-	return
-end
+local values = Host.settings()
 local equipment: EquipmentLayout.Layout? = values.equipment
 local inventory: InventoryLayout.Layout? = values.inventory
 local prayers: PrayerLayout.Layout? = values.prayers

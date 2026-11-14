@@ -10,35 +10,17 @@ local DESTINATIONS: { [string]: { x: number, y: number, plane: number, near: num
 	["Varrock sewers, by the pipe"] = { x = 3146, y = 9906, plane = 0, near = 1 },
 	["Lumbridge castle, top floor"] = { x = 3209, y = 3220, plane = 2, near = 1 },
 }
-local names: { string } = {}
-for name in pairs(DESTINATIONS) do
-	table.insert(names, name)
-end
-table.sort(names)
-table.insert(names, "Custom tile")
-
 local me = assert(Player.position(), "not logged in")
-local values = Host.form({
-	title = "Walk to",
-	submit = "Walk",
-	fields = {
-		{ id = "where", kind = "choice", label = "Destination", options = names },
-		{ kind = "label", text = "Custom tile:" },
-		{ id = "x", kind = "number", label = "x", default = me.x, integer = true },
-		{ id = "y", kind = "number", label = "y", default = me.y, integer = true },
-		{ id = "plane", kind = "number", label = "plane", default = me.plane, integer = true, min = 0, max = 3 },
-		{ id = "near", kind = "number", label = "near (tiles)", default = 1, integer = true, min = 0, max = 10 },
-		{ id = "transports", kind = "check", label = "Use transports (may spend runes or coins)", default = true },
-		{ id = "shortcuts", kind = "check", label = "Use agility shortcuts", default = true },
-		{ id = "debug", kind = "check", label = "Log every step of the walk", default = false },
-	},
-})
-if values == nil then
-	print("form cancelled")
-	return
-end
-local goal = DESTINATIONS[values.where :: string]
-	or { x = values.x :: number, y = values.y :: number, plane = values.plane :: number, near = values.near :: number }
+local values = Host.settings()
+local custom = if values.x == 0 and values.y == 0
+	then { x = me.x, y = me.y, plane = me.plane, near = values.near :: number }
+	else {
+		x = values.x :: number,
+		y = values.y :: number,
+		plane = values.plane :: number,
+		near = values.near :: number,
+	}
+local goal = DESTINATIONS[values.where :: string] or custom
 Walker.DEBUG = values.debug == true
 
 Log.log("Example", `walking from {me.x}, {me.y} (plane {me.plane}) to {goal.x}, {goal.y} (plane {goal.plane})`)

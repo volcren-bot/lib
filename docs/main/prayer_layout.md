@@ -6,7 +6,7 @@ Prayer layouts from a form's `prayer` field, turned on as regular prayers or set
 local PrayerLayout = require("@lib/main/prayer_layout")
 ```
 
-The user builds layouts per script on the loader's Prayer tab; the form's `prayer` field picks one (see `Host.form` in [Host](../host.md)). A layout is a set of prayer keys as [Prayer](interfaces/gametabs/prayer.md) names them (upgrades such as `deadeye`, `mystic_vigour` and `zeal` share their base prayer's slot and quick prayer bit).
+The user builds layouts per script on the loader's Prayer tab; the form's `prayer` field picks one (see `Host.settings` in [Host](../host.md)). A layout is a set of prayer keys as [Prayer](interfaces/gametabs/prayer.md) names them (upgrades such as `deadeye`, `mystic_vigour` and `zeal` share their base prayer's slot and quick prayer bit).
 
 A field's `locked` prayers belong to the script (a boss script's protection prayers). The loader padlocks them and every prayer exclusive with them, and the layout lists them all in `locked`. Nothing here turns them on or off or changes their quick selection.
 
@@ -14,11 +14,8 @@ A field's `locked` prayers belong to the script (a boss script's protection pray
 local Host = require("@lib/host")
 local PrayerLayout = require("@lib/main/prayer_layout")
 
-local values = Host.form({
-	title = "Slayer",
-	fields = { { id = "prayers", kind = "prayer", label = "Prayers", locked = { "protect_from_melee", "protect_from_missiles", "protect_from_magic" } } },
-})
-local layout = values and values.prayers
+-- manifest.json: { "settings": { "fields": [{ "id": "prayers", "kind": "prayer", "label": "Prayers", "locked": ["protect_from_melee", "protect_from_missiles", "protect_from_magic"] }] } }
+local layout = Host.settings().prayers
 if layout then
 	PrayerLayout.activate(layout)
 end

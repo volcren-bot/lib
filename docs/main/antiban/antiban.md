@@ -1,6 +1,6 @@
 # Main.Antiban.Antiban
 
-Schedules antiban tasks, walking tasks, async tasks, breaks and sleeps. Register tasks at startup, call `sync_config` to plan breaks and sleeps from the loader's Breaks tab, then call `do_antiban` (or `do_walking_antiban` while walking) in your loop. Times are in milliseconds on a running clock that freezes while antiban works, so time spent on tasks and breaks doesn't count towards the next one.
+Schedules antiban tasks, walking tasks, async tasks, breaks and sleeps. Register tasks at startup, call `sync_config` to plan breaks and sleeps from the loader's Breaks tab (in a queue, the first call picks up the previous entry's schedule from `Host.antiban_resume`, so a queue breaks like one long run), then call `do_antiban` (or `do_walking_antiban` while walking) in your loop. Times are in milliseconds on a running clock that freezes while antiban works, so time spent on tasks and breaks doesn't count towards the next one.
 
 ```luau
 local Antiban = require("@lib/main/antiban/antiban")
