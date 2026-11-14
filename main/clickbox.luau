@@ -560,6 +560,30 @@ local function option_list(option: string | { string }): { string }
 	return if type(option) == "string" then { option } else option :: { string }
 end
 
+local function left_click_is(options: { string }, target: Minimenu.Target?): boolean
+	local entries = Minimenu.entries()
+	local index = Minimenu.left_click_index(entries)
+	local entry = entries and index and entries[index]
+	if entry == nil then
+		return false
+	end
+	for _, option in ipairs(options) do
+		if Minimenu.matches(entry, option, target) then
+			return true
+		end
+	end
+	return false
+end
+
+local function did_any(clicked: Host.MenuClick, options: { string }, target: Minimenu.Target?): boolean
+	for _, option in ipairs(options) do
+		if Minimenu.matches(clicked.entry, option, target) then
+			return true
+		end
+	end
+	return false
+end
+
 local function offered(options: { string }, target: Minimenu.Target?): string?
 	for _, option in ipairs(options) do
 		if Minimenu.find(option, target) ~= nil then
@@ -585,10 +609,34 @@ function Clickbox.interact(
 	if handled then
 		return result == true
 	end
+	local left = false
+	local function on_it(): boolean
+		left = not menu and left_click_is(options, target)
+		return left or hovered()
+	end
 	for _ = 1, Clickbox.MISCLICK_ATTEMPTS do
-		local ok = Clickbox.hover(clickbox, hovered, what, tile)
+		local before = Minimenu.clicked()
+		local ok = Clickbox.hover(clickbox, on_it, what, tile)
 		if not ok then
 			return false
+		end
+		if left then
+			Mouse.click()
+			local clicked = if before then Minimenu.wait_click(before) else nil
+			if before == nil or (clicked and did_any(clicked, options, target)) then
+				Interact.spam_click(spam, function(): boolean
+					return left_click_is(options, target)
+				end)
+				return walk_timeout_ms == false or Player.wait_walk(if walk_timeout_ms then walk_timeout_ms else nil)
+			end
+			if clicked == nil then
+				if Player.destination() == nil then
+					return false
+				end
+			else
+				Log.log("Clickbox", `misclicked {what}: the client did "{Minimenu.text(clicked.entry)}"`)
+			end
+			continue
 		end
 		local at = Mouse.position()
 		if at == nil then

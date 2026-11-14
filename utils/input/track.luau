@@ -211,8 +211,7 @@ local function cell_key(cx: number, cy: number): number
 	return (cx + 32768) * 65536 + (cy + 32768)
 end
 
-local function cell_center(key: number, origin: Point): Point
-	local size = Track.HEAT_CELL
+local function cell_center(key: number, origin: Point, size: number): Point
 	local cx, cy = key // 65536 - 32768, key % 65536 - 32768
 	return Point.new(origin.x + cx * size + size // 2, origin.y + cy * size + size // 2)
 end
@@ -220,9 +219,9 @@ end
 local function covered_cells(
 	triangles: { Polygon },
 	origin: Point,
-	visible: ((Point) -> boolean)?
+	visible: ((Point) -> boolean)?,
+	size: number
 ): { [number]: boolean }
-	local size = Track.HEAT_CELL
 	local cells: { [number]: boolean } = {}
 	for _, t in ipairs(triangles) do
 		if #t >= 3 and Triangle.area(t) >= 1 then
@@ -234,7 +233,7 @@ local function covered_cells(
 				for cy = y1, y2 do
 					local key = cell_key(cx, cy)
 					if not cells[key] then
-						local p = cell_center(key, origin)
+						local p = cell_center(key, origin, size)
 						if Triangle.contains(t, p) and (visible == nil or visible(p)) then
 							cells[key] = true
 						end
@@ -246,16 +245,26 @@ local function covered_cells(
 	return cells
 end
 
+local function cell_size(triangles: { Polygon }): number
+	local x1, y1, x2, y2 = math.huge, math.huge, -math.huge, -math.huge
+	for _, t in ipairs(triangles) do
+		for _, p in ipairs(t) do
+			x1, y1, x2, y2 = math.min(x1, p.x), math.min(y1, p.y), math.max(x2, p.x), math.max(y2, p.y)
+		end
+	end
+	return math.clamp(math.floor(math.min(x2 - x1, y2 - y1) / 3), 1, Track.HEAT_CELL)
+end
+
 local function heat_weight(n: number): number
 	local h = math.min(n, Track.HEAT_CAP) / Track.HEAT_CAP
 	return h * h
 end
 
-local function pick_cell(heat: { [number]: number }, origin: Point, mouse: Point?): number?
+local function pick_cell(heat: { [number]: number }, origin: Point, mouse: Point?, size: number): number?
 	local keys: { number } = {}
 	local total, x, y = 0, 0, 0
 	for key, n in heat do
-		local p, w = cell_center(key, origin), heat_weight(n)
+		local p, w = cell_center(key, origin, size), heat_weight(n)
 		table.insert(keys, key)
 		total += w
 		x += w * p.x
@@ -267,7 +276,7 @@ local function pick_cell(heat: { [number]: number }, origin: Point, mouse: Point
 	x, y = x / total, y / total
 	local vx, vy = 0, 0
 	for _, key in keys do
-		local p, w = cell_center(key, origin), heat_weight(heat[key])
+		local p, w = cell_center(key, origin, size), heat_weight(heat[key])
 		vx += w * (p.x - x) ^ 2
 		vy += w * (p.y - y) ^ 2
 	end
@@ -275,7 +284,7 @@ local function pick_cell(heat: { [number]: number }, origin: Point, mouse: Point
 	local reach = Track.MOUSE_PULL * math.max(sx, sy)
 	sx, sy = sx * Track.CENTER_SPREAD, sy * Track.CENTER_SPREAD
 	return Random.weighted(keys, function(key: number): number
-		local p = cell_center(key, origin)
+		local p = cell_center(key, origin, size)
 		local w = heat_weight(heat[key]) * math.exp(-0.5 * (((p.x - x) / sx) ^ 2 + ((p.y - y) / sy) ^ 2))
 		if mouse then
 			w *= math.exp(-Point.distance(p, mouse) / reach)
@@ -290,6 +299,7 @@ function Track.hover_heat(
 	confirm: (() -> boolean)?
 ): (boolean, string?)
 	local size = Track.HEAT_CELL
+	local sized = false
 	local heat: { [number]: number } = {}
 	local any_warm = false
 	local target: number? = nil
@@ -327,9 +337,12 @@ function Track.hover_heat(
 			return nil
 		end
 		local origin = shape.anchor or Point.new(0, 0)
+		if not sized then
+			size, sized = cell_size(shape.triangles), true
+		end
 		local next_heat: { [number]: number } = {}
 		any_warm = false
-		for key in covered_cells(shape.triangles, origin, visible) do
+		for key in covered_cells(shape.triangles, origin, visible, size) do
 			local n = (heat[key] or 0) + 1
 			next_heat[key] = n
 			any_warm = any_warm or n >= Track.WARM
@@ -353,7 +366,7 @@ function Track.hover_heat(
 		end
 		local mouse = Mouse.position()
 		if target == nil or heat[target] == nil then
-			target = pick_cell(heat, origin, mouse)
+			target = pick_cell(heat, origin, mouse, size)
 			if target == nil then
 				Mouse.cancel()
 				return false, "gone"
@@ -363,16 +376,12 @@ function Track.hover_heat(
 				finished_at = -math.huge
 			end
 		end
-		local goal = cell_center(target :: number, origin)
+		local goal = cell_center(target :: number, origin, size)
 		if confirm and mouse and warm_at(origin, mouse) and confirm() then
-			if not Mouse.busy() then
-				return true, nil
+			if Mouse.busy() then
+				Mouse.cancel()
 			end
-			Mouse.cancel()
-			sleep(Track.POLL_MS)
-			if confirm() then
-				return true, nil
-			end
+			return true, nil
 		end
 		if Mouse.busy() then
 			local going = dest
