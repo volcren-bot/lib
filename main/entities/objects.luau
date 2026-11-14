@@ -157,6 +157,13 @@ function Objects.click(loc: Loc, button: Mouse.Button?, spam: number?): boolean
 	return Clickbox.click(clickbox_of(loc), hovered_by(loc), label(loc), button, tile_of(loc), spam)
 end
 
+local function act_of(loc: Loc): Clickbox.ActTarget
+	return {
+		model = { target = "loc", kind = loc.kind, scene_x = loc.scene_x, scene_y = loc.scene_y, id = loc.id },
+		entry = { kind = MENU_LOC, id = loc.id },
+	}
+end
+
 function Objects.interact(
 	loc: Loc,
 	option: string | { string },
@@ -174,12 +181,22 @@ function Objects.interact(
 		if face == false then nil else tile_of(loc),
 		walk_timeout_ms,
 		spam,
-		menu
+		menu,
+		act_of(loc)
 	)
 end
 
 function Objects.approach(loc: Loc, options: string | { string }, opts: Clickbox.Approach?): boolean
-	return Clickbox.approach(clickbox_of(loc), hovered_by(loc), label(loc), options, owned_by(loc), tile_of(loc), opts)
+	return Clickbox.approach(
+		clickbox_of(loc),
+		hovered_by(loc),
+		label(loc),
+		options,
+		owned_by(loc),
+		tile_of(loc),
+		opts,
+		act_of(loc)
+	)
 end
 
 return Objects

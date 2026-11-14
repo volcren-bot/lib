@@ -25,6 +25,9 @@ Clickbox.WALK_REACTION_MS = 30
 Clickbox.WALK_HOLD_MS = 150
 Clickbox.WALK_LEAD_MS = 300
 Clickbox.WALK_LEAD_TOLERANCE = 40
+Clickbox.ACT_TIMEOUT_MS = 3000
+Clickbox.ACT_NEAR_SHARE = 0.4
+Clickbox.ACT_NEAR_MIN = 3
 Clickbox.APPROACH_NEAR = 3
 Clickbox.EARLY_RETRY_MS = 1500
 Clickbox.APPROACH_TIMEOUT_MS = 30000
@@ -42,6 +45,8 @@ Clickbox.APPROACH_TIMEOUT_MS = 30000
 - `WALK_HOLD_MS`: how long the spot must stay in the box after that.
 - `WALK_LEAD_MS`: guessed mouse travel time when nothing is drawn yet.
 - `WALK_LEAD_TOLERANCE`: the aim is redone unless the real travel time is within this of the guess.
+- `ACT_TIMEOUT_MS`: how long one [Host.act](../host.md#hostact) follows the thing before giving up.
+- `ACT_NEAR_SHARE`, `ACT_NEAR_MIN`: how close (share of the box's smaller side, at least this many px) the mouse must be to the spot before `act` clicks.
 - `APPROACH_NEAR`: default `near` for `approach`.
 - `EARLY_RETRY_MS`: interval between early picks during an `approach` walk.
 - `APPROACH_TIMEOUT_MS`: default walk and settle timeout for `approach`.
@@ -140,9 +145,11 @@ print(Npcs.click(npc))
 
 Definition:
 ```luau
-function Clickbox.interact(clickbox: Aim, hovered: () -> boolean, what: string, option: string | { string }, target: Minimenu.Target?, tile: (() -> Tile?)?, walk_timeout_ms: (number | false)?, spam: number?, menu: boolean?): boolean
+function Clickbox.interact(clickbox: Aim, hovered: () -> boolean, what: string, option: string | { string }, target: Minimenu.Target?, tile: (() -> Tile?)?, walk_timeout_ms: (number | false)?, spam: number?, menu: boolean?, act: ActTarget?): boolean
+
+export type ActTarget = { model: Host.ActModel, entry: { kind: number?, id: number?, index: number? } }
 ```
-Answers a menu left open first ([Interact.open_menu](interact.md#interactopen_menu)), else hovers and picks the first offered `option` via [Interact.with](interact.md#interactwith), waiting for the walk. Retries up to `MISCLICK_ATTEMPTS` on a misclick or, while walking, when the option slid away. `menu` forces the right-click menu for moving models.
+Answers a menu left open first ([Interact.open_menu](interact.md#interactopen_menu)). With `act` (and no `menu`, and no entry swap for `what`) it clicks through [Host.act](../host.md#hostact), which follows the model frame by frame and clicks on the frame the client shows it under the mouse, so moving things are hit; a right click there leaves the menu for `Interact.open_menu`. Otherwise, or when the agent can't act, it hovers until the left-click entry is `option` on `target` and clicks on that same menu read, or picks the first offered `option` via [Interact.with](interact.md#interactwith); then waits for the walk. Retries up to `MISCLICK_ATTEMPTS` on a misclick or a missed follow. `menu` forces the right-click menu. [Npcs](entities/npcs.md), [Objects](entities/objects.md) and [GroundItems](entities/ground_items.md) pass `act`.
 
 Example:
 ```luau

@@ -171,6 +171,10 @@ function Npcs.click(npc: Npc, button: Mouse.Button?, spam: number?): boolean
 	return Clickbox.click(clickbox_of(npc), hovered_by(npc), npc.name, button, tile_of(npc), spam)
 end
 
+local function act_of(npc: Npc): Clickbox.ActTarget
+	return { model = { target = "npc", index = npc.index }, entry = { kind = MENU_NPC, index = npc.index } }
+end
+
 function Npcs.interact(
 	npc: Npc,
 	option: string | { string },
@@ -185,12 +189,23 @@ function Npcs.interact(
 		owned_by(npc),
 		tile_of(npc),
 		walk_timeout_ms,
-		spam
+		spam,
+		nil,
+		act_of(npc)
 	)
 end
 
 function Npcs.approach(npc: Npc, options: string | { string }, opts: Clickbox.Approach?): boolean
-	return Clickbox.approach(clickbox_of(npc), hovered_by(npc), npc.name, options, owned_by(npc), tile_of(npc), opts)
+	return Clickbox.approach(
+		clickbox_of(npc),
+		hovered_by(npc),
+		npc.name,
+		options,
+		owned_by(npc),
+		tile_of(npc),
+		opts,
+		act_of(npc)
+	)
 end
 
 return Npcs

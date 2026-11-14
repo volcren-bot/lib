@@ -1371,6 +1371,26 @@ Example:
 Host.input_cancel()
 ```
 
+## Host.act
+
+Definition:
+```luau
+Host.act: (spec: ActSpec) -> ActResult
+```
+Moves the mouse onto a moving model and clicks it on the frame the client shows it under the mouse. The agent re-projects `model` every frame and keeps a spot on one of its triangles (centre-weighted by `spread`, preferring triangles of `min_area` px², skipping any whose centre is outside `viewport` or inside `blockers`); the injector runs WindMouse (`mouse`) after that spot. Once a menu entry matches `entry` (`kind`, `id`, `index`, each optional) and the mouse is within `near` px of the spot (widened by the spot's speed), the agent presses: left when the left-click entry is one of `options`, else right when `right` (leaving the menu open). The injector releases after `hold` ms. `status` is `"left"`, `"right"`, `"no_option"` (the target has none of `options`), `"gone"` (no model for 30 frames), `"menu_open"`, `"timeout"` (`timeout` ms, default 3000), `"cancelled"`, or why the agent can't (`"other_thread"`, `"not_in_game"`, `"not_found"`, `"lost"`); `x`, `y` and `entry` are the mouse and the entry at the press. Blocking input; players aren't matched by name, so use it for NPCs, locs and ground items. Used by [Clickbox.interact](main/clickbox.md#clickboxinteract).
+
+Example:
+```luau
+local item = assert(Host.ground_items())[1]
+local result = Host.act({
+	model = { target = "loc", kind = 4, scene_x = item.scene_x, scene_y = item.scene_y, id = item.id },
+	entry = { kind = 4, id = item.id },
+	options = { "Take" },
+	viewport = { x1 = 0, y1 = 0, x2 = 765, y2 = 503 },
+})
+print(result.status)
+```
+
 ## Host.bank_pin_enter
 
 Definition:

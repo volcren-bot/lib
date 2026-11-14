@@ -69,7 +69,7 @@ end
 
 local travel_scale = 0.9
 
-local function press_ms(): number
+function Mouse.press_ms(): number
 	return Random.trunc(Random.left(Mouse.press_min, Mouse.press_max))
 end
 
@@ -117,7 +117,7 @@ function Mouse.miss(destination: Point): Point
 	return Point.random(at, range)
 end
 
-local function wind_options()
+function Mouse.wind_options(): Host.WindMouseOptions
 	return {
 		speed = Mouse.speed,
 		wind = Mouse.wind,
@@ -162,7 +162,7 @@ local function move_to(destination: Point)
 
 	local start = Mouse.position()
 	local started = time()
-	wind_mouse(math.round(destination.x), math.round(destination.y), wind_options())
+	wind_mouse(math.round(destination.x), math.round(destination.y), Mouse.wind_options())
 	local distance = if start then Point.distance(start, destination) else 0
 	if distance >= 20 then
 		local ratio = (time() - started) / planned_ms(distance)
@@ -228,7 +228,7 @@ local function queue_move(target: Target, forced: boolean?, distribution: Distri
 	if Mouse.use_teleport then
 		move_async(x, y)
 	else
-		wind_mouse_async(x, y, wind_options())
+		wind_mouse_async(x, y, Mouse.wind_options())
 	end
 	return Point.new(x, y)
 end
@@ -247,7 +247,7 @@ function Mouse.click_async(target: Target?, button: Button?, forced: boolean?, d
 		Log.log("Mouse", "click_async: the mouse isn't over the client and there is no target.")
 		return false
 	end
-	click_async(math.round(at.x), math.round(at.y), button, press_ms())
+	click_async(math.round(at.x), math.round(at.y), button, Mouse.press_ms())
 	return true
 end
 
@@ -313,7 +313,7 @@ function Mouse.click(target: Target?, button: Button?, forced: boolean?, distrib
 		end
 	end
 	mouse_down(button)
-	sleep(press_ms())
+	sleep(Mouse.press_ms())
 	mouse_up(button)
 end
 

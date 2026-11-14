@@ -158,6 +158,19 @@ function GroundItems.click(item: GroundItem, button: Mouse.Button?, spam: number
 	return Clickbox.click(clickbox_of(item), hovered_by(item), what(item), button, tile_of(item), spam)
 end
 
+local function act_of(item: GroundItem): Clickbox.ActTarget
+	return {
+		model = {
+			target = "loc",
+			kind = GroundItems.ITEM_PILE,
+			scene_x = item.scene_x,
+			scene_y = item.scene_y,
+			id = item.id,
+		},
+		entry = { kind = MENU_GROUND_ITEM, id = item.id },
+	}
+end
+
 function GroundItems.interact(
 	item: GroundItem,
 	option: string,
@@ -172,7 +185,9 @@ function GroundItems.interact(
 		owned_by(item),
 		tile_of(item),
 		walk_timeout_ms,
-		spam
+		spam,
+		nil,
+		act_of(item)
 	)
 end
 
@@ -278,7 +293,8 @@ function GroundItems.approach(item: GroundItem, options: string | { string }, op
 		options,
 		owned_by(item),
 		tile_of(item),
-		opts
+		opts,
+		act_of(item)
 	)
 end
 

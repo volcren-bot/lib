@@ -37,6 +37,8 @@ export type Aim = (lead_ms: number?) -> Clickbox?
 
 export type Anchor = { x: number, y: number, size: number?, height: number? }
 
+export type ActTarget = { model: Host.ActModel, entry: { kind: number?, id: number?, index: number? } }
+
 export type Approach = {
 	near: number?,
 	walk: Walker.WalkOptions?,
@@ -593,6 +595,98 @@ local function offered(options: { string }, target: Minimenu.Target?): string?
 	return nil
 end
 
+Clickbox.ACT_TIMEOUT_MS = 3000
+Clickbox.ACT_NEAR_SHARE = 0.4
+Clickbox.ACT_NEAR_MIN = 3
+
+local function swapped(what: string): boolean
+	local name = string.lower(what)
+	for _, swap in ipairs(Minimenu.swaps()) do
+		if string.lower(swap.target) == name then
+			return true
+		end
+	end
+	return false
+end
+
+local function act_near(box: Clickbox): number
+	local x1, y1, x2, y2 = math.huge, math.huge, -math.huge, -math.huge
+	for _, p in ipairs(box.polygon) do
+		x1, y1, x2, y2 = math.min(x1, p.x), math.min(y1, p.y), math.max(x2, p.x), math.max(y2, p.y)
+	end
+	return math.max(Clickbox.ACT_NEAR_MIN, Clickbox.ACT_NEAR_SHARE * math.min(x2 - x1, y2 - y1))
+end
+
+type Acted = "done" | "retry" | "unusable"
+
+local function act_once(
+	act: ActTarget,
+	clickbox: Aim,
+	what: string,
+	options: { string },
+	target: Minimenu.Target?,
+	tile: (() -> Tile?)?,
+	walk_timeout_ms: (number | false)?,
+	spam: number?
+): (Acted, boolean?)
+	local box = clickbox()
+	if box == nil and tile then
+		Clickbox.reveal(clickbox, tile, what)
+		box = clickbox()
+	end
+	local view = Toplevel.viewport()
+	if box == nil or view == nil then
+		return "unusable"
+	end
+	local before = Minimenu.clicked()
+	local result = Host.act({
+		model = act.model,
+		entry = act.entry,
+		options = options,
+		right = true,
+		near = act_near(box),
+		spread = Clickbox.CENTER_SPREAD,
+		min_area = Clickbox.MIN_TRIANGLE_AREA,
+		timeout = Clickbox.ACT_TIMEOUT_MS,
+		viewport = view,
+		blockers = Toplevel.blockers(),
+		mouse = Mouse.wind_options(),
+		hold = Mouse.press_ms(),
+	})
+	local status = result.status
+	if status == "left" then
+		local clicked = if before then Minimenu.wait_click(before) else nil
+		if before == nil or (clicked and did_any(clicked, options, target)) then
+			Interact.spam_click(spam, function(): boolean
+				return left_click_is(options, target)
+			end)
+			return "done",
+				walk_timeout_ms == false or Player.wait_walk(if walk_timeout_ms then walk_timeout_ms else nil)
+		end
+		if clicked then
+			Log.log("Clickbox", `misclicked {what}: the client did "{Minimenu.text(clicked.entry)}"`)
+		end
+		return "retry"
+	elseif status == "right" then
+		local handled, ok = Interact.open_menu(options, target, walk_timeout_ms)
+		return if handled then "done" else "retry", ok == true
+	elseif status == "no_option" then
+		return "done", false
+	elseif status == "gone" then
+		if tile then
+			Clickbox.reveal(clickbox, tile, what)
+		end
+		return "retry"
+	elseif status == "menu_open" then
+		Minimenu.close()
+		return "retry"
+	elseif status == "timeout" or status == "lost" or status == "cancelled" then
+		return "retry"
+	end
+	Log.log("Clickbox", `can't act on {what}: {status}`)
+	return "unusable"
+end
+
 function Clickbox.interact(
 	clickbox: Aim,
 	hovered: () -> boolean,
@@ -602,7 +696,8 @@ function Clickbox.interact(
 	tile: (() -> Tile?)?,
 	walk_timeout_ms: (number | false)?,
 	spam: number?,
-	menu: boolean?
+	menu: boolean?,
+	act: ActTarget?
 ): boolean
 	local options = option_list(option)
 	local handled, result = Interact.open_menu(options, target, walk_timeout_ms)
@@ -614,7 +709,17 @@ function Clickbox.interact(
 		left = not menu and left_click_is(options, target)
 		return left or hovered()
 	end
+	local acting = act ~= nil and not menu and not swapped(what)
 	for _ = 1, Clickbox.MISCLICK_ATTEMPTS do
+		if act and acting then
+			local outcome, done = act_once(act, clickbox, what, options, target, tile, walk_timeout_ms, spam)
+			if outcome == "done" then
+				return done == true
+			elseif outcome == "retry" then
+				continue
+			end
+			acting = false
+		end
 		local before = Minimenu.clicked()
 		local ok = Clickbox.hover(clickbox, on_it, what, tile)
 		if not ok then
@@ -667,7 +772,8 @@ function Clickbox.approach(
 	option: string | { string },
 	target: Minimenu.Target?,
 	tile: () -> Tile?,
-	opts: Approach?
+	opts: Approach?,
+	act: ActTarget?
 ): boolean
 	local o: Approach = opts or {}
 	local options = option_list(option)
@@ -716,7 +822,10 @@ function Clickbox.approach(
 					and on_foot()
 				then
 					last_try = Host.time()
-					if Clickbox.interact(clickbox, hovered, what, option, target, tile, false, o.spam) == true then
+					if
+						Clickbox.interact(clickbox, hovered, what, option, target, tile, false, o.spam, nil, act)
+						== true
+					then
 						picked_early = true
 						return false
 					end
@@ -738,7 +847,7 @@ function Clickbox.approach(
 	if o.settle then
 		Player.wait_walk(o.timeout_ms or Clickbox.APPROACH_TIMEOUT_MS)
 	end
-	if Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms, o.spam) then
+	if Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms, o.spam, nil, act) then
 		return true
 	end
 	local closer = o.closer
@@ -756,7 +865,7 @@ function Clickbox.approach(
 		return false
 	end
 	Player.wait_still(3000)
-	return Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms, o.spam)
+	return Clickbox.interact(clickbox, hovered, what, option, target, tile, o.arrive_ms, o.spam, nil, act)
 end
 
 function Clickbox.draw(box: Clickbox, color: Draw.Color?)

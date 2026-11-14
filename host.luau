@@ -616,6 +616,47 @@ export type WindMouseOptions = {
 	pace: number?,
 }
 
+export type ActModel = {
+	target: "loc" | "npc" | "player",
+	kind: number?,
+	scene_x: number?,
+	scene_y: number?,
+	id: number?,
+	index: number?,
+}
+
+export type ActRect = { x1: number, y1: number, x2: number, y2: number }
+
+export type ActSpec = {
+	model: ActModel,
+	entry: { kind: number?, id: number?, index: number? },
+	options: { string },
+	right: boolean?,
+	near: number?,
+	spread: number?,
+	min_area: number?,
+	timeout: number?,
+	viewport: ActRect,
+	blockers: { ActRect }?,
+	mouse: WindMouseOptions?,
+	hold: number?,
+}
+
+export type ActStatus =
+	"left"
+	| "right"
+	| "no_option"
+	| "gone"
+	| "menu_open"
+	| "timeout"
+	| "cancelled"
+	| "lost"
+	| "other_thread"
+	| "not_in_game"
+	| "not_found"
+
+export type ActResult = { status: ActStatus, x: number, y: number, entry: MenuEntry? }
+
 export type Tile = {
 	x: number,
 	y: number,
@@ -848,6 +889,7 @@ return {
 	input_wait = g.input_wait :: () -> string?,
 	input_error = g.input_error :: () -> string?,
 	input_cancel = g.input_cancel :: () -> (),
+	act = g.act :: (spec: ActSpec) -> ActResult,
 	bank_pin_enter = g.bank_pin_enter :: () -> string,
 	lamp_skill = g.lamp_skill :: () -> (string?, string?),
 	http_request = g.http_request :: (options: HttpRequest) -> (HttpResponse?, string?),

@@ -53,6 +53,32 @@ local p = Mouse.position()
 print(if p then `{p.x}, {p.y}` else "outside the client")
 ```
 
+## Mouse.wind_options
+
+Definition:
+```luau
+function Mouse.wind_options(): Host.WindMouseOptions
+```
+The WindMouse options the current settings give, for host calls that move the mouse themselves such as [Host.act](../../host.md#hostact).
+
+Example:
+```luau
+print(Mouse.wind_options().speed)
+```
+
+## Mouse.press_ms
+
+Definition:
+```luau
+function Mouse.press_ms(): number
+```
+A button hold time between `press_min` and `press_max`, leaning short.
+
+Example:
+```luau
+print(Mouse.press_ms())
+```
+
 ## Mouse.teleport
 
 Definition:
