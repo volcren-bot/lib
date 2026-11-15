@@ -168,7 +168,8 @@ function CombatSafeSpot.weapon_range(): number?
 		return 1
 	end
 	local params = item_params({ weapon })
-	local range = params and params[1] and params[1][CombatSafeSpot.RANGE_PARAM]
+	local first = params and params[1]
+	local range = first and first[CombatSafeSpot.RANGE_PARAM]
 	if type(range) ~= "number" then
 		return nil
 	end
@@ -179,7 +180,7 @@ function CombatSafeSpot.weapon_range(): number?
 end
 
 function CombatSafeSpot.find(target: Chaser, options: CombatFindOptions?): ({ CombatSpot }?, string?)
-	local o = options or {}
+	local o: CombatFindOptions = options or {}
 	local range = o.range or CombatSafeSpot.weapon_range()
 	if range == nil then
 		return nil, "the weapon's range can't be read"
@@ -221,8 +222,8 @@ function CombatSafeSpot.find(target: Chaser, options: CombatFindOptions?): ({ Co
 	local found: { CombatSpot } = {}
 	for _, spot in ipairs(spots) do
 		local crowded, alone = spot.chases[1], spot.walls[1]
-		local a = { x = crowded.at.x, y = crowded.at.y, size = target.size }
-		local b = { x = alone.at.x, y = alone.at.y, size = target.size }
+		local a: Chaser = { x = crowded.at.x, y = crowded.at.y, size = target.size }
+		local b: Chaser = { x = alone.at.x, y = alone.at.y, size = target.size }
 		local gap = CombatSafeSpot.distance(a, spot.tile)
 		if spot.walls_hold then
 			gap = math.min(gap, CombatSafeSpot.distance(b, spot.tile))
@@ -243,7 +244,7 @@ function CombatSafeSpot.find(target: Chaser, options: CombatFindOptions?): ({ Co
 			})
 		end
 	end
-	table.sort(found, function(x, y)
+	table.sort(found, function(x: CombatSpot, y: CombatSpot): boolean
 		if x.spot.walls_hold ~= y.spot.walls_hold then
 			return x.spot.walls_hold
 		end
@@ -339,7 +340,7 @@ local function holds(grid: Grid, npc: Chaser, me: Tile, range: number, min_gap: 
 	if chase.outcome ~= "stuck" and chase.outcome ~= "loop" then
 		return false
 	end
-	local at = { x = chase.at.x, y = chase.at.y, size = npc.size }
+	local at: Chaser = { x = chase.at.x, y = chase.at.y, size = npc.size }
 	return CombatSafeSpot.distance(at, me) >= min_gap and CombatSafeSpot.can_attack(grid, me, at, range)
 end
 
@@ -352,7 +353,7 @@ local function walk_exact(tile: Tile)
 end
 
 function CombatSafeSpot.fight(index: number, options: FightOptions?): (boolean, string?)
-	local o = options or {}
+	local o: FightOptions = options or {}
 	local range = o.range or CombatSafeSpot.weapon_range()
 	if range == nil then
 		return false, "the weapon's range can't be read"
@@ -401,7 +402,7 @@ function CombatSafeSpot.fight(index: number, options: FightOptions?): (boolean, 
 			end
 			local grid = assert(SafeSpot.grid_around(m, r + 4))
 			SafeSpot.occupy(grid, { index })
-			local others = if o.avoid then CombatSafeSpot.chasers(o.avoid, m, index) else {}
+			local others: { Chaser } = if o.avoid then CombatSafeSpot.chasers(o.avoid, m, index) else {}
 			local on_spot = spot ~= nil and spot.x == m.x and spot.y == m.y
 			local good = on_spot and holds(grid, n, m, r, min_gap)
 			for _, other in ipairs(others) do

@@ -197,7 +197,9 @@ function Tasks.apply_zoom_range(): boolean
 end
 
 function Tasks.apply_pitch_range(): boolean
-	return apply_range(Camera.pitch(), Antiban.pitch, "pitch", Camera.set_pitch)
+	return apply_range(Camera.pitch(), Antiban.pitch, "pitch", function(pitch: number): boolean
+		return Camera.set_pitch(pitch)
+	end)
 end
 
 local function tiny_target(current: number, change: number, min: number, max: number, least: number): number

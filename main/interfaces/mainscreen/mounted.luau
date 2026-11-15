@@ -102,18 +102,18 @@ function Mounted.teleport(kind: Kind, place: string): (boolean, string?, boolean
 	if kind == "glory" or kind == "cape" then
 		local option = if kind == "cape" then Mounted.CAPE_OPTION else place
 		if not Objects.approach(loc, option) then
-			return false, `couldn't click {option}`
+			return false, `couldn't click {option}`, nil
 		end
-		return true
+		return true, nil, nil
 	end
 	if not Toplevel.escape_clear() then
-		return false, "another interface is open"
+		return false, "another interface is open", nil
 	end
 	if not Objects.approach(loc, Mounted.MENU_OPTION) then
-		return false, `couldn't click {Mounted.MENU_OPTION}`
+		return false, `couldn't click {Mounted.MENU_OPTION}`, nil
 	end
 	if not wait_open() then
-		return false, "the list didn't open"
+		return false, "the list didn't open", nil
 	end
 	local d = Mounted.find(place)
 	if d == nil or not d.available then
@@ -122,9 +122,9 @@ function Mounted.teleport(kind: Kind, place: string): (boolean, string?, boolean
 	end
 	if not Mounted.select(place) then
 		Mounted.close()
-		return false, `{place} couldn't be chosen`
+		return false, `{place} couldn't be chosen`, nil
 	end
-	return true
+	return true, nil, nil
 end
 
 return Mounted

@@ -222,13 +222,14 @@ end
 
 function Antiban.add_async_task(method: (async: boolean?) -> (), interval: number, randomness: number?, scope: Scope?)
 	local std_var = randomness or 0.2
-	table.insert(Antiban.async_tasks, {
+	local task: AsyncTask = {
 		method = method,
 		scope = scope or "any",
 		interval = interval,
 		std_var = std_var,
 		next = first_due(interval, std_var),
-	})
+	}
+	table.insert(Antiban.async_tasks, task)
 end
 
 function Antiban.delay_tasks(ms: number)

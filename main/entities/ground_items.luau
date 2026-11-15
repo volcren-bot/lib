@@ -262,14 +262,15 @@ function GroundItems.take_pile(tile: Tile): (number, string?)
 		if not GroundItems.fits(item) then
 			return taken, "full"
 		end
-		local before, clicked = count_of(pile, item.id), Minimenu.clicked()
+		local id = item.id
+		local before, clicked = count_of(pile, id), Minimenu.clicked()
 		local me = Player.position()
 		local away = if me then GroundItems.distance(item, { x = me.x, y = me.y }) else 0
 		Mouse.click()
 		local left = false
 		if clicked == nil or Minimenu.wait_click(clicked) ~= nil then
 			left = Widgets.wait_within(function(): boolean
-				return count_of(pile_at(tile), item.id) < before
+				return count_of(pile_at(tile), id) < before
 			end, GroundItems.PILE_TAKE_MS + away * GroundItems.PILE_WALK_TILE_MS, 50)
 		end
 		if left then

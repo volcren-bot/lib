@@ -10,9 +10,9 @@ local Walker = require("@lib/main/walker")
 
 Definition:
 ```luau
-function Walker.position(): Tile?
+function Walker.position(): { x: number, y: number, plane: number? }?
 ```
-Your current tile, or `nil` when not logged in.
+Your current tile and plane, or `nil` when not logged in.
 
 Example:
 ```luau

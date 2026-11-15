@@ -14,7 +14,7 @@ CombatAchievements.STATUS_VARBITS = table.freeze({
 	elite = 12866,
 	master = 12867,
 	grandmaster = 12868,
-})
+} :: { [Tier]: number })
 
 CombatAchievements.NOT_REACHED = 0
 CombatAchievements.REACHED = 1

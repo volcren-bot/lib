@@ -241,11 +241,12 @@ local function withdraw_plan(entries: { Entry }): { { entry: Entry, shared: bool
 	local groups: { { number } } = {}
 	local group_of: { [number]: number } = {}
 	local rest: { number } = {}
-	for i in ipairs(entries) do
+	for i, _ in ipairs(entries) do
 		local amount = amounts[i]
 		if amount and uses[amount] > 1 then
 			if group_of[amount] == nil then
-				table.insert(groups, {})
+				local group: { number } = {}
+				table.insert(groups, group)
 				group_of[amount] = #groups
 			end
 			table.insert(groups[group_of[amount]], i)

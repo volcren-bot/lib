@@ -141,12 +141,12 @@ function Track.hover(
 			mouse and (Track.inside(tri, p, mouse) or (anywhere and close and moves > 0 and Track.on_any(list, mouse)))
 		then
 			if confirm == nil then
-				return true
+				return true, nil
 			end
 			local until_at = time() + Track.CONFIRM_MS
 			repeat
 				if confirm() then
-					return true
+					return true, nil
 				end
 				sleep(Track.POLL_MS)
 			until time() >= until_at
@@ -249,7 +249,10 @@ local function cell_size(triangles: { Polygon }): number
 	local x1, y1, x2, y2 = math.huge, math.huge, -math.huge, -math.huge
 	for _, t in ipairs(triangles) do
 		for _, p in ipairs(t) do
-			x1, y1, x2, y2 = math.min(x1, p.x), math.min(y1, p.y), math.max(x2, p.x), math.max(y2, p.y)
+			x1 = math.min(x1, p.x)
+			y1 = math.min(y1, p.y)
+			x2 = math.max(x2, p.x)
+			y2 = math.max(y2, p.y)
 		end
 	end
 	return math.clamp(math.floor(math.min(x2 - x1, y2 - y1) / 3), 1, Track.HEAT_CELL)

@@ -215,7 +215,7 @@ function Lamp.slot(item: (number | string)?): number?
 	for i, h in ipairs(held) do
 		ids[i] = h.id
 	end
-	local names = if #ids > 0 then Item.names(ids) or {} else {}
+	local names: { string? } = if #ids > 0 then Item.names(ids) or {} else {}
 	local wanted = if item ~= nil then string.lower(item) else nil
 	for i, h in ipairs(held) do
 		local name = names[i]

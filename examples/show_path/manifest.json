@@ -1,0 +1,24 @@
+{
+	"settings": {
+		"fields": [
+			{
+				"kind": "label",
+				"text": "Target tile (0, 0 is 10 tiles east and 10 south of you):"
+			},
+			{
+				"id": "x",
+				"kind": "number",
+				"label": "x",
+				"default": 0,
+				"integer": true
+			},
+			{
+				"id": "y",
+				"kind": "number",
+				"label": "y",
+				"default": 0,
+				"integer": true
+			}
+		]
+	}
+}

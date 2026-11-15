@@ -177,8 +177,8 @@ Wornitems.INVENTORY_CONTAINER = 93
 Wornitems.QUIVER_PARAM = 1910
 Wornitems.QUIVER_AMMO_VARP = 4142
 Wornitems.QUIVER_AMOUNT_VARP = 4141
-Wornitems.SECONDARY_CHILD = table.freeze({ quiver = 28, pouch = 30 })
-Wornitems.SWAP_OPTION = table.freeze({ quiver = "Swap", pouch = "Wear" })
+Wornitems.SECONDARY_CHILD = table.freeze({ quiver = 28, pouch = 30 } :: { [SecondaryHolder]: number })
+Wornitems.SWAP_OPTION = table.freeze({ quiver = "Swap", pouch = "Wear" } :: { [SecondaryHolder]: string })
 Wornitems.QUIVER_FILL_OPTION = "Fill"
 Wornitems.QUIVER_REMOVE_OPTION = "Quiver-Remove"
 Wornitems.SWAP_TIMEOUT_MS = 2500

@@ -484,7 +484,7 @@ local function gap(s: Spot): number
 end
 
 function SafeSpot.find(chasers: { Chaser }, options: FindOptions?): ({ Spot }?, string?)
-	local o = options or {}
+	local o: FindOptions = options or {}
 	local from = o.from or Walker.position()
 	if from == nil then
 		return nil, "not logged in"
@@ -542,7 +542,7 @@ function SafeSpot.find(chasers: { Chaser }, options: FindOptions?): ({ Spot }?, 
 			end
 		end
 	end
-	table.sort(spots, function(a, b)
+	table.sort(spots, function(a: Spot, b: Spot): boolean
 		if a.distance ~= b.distance then
 			return a.distance < b.distance
 		end
@@ -592,7 +592,7 @@ function SafeSpot.wait_trapped(index: number, size: number?, timeout_ms: number?
 end
 
 function SafeSpot.trap(index: number, options: TrapOptions?): (Tile?, Chaser? | string)
-	local o = options or {}
+	local o: TrapOptions = options or {}
 	local size = o.size or 1
 	local attempts = o.attempts or SafeSpot.ATTEMPTS
 	local failure = "no attempts"

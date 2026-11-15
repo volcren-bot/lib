@@ -782,8 +782,9 @@ function Magic.summon_thrall(thrall: Thrall): boolean
 				Log.log("Magic", `summon_thrall: {name} didn't summon{if reason then `: {reason}` else ""}`)
 				return false
 			end
-			thrall_rises_at = time() + Magic.THRALL_RISE_MS
-			thrall_expires_at = if duration then thrall_rises_at + duration else nil
+			local rises_at = time() + Magic.THRALL_RISE_MS
+			thrall_rises_at = rises_at
+			thrall_expires_at = if duration then rises_at + duration else nil
 			return true
 		end
 	end

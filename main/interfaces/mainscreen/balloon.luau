@@ -244,7 +244,8 @@ function Balloon.find_pilot(): Npc?
 	if me == nil then
 		return nil
 	end
-	local candidates: { { npc: Npc, rank: number } } = {}
+	type Candidate = { npc: Npc, rank: number }
+	local candidates: { Candidate } = {}
 	for _, n in ipairs(Host.npcs() or {}) do
 		local d = math.max(math.abs(n.x - me.x), math.abs(n.y - me.y))
 		if d <= Balloon.PILOT_RANGE then
@@ -253,7 +254,7 @@ function Balloon.find_pilot(): Npc?
 			table.insert(candidates, { npc = n, rank = if ours then d else d + 1000 })
 		end
 	end
-	table.sort(candidates, function(a, b)
+	table.sort(candidates, function(a: Candidate, b: Candidate)
 		return a.rank < b.rank
 	end)
 	for i, c in ipairs(candidates) do

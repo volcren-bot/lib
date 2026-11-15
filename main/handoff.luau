@@ -37,7 +37,7 @@ function Handoff.settle(timeout_ms: number?): (boolean, string?)
 		end
 		sleep(600)
 	end
-	return true
+	return true, nil
 end
 
 return Handoff

@@ -13,13 +13,13 @@ A layout item counts as any of its `ids`, in the order the bank takes them; for 
 Definition:
 ```luau
 export type Wanted = {
-	id: number?,
-	ids: { number }?,
-	name: string?,
-	stackable: boolean?,
-	min: number?,
-	max: number?,
-	doses: { number }?,
+	read id: number?,
+	read ids: { number }?,
+	read name: string?,
+	read stackable: boolean?,
+	read min: number?,
+	read max: number?,
+	read doses: { number }?,
 }
 ```
 What inventory and equipment slots share; an empty equipment slot has no `id`.

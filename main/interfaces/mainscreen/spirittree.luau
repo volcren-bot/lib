@@ -209,10 +209,11 @@ function Spirittree.select(place: Place, key_probability: number?): string?
 		if not Spirittree.is_open() then
 			return "key"
 		end
-		d = Spirittree.find(name)
-		if d == nil then
+		local refreshed = Spirittree.find(name)
+		if refreshed == nil then
 			return nil
 		end
+		d = refreshed
 	end
 	Mouse.click(d.row)
 	if gone() then

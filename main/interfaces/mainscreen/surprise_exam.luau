@@ -590,7 +590,8 @@ function SurpriseExam.card_answer(models: { number }, hint: string): { number }
 	if top == 0 then
 		Log.log("SurpriseExam", `no theme fits the hint "{hint}"`)
 	end
-	local ranked: { { index: number, score: number } } = {}
+	type Ranked = { index: number, score: number }
+	local ranked: { Ranked } = {}
 	for i, m in models do
 		local item = SurpriseExam.ITEMS[m]
 		local score = math.random() / 10
@@ -599,7 +600,7 @@ function SurpriseExam.card_answer(models: { number }, hint: string): { number }
 		end
 		table.insert(ranked, { index = i, score = score })
 	end
-	table.sort(ranked, function(a, b): boolean
+	table.sort(ranked, function(a: Ranked, b: Ranked): boolean
 		return a.score > b.score
 	end)
 	local picks = {}

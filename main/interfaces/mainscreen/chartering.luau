@@ -18,7 +18,7 @@ local Box = Geometry.Box
 type Box = Geometry.Box
 local Point = Geometry.Point
 type Point = Geometry.Point
-type Tile = { x: number, y: number, plane: number? }
+type Tile = { read x: number, read y: number, read plane: number? }
 
 local Chartering = {}
 local Tab = {}
@@ -574,14 +574,15 @@ function Chartering.find_trader(option: string, near: Tile, range: number?): Hos
 		return nil
 	end
 	local reach = range or Chartering.TRADER_RANGE
-	local candidates: { { npc: Host.Npc, distance: number } } = {}
+	type Candidate = { npc: Host.Npc, distance: number }
+	local candidates: { Candidate } = {}
 	for _, n in ipairs(npcs) do
 		local d = math.max(math.abs(n.x - near.x), math.abs(n.y - near.y))
 		if d <= reach then
 			table.insert(candidates, { npc = n, distance = d })
 		end
 	end
-	table.sort(candidates, function(a, b)
+	table.sort(candidates, function(a: Candidate, b: Candidate)
 		return a.distance < b.distance
 	end)
 	local Npcs = (require :: any)("@lib/main/entities/npcs")
@@ -592,7 +593,7 @@ function Chartering.find_trader(option: string, near: Tile, range: number?): Hos
 		end
 		if Npcs.hover(c.npc) then
 			sleep(Chartering.TRADER_HOVER_MS)
-			for _, entry in ipairs(Minimenu.entries() or {}) do
+			for _, entry in ipairs((Minimenu.entries() :: { Host.MenuEntry }?) or {}) do
 				if entry.option == option then
 					return c.npc
 				end

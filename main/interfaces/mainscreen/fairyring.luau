@@ -10,6 +10,8 @@ local Biometrics = require("@lib/main/antiban/biometrics")
 local Diaries = require("@lib/main/diaries")
 local Geometry = require("@lib/utils/math/geometry")
 local Inventory = require("@lib/main/interfaces/gametabs/inventory")
+local Item = require("@lib/utils/item")
+type Item = Item.Item
 local Log = require("@lib/utils/log")
 local Minimenu = require("@lib/main/interfaces/minimenu")
 local Mouse = require("@lib/utils/input/mouse")
@@ -63,7 +65,7 @@ Fairyring.USE_VARBIT = 2328
 Fairyring.PERMISSION_VARBIT = 2329
 Fairyring.USE_NEEDED = 1
 Fairyring.PERMISSION_NEEDED = 2
-Fairyring.STAVES = { "Dramen staff", "Lunar staff" }
+Fairyring.STAVES = { "Dramen staff", "Lunar staff" } :: { Item }
 Fairyring.DIARY_REGION = "lumbridge"
 Fairyring.DIARY_TIER = "elite"
 
@@ -216,7 +218,8 @@ function Fairyring.resolve(text: string): (string?, string?)
 			table.insert(order, p)
 		end
 	end
-	for _, d in ipairs(TravelLog.destinations() or {}) do
+	local logged: { Destination } = TravelLog.destinations() or {}
+	for _, d in ipairs(logged) do
 		add({ code = d.code, name = d.name })
 	end
 	for _, p in ipairs(Fairyring.PLACES) do

@@ -4,13 +4,13 @@ local Item = require("@lib/utils/item")
 local LayoutItem = {}
 
 export type Wanted = {
-	id: number?,
-	ids: { number }?,
-	name: string?,
-	stackable: boolean?,
-	min: number?,
-	max: number?,
-	doses: { number }?,
+	read id: number?,
+	read ids: { number }?,
+	read name: string?,
+	read stackable: boolean?,
+	read min: number?,
+	read max: number?,
+	read doses: { number }?,
 }
 
 function LayoutItem.base(item: Wanted): string?

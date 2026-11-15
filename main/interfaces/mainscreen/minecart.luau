@@ -201,10 +201,11 @@ function Minecart.select(stop: Stop, key_probability: number?): string?
 		if not Minecart.is_open() then
 			return "key"
 		end
-		d = Minecart.find(name)
-		if d == nil then
+		local refreshed = Minecart.find(name)
+		if refreshed == nil then
 			return nil
 		end
+		d = refreshed
 	end
 	Mouse.click(d.row)
 	if gone() then

@@ -1,20 +1,15 @@
 --!strict
-local Host = require("@lib/host")
-local form = Host.form
 local Draw = require("@lib/utils/draw")
+local Host = require("@lib/host")
 local Minimap = require("@lib/main/interfaces/minimap")
 local Projection = require("@lib/main/projection/projection")
 local Walker = require("@lib/main/walker")
 
 local me = assert(Walker.position())
-local values = assert(form({
-	title = "Show path",
-	fields = {
-		{ id = "x", kind = "number", label = "x", default = me.x + 10, integer = true },
-		{ id = "y", kind = "number", label = "y", default = me.y - 10, integer = true },
-	},
-}))
-local target = { x = values.x :: number, y = values.y :: number }
+local values = Host.settings()
+local target = if values.x == 0 and values.y == 0
+	then { x = me.x + 10, y = me.y - 10 }
+	else { x = values.x :: number, y = values.y :: number }
 
 local path = Walker.path(target)
 if path == nil then

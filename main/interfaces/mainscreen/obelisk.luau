@@ -135,8 +135,10 @@ function Obelisk.on_grid(): boolean
 	end
 	local x1, x2, y1, y2 = math.huge, -math.huge, math.huge, -math.huge
 	for _, stone in ipairs(stones) do
-		x1, x2 = math.min(x1, stone.x), math.max(x2, stone.x)
-		y1, y2 = math.min(y1, stone.y), math.max(y2, stone.y)
+		x1 = math.min(x1, stone.x)
+		x2 = math.max(x2, stone.x)
+		y1 = math.min(y1, stone.y)
+		y2 = math.max(y2, stone.y)
 	end
 	return here.x > x1 and here.x < x2 and here.y > y1 and here.y < y2
 end

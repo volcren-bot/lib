@@ -136,7 +136,7 @@ House.FURNITURE = {
 	spirit_tree = { "Spirit tree", "Spiritual Fairy Tree" },
 	pool = { "Pool of" },
 	occult_altar = { "Altar of the Occult" },
-}
+} :: { [string]: { string } }
 
 export type Furniture = "nexus" | "box" | "glory" | "cape" | "talisman" | "digsite"
 
@@ -465,10 +465,10 @@ end
 function House.offers(place: string): { Furniture }
 	local out: { Furniture } = {}
 	if House.seen("nexus") ~= false and House.nexus_teleport(place) ~= nil then
-		table.insert(out, "nexus")
+		table.insert(out, "nexus" :: Furniture)
 	end
 	if listed(House.box_places(), place) then
-		table.insert(out, "box")
+		table.insert(out, "box" :: Furniture)
 	end
 	for _, kind in { "glory", "cape", "talisman", "digsite" } :: { Furniture } do
 		if House.seen(kind) == true and listed(House.MOUNTED_PLACES[kind], place) then

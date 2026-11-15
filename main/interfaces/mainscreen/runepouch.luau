@@ -22,7 +22,8 @@ Runepouch.POUCH = 4
 Runepouch.INVENTORY = 7
 Runepouch.OPTION = "Open"
 Runepouch.CLOSE_OPTION = "Close"
-Runepouch.POUCHES = table.freeze({ "Rune pouch", "Rune pouch (l)", "Divine rune pouch", "Divine rune pouch (l)" })
+Runepouch.POUCHES =
+	table.freeze({ "Rune pouch", "Rune pouch (l)", "Divine rune pouch", "Divine rune pouch (l)" } :: { Item })
 Runepouch.RUNE_VARBITS = table.freeze({ 29, 1622, 1623, 14285 })
 Runepouch.AMOUNT_VARBITS = table.freeze({ 1624, 1625, 1626, 14286 })
 Runepouch.RUNES_ENUM = 982

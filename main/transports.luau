@@ -11,7 +11,7 @@ local Widgets = require("@lib/main/interfaces/widgets")
 
 type Transport = Host.Transport
 type Loc = Host.Loc
-type Tile = { x: number, y: number, plane: number? }
+type Tile = { read x: number, read y: number, read plane: number? }
 
 local Transports = {}
 
@@ -45,7 +45,7 @@ Transports.UNLOCKS = {
 	UNLOCK_MOR_UL_REK = { varbit = 5646, at_least = 1 },
 	UNLOCK_DRAGONTOOTH = true,
 	UNLOCK_XERICS_HONOUR = true,
-} :: { [string]: { varbit: number, at_least: number } | boolean }
+} :: { [string]: { varbit: number, at_least: number } | true }
 Transports.WORN_GROUPS = { "CROSSBOW", "MITH_GRAPPLE", "CLIMBING_BOOTS" }
 Transports.WEAR_OPTIONS = { "Wield", "Wear", "Equip" }
 Transports.WEAR_TIMEOUT_MS = 2500
@@ -406,7 +406,7 @@ function Transports.items_met(t: Transport, counts: { [number]: number }?): bool
 	if t.items == "" then
 		return true
 	end
-	local note = if (t.note or "") ~= "" then read_note(t.note) else nil
+	local note = if (t.note or "") ~= "" then read_note(t.note :: string) else nil
 	if note ~= nil and note.items == t.items and note_passed(note) then
 		return true
 	end
@@ -476,7 +476,7 @@ local function held(c: Check): { [number]: number }
 		counts = held_counts()
 		c.held = counts
 	end
-	return counts
+	return counts :: { [number]: number }
 end
 
 local function row_ok(t: Transport, c: Check): boolean
@@ -723,9 +723,9 @@ note_ok = function(t: Transport, c: Check): boolean
 	if (t.note or "") == "" then
 		return true
 	end
-	local note = read_note(t.note)
+	local note = read_note(t.note :: string)
 	if note == nil then
-		warn_note(t.note)
+		warn_note(t.note :: string)
 		return false
 	end
 	if note_passed(note) or some_row_names(note) then
@@ -1126,15 +1126,15 @@ local function numbered_name(name: string): string?
 	return if label ~= "" then label else nil
 end
 
-local function pick_from_list(m: any, label: string): (boolean, string?)
+local function pick_from_list(m: any, label: string): (boolean, string?, boolean?)
 	if not m.open(nil, false) then
-		return false, "the list didn't open"
+		return false, "the list didn't open", nil
 	end
 	if m.select(label) == nil then
 		m.close()
-		return false, `{label} isn't in the list`
+		return false, `{label} isn't in the list`, nil
 	end
-	return true, nil
+	return true, nil, nil
 end
 
 local HUBS: { Hub } = {
@@ -1144,18 +1144,18 @@ local HUBS: { Hub } = {
 		radius = 5,
 		slack = 8,
 		label = numbered_name,
-		go = function(m: any, label: string): (boolean, string?)
+		go = function(m: any, label: string): (boolean, string?, boolean?)
 			if m.is_last(label) and prefers_quick() then
-				return m.fly_last(nil, false), "couldn't take Last-destination"
+				return m.fly_last(nil, false), "couldn't take Last-destination", nil
 			end
 			if not m.open(nil, false) then
-				return false, "the map didn't open"
+				return false, "the map didn't open", nil
 			end
 			if not m.select(label) then
 				m.close()
-				return false, `{label} isn't on the map`
+				return false, `{label} isn't on the map`, nil
 			end
-			return true, nil
+			return true, nil, nil
 		end,
 	},
 	{
@@ -1166,20 +1166,20 @@ local HUBS: { Hub } = {
 		radius = 5,
 		slack = 8,
 		label = numbered_name,
-		go = function(m: any, label: string, at: Loc?): (boolean, string?)
+		go = function(m: any, label: string, at: Loc?): (boolean, string?, boolean?)
 			if not m.open(at, at ~= nil) then
-				return false, "the list didn't open"
+				return false, "the list didn't open", nil
 			end
 			local place = m.find(label)
 			if place == nil or not place.available then
 				m.close()
-				return false, `{label} isn't unlocked`
+				return false, `{label} isn't unlocked`, nil
 			end
 			if m.select(label) == nil then
 				m.close()
-				return false, `{label} couldn't be chosen`
+				return false, `{label} couldn't be chosen`, nil
 			end
-			return true, nil
+			return true, nil, nil
 		end,
 	},
 	{
@@ -1200,18 +1200,18 @@ local HUBS: { Hub } = {
 			local ok = lib("@lib/main/diaries").tier("wilderness", "hard") == true
 			return ok, if ok then nil else "the obelisks need the Wilderness hard diary to set a destination"
 		end,
-		go = function(m: any, label: string): (boolean, string?)
+		go = function(m: any, label: string): (boolean, string?, boolean?)
 			if not m.open() then
-				return false, "the list didn't open"
+				return false, "the list didn't open", nil
 			end
 			if not m.select(label) then
 				m.close()
-				return false, `{label} couldn't be chosen`
+				return false, `{label} couldn't be chosen`, nil
 			end
 			if not m.teleport() then
-				return false, "couldn't start the teleport from the grid"
+				return false, "couldn't start the teleport from the grid", nil
 			end
-			return true, nil
+			return true, nil, nil
 		end,
 	},
 	{
@@ -1240,14 +1240,14 @@ local HUBS: { Hub } = {
 		go = function(m: any, label: string): (boolean, string?, boolean?)
 			local opened, why = m.open(nil, false)
 			if not opened then
-				return false, why or "the map didn't open"
+				return false, why or "the map didn't open", nil
 			end
 			local flown, not_flown = m.select(label)
 			if not flown then
 				m.close()
 				return false, not_flown, true
 			end
-			return true, nil
+			return true, nil, nil
 		end,
 	},
 	{
@@ -1256,16 +1256,16 @@ local HUBS: { Hub } = {
 		radius = 6,
 		slack = 8,
 		label = numbered_name,
-		go = function(m: any, label: string): (boolean, string?)
+		go = function(m: any, label: string): (boolean, string?, boolean?)
 			local opened, why = m.open(nil, false)
 			if not opened then
-				return false, why or "the map didn't open"
+				return false, why or "the map didn't open", nil
 			end
 			if not m.select(label) then
 				m.close()
-				return false, `{label} isn't on the map`
+				return false, `{label} isn't on the map`, nil
 			end
-			return true, nil
+			return true, nil, nil
 		end,
 	},
 	{
@@ -1283,12 +1283,12 @@ local HUBS: { Hub } = {
 		gate = function(): (boolean, string?)
 			return lib("@lib/main/interfaces/mainscreen/fairyring").can_use()
 		end,
-		go = function(m: any, label: string, at: Loc?): (boolean, string?)
+		go = function(m: any, label: string, at: Loc?): (boolean, string?, boolean?)
 			local ok, way = pcall(m.travel, label, nil, at)
 			if not ok then
-				return false, tostring(way)
+				return false, tostring(way), nil
 			end
-			return way ~= nil, if way == nil then "nothing happened" else nil
+			return way ~= nil, if way == nil then "nothing happened" else nil, nil
 		end,
 	},
 }
@@ -1578,12 +1578,12 @@ local function planner_reaches(from: Tile, goal: Tile, opts: Options): boolean
 end
 
 function Transports.walkable(from: Tile, goal: Tile, options: Options?): boolean
-	local opts = options or {}
+	local opts: Options = options or {}
 	return foot_route(from, goal, opts) or planner_reaches(from, goal, opts)
 end
 
 function Transports.choose(from: Tile, goal: Tile, options: Options?): Choice?
-	local opts = options or {}
+	local opts: Options = options or {}
 	local House = lib("@lib/main/house")
 	if House.inside() then
 		House.survey()
@@ -1848,9 +1848,9 @@ local function wait_for_cast(t: Transport): (boolean, boolean?)
 		end
 	end
 	if wait_to_land(t.name, t.destination :: Host.TransportTile, timeout) then
-		return true
+		return true, nil
 	end
-	return fail(t.name, "didn't work")
+	return fail(t.name, "didn't work"), nil
 end
 
 function Transports.cast(choice: Choice): (boolean, boolean?)
@@ -1859,7 +1859,7 @@ function Transports.cast(choice: Choice): (boolean, boolean?)
 	log_saving(`casting {t.name}`, choice)
 	local ok = (Magic.is_open() or Magic.open()) and Magic.interact(choice.spell, choice.option or "Cast")
 	if not ok then
-		return fail(t.name, "didn't work")
+		return fail(t.name, "didn't work"), nil
 	end
 	return wait_for_cast(t)
 end
@@ -1869,7 +1869,7 @@ function Transports.minigame(choice: Choice): (boolean, boolean?)
 	log_saving(t.name, choice)
 	local ok, why = lib("@lib/main/interfaces/mainscreen/minigames").teleport(choice.spell, choice.option)
 	if not ok then
-		return fail(t.name, why or "couldn't start it")
+		return fail(t.name, why or "couldn't start it"), nil
 	end
 	return wait_for_cast(t)
 end
@@ -1910,7 +1910,7 @@ function Transports.hub(choice: Choice): (boolean, boolean?)
 	if is_house(from) then
 		local House = lib("@lib/main/house")
 		if not House.inside() then
-			return fail(id, "not in the house")
+			return fail(id, "not in the house"), nil
 		end
 		at = House.reach(House.FURNITURE[hub.furniture :: string])
 		if at == nil then
@@ -1918,20 +1918,20 @@ function Transports.hub(choice: Choice): (boolean, boolean?)
 			return false, true
 		end
 	elseif not walk_near(from, Transports.DOCK_NEAR) then
-		return fail(id, "couldn't walk to the start")
+		return fail(id, "couldn't walk to the start"), nil
 	end
 	local ok, went, why, final = pcall(hub.go, lib(hub.module), label, at)
 	if not ok then
-		return fail(id, tostring(went))
+		return fail(id, tostring(went)), nil
 	end
 	if not went then
 		fail(id, why or "didn't work")
 		return false, final
 	end
 	if not wait_to_land(id, to, Transports.HUB_TIMEOUT_MS) then
-		return fail(id, "the trip didn't happen")
+		return fail(id, "the trip didn't happen"), nil
 	end
-	return true
+	return true, nil
 end
 
 local AFFIRMATIVE = { "yes", "ok", "okay", "sure", "pay", "go", "travel", "take", "accept", "board" }
@@ -1964,8 +1964,9 @@ local function buy_ticket(fare: string): boolean
 	if me == nil then
 		return false
 	end
-	local conductor = nil
-	for _, npc in ipairs(Npcs.find() or {}) do
+	local conductor: Host.Npc? = nil
+	local npcs: { Host.Npc } = Npcs.find() or {}
+	for _, npc in ipairs(npcs) do
 		if string.find(string.lower(npc.name or ""), "conductor", 1, true) ~= nil then
 			if conductor == nil or Npcs.distance(npc, me) < Npcs.distance(conductor, me) then
 				conductor = npc
@@ -1984,7 +1985,7 @@ local function buy_ticket(fare: string): boolean
 	local bought_at: number? = nil
 	local idle_since = time()
 	while time() < deadline do
-		local choices = ChatOptions.get()
+		local choices: { { text: string } }? = ChatOptions.get()
 		if choices ~= nil and #choices > 0 then
 			idle_since = time()
 			local pick: string? = nil
@@ -2030,7 +2031,7 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 	end
 	local target = tonumber(words[#words])
 	if target == nil or #words < 2 then
-		return fail(id, "can't read the menu in the data")
+		return fail(id, "can't read the menu in the data"), nil
 	end
 	table.remove(words)
 	local options: { string } = {}
@@ -2050,18 +2051,18 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 	local ChatOptions = lib("@lib/main/interfaces/chatbox/chat_options")
 	local before = Player.position()
 	if before == nil then
-		return false
+		return false, nil
 	end
 	log_saving(`boarding {t.menu}`, choice)
 	local by_destination = gap(before, to) <= Transports.ABOARD_NEAR and gap(before, from) > Transports.ABOARD_NEAR
 	if by_destination then
 		if before.plane ~= to.plane and not Transports.disembark(to) then
-			return fail(id, "couldn't get off the boat")
+			return fail(id, "couldn't get off the boat"), nil
 		end
-		return true
+		return true, nil
 	end
 	if not walk_near(from, Transports.DOCK_NEAR) then
-		return fail(id, "couldn't walk to the boarding tile")
+		return fail(id, "couldn't walk to the boarding tile"), nil
 	end
 	local npc = Npcs.nearest(target, from)
 	local loc = if npc == nil then Objects.nearest(target, from) else nil
@@ -2069,14 +2070,15 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 	if npc == nil and loc == nil then
 		local Minimenu = lib("@lib/main/interfaces/minimenu")
 		local Camera = lib("@lib/main/camera")
-		local near = {}
-		for _, candidate in ipairs(Npcs.find() or {}) do
+		local near: { { npc: Host.Npc, gap: number } } = {}
+		local npcs: { Host.Npc } = Npcs.find() or {}
+		for _, candidate in ipairs(npcs) do
 			local gap = gap(candidate, from)
 			if gap <= Transports.RIDE_NPC_RANGE then
 				table.insert(near, { npc = candidate, gap = gap })
 			end
 		end
-		table.sort(near, function(a, b)
+		table.sort(near, function(a: { npc: Host.Npc, gap: number }, b: { npc: Host.Npc, gap: number }): boolean
 			return a.gap < b.gap
 		end)
 		for i = 1, math.min(#near, Transports.RIDE_NPC_LOOKS) do
@@ -2089,7 +2091,8 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 				if Npcs.click(candidate, "right") then
 					sleep(250)
 					local offered: string? = nil
-					for _, entry in ipairs(Minimenu.entries() or {}) do
+					local entries: { Host.MenuEntry } = Minimenu.entries() or {}
+					for _, entry in ipairs(entries) do
 						for _, option in ipairs(options) do
 							if offered == nil and string.lower(entry.option) == string.lower(option) then
 								offered = entry.option
@@ -2109,7 +2112,7 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 		end
 	end
 	if npc == nil and loc == nil then
-		return fail(id, `nothing with id {target} or offering {table.concat(options, " / ")} is near`)
+		return fail(id, `nothing with id {target} or offering {table.concat(options, " / ")} is near`), nil
 	end
 	local start = Player.position() or before
 	local clicked = picked
@@ -2128,7 +2131,7 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 		clicked = click_target()
 	end
 	if not clicked then
-		return fail(id, `none of the options {table.concat(options, " / ")} could be clicked`)
+		return fail(id, `none of the options {table.concat(options, " / ")} could be clicked`), nil
 	end
 	local ticket_tried = false
 	local deadline = time() + Transports.RIDE_TIMEOUT_MS
@@ -2149,9 +2152,9 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 			then
 				if is_house(to) then
 					if not wait_to_land(id, to, Transports.RIDE_VOYAGE_MS) then
-						return fail(id, "the house didn't load")
+						return fail(id, "the house didn't load"), nil
 					end
-					return true
+					return true, nil
 				end
 				local voyage = time() + Transports.RIDE_VOYAGE_MS
 				while time() < voyage and gap(now, to) > Transports.ARRIVED_NEAR + 10 do
@@ -2172,32 +2175,34 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 				if now.plane ~= to.plane and not Transports.disembark(to) then
 					local after = Player.position() :: Tile
 					local plank = Objects.nearest(Transports.GANGPLANK, after)
-					return fail(
+					fail(
 						id,
 						`couldn't get off the boat: landed at {now.x}, {now.y} on plane {now.plane}, now at {after.x}, {after.y} plane {after.plane}; gangplank {if plank
 							then `{plank.id} at {plank.x}, {plank.y} plane {plank.plane}`
 							else "none loaded"}`
 					)
+					return false, nil
 				end
 				now = Player.position() or now
 				if gap(now, to) > Transports.ARRIVED_NEAR + 10 then
 					Log.log("Transports", `{id}: landed at {now.x}, {now.y}, not near {to.x}, {to.y}`)
 				end
-				return true
+				return true, nil
 			end
 		end
-		for _, message in ipairs(Chat.new_messages(seen) or {}) do
+		local messages: { { uid: number, text: string } } = Chat.new_messages(seen) or {}
+		for _, message in ipairs(messages) do
 			seen = math.max(seen, message.uid)
 			if not ticket_tried and string.find(string.lower(message.text), "purchase a ticket", 1, true) ~= nil then
 				ticket_tried = true
 				local fare = string.match(t.items, "COINS=(%d+)") or ""
 				Log.log("Transports", `{id}: the cart wants a ticket ({fare} coins)`)
 				if not buy_ticket(fare) then
-					return fail(id, "couldn't buy the ticket")
+					return fail(id, "couldn't buy the ticket"), nil
 				end
 				seen = (Chat.last_message() or { uid = seen }).uid
 				if not click_target() then
-					return fail(id, "couldn't click the cart again after buying the ticket")
+					return fail(id, "couldn't click the cart again after buying the ticket"), nil
 				end
 				clicked_at, quiet_since, last_said = time(), time(), nil
 			end
@@ -2214,7 +2219,7 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 		end
 		local silent_ms = if t.kind == "magic_carpets" then Transports.CARPET_SILENT_MS else Transports.RIDE_SILENT_MS
 		if last_said == nil and not answered and time() - clicked_at > silent_ms then
-			return fail(id, "nothing was said and nothing happened")
+			return fail(id, "nothing was said and nothing happened"), nil
 		end
 		if last_said ~= nil and time() - quiet_since > Transports.RIDE_QUIET_MS then
 			Log.log("Transports", `{id}: the conversation ended and nothing happened; last said "{last_said}"`)
@@ -2224,7 +2229,7 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 			local pick = Transports.dialogue_pick(choices, hints)
 			if pick == nil then
 				Log.log("Transports", `{id}: no option to pick among {ChatOptions.to_string(choices) or "?"}`)
-				return false
+				return false, nil
 			end
 			if not ChatOptions.select(pick) and ChatOptions.find(pick) ~= nil then
 				ChatOptions.select(pick, nil, 0)
@@ -2234,7 +2239,7 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 		end
 		sleep(Transports.RIDE_POLL_MS)
 	end
-	return fail(id, "the trip didn't happen")
+	return fail(id, "the trip didn't happen"), nil
 end
 
 function Transports.sail(choice: Choice): boolean
@@ -2418,7 +2423,7 @@ local function find_held(ids: { number }): (any?, number?)
 	for _, m in ipairs(modules) do
 		for _, item in ipairs(Host.item_container(m[1] :: number) or {}) do
 			if wanted[item.id] then
-				return lib(m[2]), item.slot
+				return lib(m[2] :: string), item.slot
 			end
 		end
 	end
@@ -2432,7 +2437,7 @@ local function item_options(module: any, slot: number): { string }
 	module.hover_slot(slot)
 	local waited = 0
 	while waited <= 800 do
-		local entries = Minimenu.entries()
+		local entries: { Host.MenuEntry }? = Minimenu.entries()
 		local about = entries ~= nil
 			and entries[1] ~= nil
 			and (name == "" or string.find(string.lower(entries[1].target), name, 1, true) ~= nil)
@@ -2491,7 +2496,8 @@ local function find_in_submenus(module: any, slot: number, label: string): (stri
 	end
 	local parts = label_parts(label)
 	local parents: { string } = {}
-	for _, e in ipairs(Minimenu.entries() or {}) do
+	local entries: { Host.MenuEntry } = Minimenu.entries() or {}
+	for _, e in ipairs(entries) do
 		if e.submenu then
 			table.insert(parents, e.option)
 		end
@@ -2499,7 +2505,8 @@ local function find_in_submenus(module: any, slot: number, label: string): (stri
 	for _, parent in ipairs(parents) do
 		if Minimenu.open_submenu(parent) then
 			local lines: { string } = {}
-			for _, e in ipairs(Minimenu.submenu_entries(parent) or {}) do
+			local submenu: { Host.MenuEntry } = Minimenu.submenu_entries(parent) or {}
+			for _, e in ipairs(submenu) do
 				table.insert(lines, e.option)
 			end
 			local line = best_line(lines, parts[#parts])
@@ -2579,7 +2586,7 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 		end
 	end
 	if not clicked then
-		return false
+		return false, nil
 	end
 	clicked_at = time()
 	local last = Player.position() or before
@@ -2593,17 +2600,17 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 		if now ~= nil then
 			if now.plane ~= last.plane or gap(now, last) >= Transports.LAND_DISTANCE then
 				if is_house(to) then
-					return wait_to_land(t.name, to, Transports.ITEM_TIMEOUT_MS)
+					return wait_to_land(t.name, to, Transports.ITEM_TIMEOUT_MS), nil
 				end
 				if gap(now, to) > 10 then
 					Log.log("Transports", `{t.name} landed at {now.x}, {now.y}, not near {to.x}, {to.y}`)
 				end
 				Transports.settle()
-				return true
+				return true, nil
 			end
 			last = now
 		end
-		local lines = ChatOptions.get()
+		local lines: { { text: string } }? = ChatOptions.get()
 		local shown = ChatOptions.to_string(lines) or ""
 		if lines ~= nil and #lines > 0 then
 			seen_dialogue = true
@@ -2644,7 +2651,7 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 		sleep(100)
 	end
 	Log.log("Transports", `{t.name} didn't work`)
-	return false
+	return false, nil
 end
 
 function Transports.teleport_item(name: string): (boolean, boolean?)
@@ -2697,10 +2704,10 @@ function Transports.whistle(choice: Choice): (boolean, boolean?)
 	log_saving(t.name, choice)
 	if Quetzal.is_last(label) and prefers_quick() then
 		if not Quetzal.signal_last() then
-			return false
+			return false, nil
 		end
 		if wait_to_land(t.name, to, Transports.ITEM_TIMEOUT_MS) then
-			return true
+			return true, nil
 		end
 		Log.log("Transports", `{t.name}: nothing happened (no charges?)`)
 		return false, true
@@ -2712,9 +2719,9 @@ function Transports.whistle(choice: Choice): (boolean, boolean?)
 	end
 	if not Quetzal.select(label) then
 		Quetzal.close()
-		return false
+		return false, nil
 	end
-	return wait_to_land(t.name, to, Transports.ITEM_TIMEOUT_MS)
+	return wait_to_land(t.name, to, Transports.ITEM_TIMEOUT_MS), nil
 end
 
 function Transports.wear_for_climb(from: Host.NavTile, to: Host.NavTile, option: string): boolean
@@ -2776,19 +2783,19 @@ function Transports.house(choice: Choice): (boolean, boolean?)
 	local furniture, label = choice.spell, choice.option :: string
 	local id = choice.id or ends_id("house", t)
 	if not House.inside() then
-		return fail(id, "not in the house")
+		return fail(id, "not in the house"), nil
 	end
 	log_saving(`house {furniture} to {label}`, choice)
 	local started, why, pointless = House.start_teleport(furniture, label)
 	if started then
-		return wait_to_land(id, t.destination :: Host.TransportTile, Transports.HUB_TIMEOUT_MS)
+		return wait_to_land(id, t.destination :: Host.TransportTile, Transports.HUB_TIMEOUT_MS), nil
 	end
 	if pointless then
 		house_missing[id] = true
 		fail(id, why or "it isn't there")
 		return false, true
 	end
-	return fail(id, why or "couldn't use it")
+	return fail(id, why or "couldn't use it"), nil
 end
 
 function Transports.house_exit(choice: Choice): boolean
@@ -2806,13 +2813,13 @@ function Transports.canoe(choice: Choice): (boolean, boolean?)
 	local from = t.origin :: Host.TransportTile
 	log_saving(`canoe to {t.name}`, choice)
 	if not walk_near(from, Transports.DOCK_NEAR) then
-		return false
+		return false, nil
 	end
 	local level = if t.skills[1] ~= nil then t.skills[1].level else nil
 	local ok, why = Canoe.travel(t.name, Canoe.kind_for_level(level))
 	if ok then
 		Transports.settle()
-		return true
+		return true, nil
 	end
 	Log.log("Transports", `canoe to {t.name}: {why or "failed"}`)
 	if why == Canoe.NO_AXE then
@@ -2833,9 +2840,9 @@ function Transports.scroll_book(choice: Choice): (boolean, boolean?)
 	end
 	if not Scrollbook.select(choice.option) then
 		Scrollbook.close()
-		return false
+		return false, nil
 	end
-	return wait_to_land(t.name, t.destination :: Host.TransportTile, Transports.ITEM_TIMEOUT_MS)
+	return wait_to_land(t.name, t.destination :: Host.TransportTile, Transports.ITEM_TIMEOUT_MS), nil
 end
 
 local function runner(name: string): (Choice) -> (boolean, boolean?)

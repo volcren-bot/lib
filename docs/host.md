@@ -1029,7 +1029,7 @@ end
 
 Definition:
 ```luau
-Host.collision: (area: Corners?) -> Collision?
+Host.collision: (area: Corners?) -> (Collision?, string?)
 ```
 Live collision flags of your plane for the scene or `area`. Tile (`x + i`, `y + j`) is `flags[i * height + j + 1]`; [SafeSpot](main/safespot.md) names the flags. The outer ring has every flag set. About 2 ms.
 

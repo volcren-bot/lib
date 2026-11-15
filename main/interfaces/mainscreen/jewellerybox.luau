@@ -239,10 +239,11 @@ function Jewellerybox.select(place: Place, key_probability: number?): string?
 			return "key"
 		end
 		Log.log("Jewellerybox", `key {d.key} to {d.name} left the menu open`)
-		d = Jewellerybox.find(name)
-		if d == nil then
+		local refreshed = Jewellerybox.find(name)
+		if refreshed == nil then
 			return nil
 		end
+		d = refreshed
 	end
 	Mouse.move(d.area)
 	sleep(Jewellerybox.HOVER_SETTLE_MS)

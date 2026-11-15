@@ -479,7 +479,10 @@ local function clear_menu(clickbox: Aim)
 	end
 	local x1, y1, x2, y2 = math.huge, math.huge, -math.huge, -math.huge
 	for _, p in ipairs(box.polygon) do
-		x1, y1, x2, y2 = math.min(x1, p.x), math.min(y1, p.y), math.max(x2, p.x), math.max(y2, p.y)
+		x1 = math.min(x1, p.x)
+		y1 = math.min(y1, p.y)
+		x2 = math.max(x2, p.x)
+		y2 = math.max(y2, p.y)
 	end
 	if Minimenu.overlaps(Geometry.Box.new(x1, y1, x2, y2)) and not Minimenu.close() then
 		Log.log("Clickbox", "couldn't close the minimenu covering the target")
@@ -612,7 +615,10 @@ end
 local function act_near(box: Clickbox): number
 	local x1, y1, x2, y2 = math.huge, math.huge, -math.huge, -math.huge
 	for _, p in ipairs(box.polygon) do
-		x1, y1, x2, y2 = math.min(x1, p.x), math.min(y1, p.y), math.max(x2, p.x), math.max(y2, p.y)
+		x1 = math.min(x1, p.x)
+		y1 = math.min(y1, p.y)
+		x2 = math.max(x2, p.x)
+		y2 = math.max(y2, p.y)
 	end
 	return math.max(Clickbox.ACT_NEAR_MIN, Clickbox.ACT_NEAR_SHARE * math.min(x2 - x1, y2 - y1))
 end
@@ -636,7 +642,7 @@ local function act_once(
 	end
 	local view = Toplevel.viewport()
 	if box == nil or view == nil then
-		return "unusable"
+		return "unusable", nil
 	end
 	local before = Minimenu.clicked()
 	local result = Host.act({
@@ -666,7 +672,7 @@ local function act_once(
 		if clicked then
 			Log.log("Clickbox", `misclicked {what}: the client did "{Minimenu.text(clicked.entry)}"`)
 		end
-		return "retry"
+		return "retry", nil
 	elseif status == "right" then
 		local handled, ok = Interact.open_menu(options, target, walk_timeout_ms)
 		return if handled then "done" else "retry", ok == true
@@ -676,15 +682,15 @@ local function act_once(
 		if tile then
 			Clickbox.reveal(clickbox, tile, what)
 		end
-		return "retry"
+		return "retry", nil
 	elseif status == "menu_open" then
 		Minimenu.close()
-		return "retry"
+		return "retry", nil
 	elseif status == "timeout" or status == "lost" or status == "cancelled" then
-		return "retry"
+		return "retry", nil
 	end
 	Log.log("Clickbox", `can't act on {what}: {status}`)
-	return "unusable"
+	return "unusable", nil
 end
 
 function Clickbox.interact(

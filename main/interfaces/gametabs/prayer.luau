@@ -3,6 +3,7 @@ local Host = require("@lib/host")
 local widget = Host.widget
 local widget_children = Host.widget_children
 local sub_interfaces = Host.sub_interfaces
+local game_state = Host.game_state
 type Widget = Host.Widget
 type MenuEntry = Host.MenuEntry
 local Interact = require("@lib/main/interact")
@@ -266,7 +267,8 @@ function Prayer.can_activate(prayer: PrayerRef): boolean
 	if points == nil or points.level <= 0 or points.real_level < p.level then
 		return false
 	end
-	for skill, needed in pairs({ Defence = p.defence, Attack = p.attack, Strength = p.strength }) do
+	local requirements = { Defence = p.defence, Attack = p.attack, Strength = p.strength } :: { [string]: number }
+	for skill, needed in pairs(requirements) do
 		local have = skills[skill]
 		if have == nil or have.real_level < needed then
 			return false

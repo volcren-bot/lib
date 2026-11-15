@@ -128,7 +128,7 @@ function EquipmentLayout.from_client(name: string?): Layout?
 			table.insert(ids, item.id)
 		end
 	end
-	local names = if #ids > 0 then Item.names(ids) else {}
+	local names: { string? }? = if #ids > 0 then Item.names(ids) else {}
 	local slots: { Slot } = {}
 	local named = 0
 	for _, slot in ipairs(EquipmentLayout.SLOTS) do
@@ -420,7 +420,7 @@ local function settle_ammo(layout: Layout): boolean
 end
 
 function EquipmentLayout.equip(layout: Layout, options: EquipOptions?): boolean
-	local opts: EquipOptions = table.clone(options or {})
+	local opts: EquipOptions = table.clone(options or {} :: EquipOptions)
 	if EquipmentLayout.matches(layout) then
 		return true
 	end

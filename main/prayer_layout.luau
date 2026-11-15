@@ -123,7 +123,7 @@ local function click_all(list: { Prayer.Info }): boolean
 				end
 			end
 		end
-		local w = table.remove(slots, nearest)
+		local w = table.remove(slots, nearest) :: Host.Widget
 		if not Mouse.click_async(w, nil, true) then
 			queued = false
 			break

@@ -188,14 +188,15 @@ function Gnomeglider.find_pilot(near: Tile?, range: number?): Npc?
 		return nil
 	end
 	local reach = range or Gnomeglider.PILOT_RANGE
-	local candidates: { { npc: Npc, distance: number } } = {}
+	type Candidate = { npc: Npc, distance: number }
+	local candidates: { Candidate } = {}
 	for _, n in ipairs(Host.npcs() or {}) do
 		local d = math.max(math.abs(n.x - at.x), math.abs(n.y - at.y))
 		if d <= reach then
 			table.insert(candidates, { npc = n, distance = d })
 		end
 	end
-	table.sort(candidates, function(a, b)
+	table.sort(candidates, function(a: Candidate, b: Candidate)
 		return a.distance < b.distance
 	end)
 	for i, c in ipairs(candidates) do

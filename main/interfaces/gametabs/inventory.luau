@@ -314,8 +314,10 @@ function Inventory.pattern(slots: { number }?, from: Point?): ({ number }, { boo
 
 	local remaining: { [number]: boolean } = {}
 	local left = 0
-	local wanted = slots
-	if wanted == nil then
+	local wanted: { number }
+	if slots then
+		wanted = slots
+	else
 		wanted = {}
 		for slot = 0, SIZE - 1 do
 			table.insert(wanted, slot)

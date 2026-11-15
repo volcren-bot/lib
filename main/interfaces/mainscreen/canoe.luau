@@ -178,11 +178,11 @@ local function wait_state(varbit: number, before: number): (boolean, string?)
 		if now ~= last then
 			last, since = now :: number, time()
 		elseif last ~= before and time() - since >= Canoe.SETTLED_MS then
-			return true
+			return true, nil
 		end
 		sleep(Canoe.POLL_MS)
 	end
-	return false
+	return false, nil
 end
 
 local function click_button(group: number, child: number, option: string): boolean
@@ -241,7 +241,7 @@ end
 local function float(loc: Loc, varbit: number, option: string): (boolean, string?)
 	local before = Host.varbit(varbit) :: number
 	if Objects.approach(loc, option) and wait_state(varbit, before) then
-		return true
+		return true, nil
 	end
 	return false, "the canoe wasn't floated"
 end
@@ -261,7 +261,7 @@ local function paddle(loc: Loc, place: string): (boolean, string?)
 			return now ~= nil and math.max(math.abs(now.x - p.tile.x), math.abs(now.y - p.tile.y)) <= Canoe.ARRIVED_NEAR
 		end, Canoe.TRIP_TIMEOUT_MS, Canoe.POLL_MS * 2)
 	then
-		return true
+		return true, nil
 	end
 	return false, "the trip didn't land"
 end

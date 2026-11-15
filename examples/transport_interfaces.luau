@@ -43,7 +43,7 @@ local sections: { Section } = {
 				return false, "no canoe station here"
 			end
 			print(`  next step: {Canoe.stage()}, axes from {keeper.name}`)
-			return true
+			return true, nil
 		end,
 	},
 	{
@@ -58,7 +58,7 @@ local sections: { Section } = {
 			for index, name in pairs(Chartering.Map.names() or {}) do
 				print(`  map marker {index}: {name}`)
 			end
-			return true
+			return true, nil
 		end,
 	},
 	{

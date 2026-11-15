@@ -342,7 +342,7 @@ function Quetzal.nearest(): Npc?
 	if me == nil then
 		return nil
 	end
-	local all = Host.npcs() or {}
+	local all: { Npc } = Host.npcs() or {}
 	local named: Npc? = nil
 	local named_distance = math.huge
 	local wanted = string.lower(Quetzal.NPC)
@@ -355,14 +355,15 @@ function Quetzal.nearest(): Npc?
 	if named ~= nil then
 		return named
 	end
-	local candidates: { { npc: Npc, distance: number } } = {}
+	type Candidate = { npc: Npc, distance: number }
+	local candidates: { Candidate } = {}
 	for _, n in ipairs(all) do
 		local d = math.max(math.abs(n.x - me.x), math.abs(n.y - me.y))
 		if Npcs.clean_name(n.name) == "" and d <= Quetzal.ASK_RANGE then
 			table.insert(candidates, { npc = n, distance = d })
 		end
 	end
-	table.sort(candidates, function(a, b)
+	table.sort(candidates, function(a: Candidate, b: Candidate)
 		return a.distance < b.distance
 	end)
 	for i, c in ipairs(candidates) do
@@ -457,7 +458,7 @@ local function charges_of(text: string): number?
 	if text == Quetzal.EMPTY_MESSAGE then
 		return 0
 	end
-	return tonumber(string.match(text, Quetzal.CHARGES_PATTERN))
+	return tonumber((string.match(text, Quetzal.CHARGES_PATTERN)))
 end
 
 local function track(): boolean

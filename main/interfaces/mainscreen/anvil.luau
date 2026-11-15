@@ -115,7 +115,13 @@ local function read_slot(child: number): Slot?
 			end
 		end
 	end
-	if item == nil or name == nil or bars == nil then
+	if item == nil then
+		return nil
+	end
+	if name == nil then
+		return nil
+	end
+	if bars == nil then
 		return nil
 	end
 	return {

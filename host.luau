@@ -852,7 +852,7 @@ return {
 	movement = g.movement :: () -> MovementState?,
 	chat_messages = g.chat_messages :: () -> { ChatMessage }?,
 	find_path = g.find_path :: (from: Tile, to: Tile, plane: number?, max_tiles: number?) -> { Tile }?,
-	collision = g.collision :: (area: Corners?) -> Collision?,
+	collision = g.collision :: (area: Corners?) -> (Collision?, string?),
 	scene_route = g.scene_route :: (from: Tile, to: Tile, options: SceneRouteOptions?) -> SceneRoute?,
 	transport_settings = g.transport_settings :: () -> { off: { string } },
 	world_route = g.world_route :: (from: NavTile, to: NavTile, allow_climbs: { string }?) -> WorldRoute?,

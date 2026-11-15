@@ -286,7 +286,7 @@ function Shopmain.interact_slot(slot: number, option: string): boolean
 	if w == nil then
 		return false
 	end
-	return Interact.with(w, option, stock_owns(slot), false)
+	return (Interact.with(w, option, stock_owns(slot), false))
 end
 
 local function held(id: number): number
@@ -391,7 +391,7 @@ function Shopmain.interact_inventory_slot(slot: number, option: string): boolean
 		Log.log("Shopmain", `interact_inventory_slot: slot {slot} isn't shown`)
 		return false
 	end
-	return Interact.with(w, option, inventory_owns(slot), false)
+	return (Interact.with(w, option, inventory_owns(slot), false))
 end
 
 function Shopmain.sell_slot(slot: number, quantity: number): boolean

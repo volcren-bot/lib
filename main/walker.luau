@@ -41,13 +41,13 @@ local function debug(text: string)
 	end
 end
 
-function Walker.position(): Tile?
+function Walker.position(): { x: number, y: number, plane: number? }?
 	local state = game_state()
 	local p = state.position
 	if p == nil then
 		return nil
 	end
-	return { x = p.x, y = p.y }
+	return { x = p.x, y = p.y, plane = p.plane }
 end
 
 function Walker.relative(dx: number, dy: number): Tile?
@@ -516,7 +516,7 @@ local function route_view(
 	end
 	local base_x, base_y = p.x - p.local_x // Projection.TILE, p.y - p.local_y // Projection.TILE
 	local fx, fy = tile_centre(at, base_x, base_y)
-	local shift = { x = math.round(fx - camera.focal_x), y = math.round(fy - camera.focal_y) }
+	local shift: Host.FinePoint = { x = math.round(fx - camera.focal_x), y = math.round(fy - camera.focal_y) }
 	local wanted: { number } = {}
 	local mx, my = 0, 0
 	for i = from, math.min(to, from + Walker.STEER_TILES - 1) do
@@ -1377,7 +1377,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 end
 
 function Walker.walk(to: Tile, options: WalkOptions?): boolean
-	local opts = options or {}
+	local opts: WalkOptions = options or {}
 	if opts.transports == false or opts.straight then
 		return walk_plan(to, opts)
 	end
@@ -1389,7 +1389,9 @@ function Walker.walk(to: Tile, options: WalkOptions?): boolean
 		end
 	end
 	local Transports = lazy("./transports")
-	local choices: { [string]: any } = if type(opts.transports) == "table" then table.clone(opts.transports) else {}
+	local choices: { [string]: any } = if type(opts.transports) == "table"
+		then table.clone(opts.transports) :: { [string]: any }
+		else {}
 	choices.shortcuts = opts.shortcuts
 	local hops, failures = 0, 0
 	while hops < Walker.TRANSPORT_HOPS do
@@ -1448,7 +1450,8 @@ function Walker.climb_toward(plane: number): boolean
 	local option = if plane < here.plane then "Climb-down" else "Climb-up"
 	local Objects = lazy("./entities/objects")
 	local near: { Host.Loc } = {}
-	for _, loc in ipairs(Objects.find() or {}) do
+	local found: { Host.Loc } = Objects.find() or {}
+	for _, loc in ipairs(found) do
 		if loc.plane == here.plane and Objects.distance(loc, here) <= Walker.CLIMB_REACH then
 			table.insert(near, loc)
 		end

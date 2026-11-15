@@ -21,24 +21,24 @@ local function read_script(bytes: string): Script?
 	if n < 20 then
 		return nil
 	end
-	local tables_size = string.unpack(">I2", bytes, n - 1)
+	local tables_size = string.unpack(">I2", bytes, n - 1) :: number
 	local header = n - 2 - tables_size - 16
 	if header < 1 then
 		return nil
 	end
-	local count = string.unpack(">i4", bytes, header + 1)
+	local count = string.unpack(">i4", bytes, header + 1) :: number
 	local p = header + 1 + 4 + 12
 	local table_count = string.byte(bytes, p)
 	p += 1
 	local tables: { { [number]: number } } = {}
 	for _ = 1, table_count do
-		local size = string.unpack(">I2", bytes, p)
+		local size = string.unpack(">I2", bytes, p) :: number
 		p += 2
 		local t: { [number]: number } = {}
 		for _ = 1, size do
 			local key, jump = string.unpack(">i4i4", bytes, p)
 			p += 8
-			t[key] = jump
+			t[key :: number] = jump :: number
 		end
 		table.insert(tables, t)
 	end
@@ -49,7 +49,7 @@ local function read_script(bytes: string): Script?
 	q += 1
 	local instructions: { Instruction } = {}
 	while q <= header do
-		local op = string.unpack(">I2", bytes, q)
+		local op = string.unpack(">I2", bytes, q) :: number
 		q += 2
 		local value: number | string
 		if op == 3 then
@@ -66,7 +66,7 @@ local function read_script(bytes: string): Script?
 			value = 0
 			q += 8
 		elseif op <= 100 then
-			value = string.unpack(">i4", bytes, q)
+			value = string.unpack(">i4", bytes, q) :: number
 			q += 4
 		else
 			value = string.byte(bytes, q)
@@ -134,7 +134,7 @@ local function read_dbrow(bytes: string): { [number]: Column }?
 							tuple[i] = string.sub(bytes, p, e - 1)
 							p = e + 1
 						else
-							tuple[i] = string.unpack(">i4", bytes, p)
+							tuple[i] = string.unpack(">i4", bytes, p) :: number
 							p += 4
 						end
 					end

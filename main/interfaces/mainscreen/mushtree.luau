@@ -142,10 +142,11 @@ function Mushtree.select(tree: Tree, key_probability: number?): string?
 		if not Mushtree.is_open() then
 			return "key"
 		end
-		d = Mushtree.find(name)
-		if d == nil then
+		local refreshed = Mushtree.find(name)
+		if refreshed == nil then
 			return nil
 		end
+		d = refreshed
 	end
 	Mouse.click(d.panel)
 	if gone() then

@@ -10,9 +10,13 @@ local equipment: EquipmentLayout.Layout? = values.equipment
 local inventory: InventoryLayout.Layout? = values.inventory
 local prayers: PrayerLayout.Layout? = values.prayers
 
-local function wants(
-	item: { stackable: boolean?, min: number?, max: number?, doses: { number }?, locked: boolean? }
-): string
+local function wants(item: {
+	read stackable: boolean?,
+	read min: number?,
+	read max: number?,
+	read doses: { number }?,
+	read locked: boolean?,
+}): string
 	local parts: { string } = {}
 	if item.stackable then
 		local min, max = item.min or 0, item.max or 0
