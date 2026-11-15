@@ -49,7 +49,7 @@ local function tile_of(value: number, low: boolean): number
 end
 
 local function screen_points(points: { FinePoint }, shift: { x: number, y: number, plane: number? }?): { Point }?
-	local screen = project(points, nil, shift)
+	local screen = project(points, shift)
 	if screen == nil then
 		return nil
 	end

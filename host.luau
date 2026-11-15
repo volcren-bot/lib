@@ -801,11 +801,7 @@ return {
 	on_packet = g.on_packet :: (opcodes: { number }, callback: (packet: Packet) -> (), sent: boolean?) -> number,
 	off_packet = g.off_packet :: (id: number) -> boolean,
 	wait_packet = g.wait_packet :: (opcodes: { number }, ms: number, sent: boolean?) -> Packet?,
-	project = g.project :: (
-		points: { FinePoint },
-		via: ("auto" | "local" | "client")?,
-		shift: { x: number, y: number, plane: number? }?
-	) -> { ScreenPoint }?,
+	project = g.project :: (points: { FinePoint }, shift: { x: number, y: number, plane: number? }?) -> { ScreenPoint }?,
 	settings = g.settings :: () -> { [string]: any },
 	finish_requested = g.finish_requested :: () -> boolean,
 	form_update = g.form_update :: () -> { [string]: any }?,

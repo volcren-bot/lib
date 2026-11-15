@@ -226,11 +226,10 @@ Definition:
 ```luau
 Host.project: (
 	points: { FinePoint },
-	via: ("auto" | "local" | "client")?,
 	shift: { x: number, y: number, plane: number? }?
 ) -> { ScreenPoint }?
 ```
-Projects fine world points to the screen. `shift` (fine units, optional landing `plane`) projects as the camera will be once the player has moved that far; only the local calculation supports it, so `via = "client"` with `shift` errors.
+Projects fine world points to the screen. `shift` (fine units, optional landing `plane`) projects as the camera will be once the player has moved that far.
 
 Example:
 ```luau
@@ -325,7 +324,7 @@ Definition:
 ```luau
 Host.menu: () -> { MenuEntry }?
 ```
-Right-click menu lines. Open: the rows shown, top to bottom, without client-hidden entries. Closed: what hovering offers, first being the left-click action. Submenu lines are in `Host.menu_layout().submenus`. Cancels async input.
+Right-click menu lines. Open: the rows shown, top to bottom, without client-hidden entries. Closed: what hovering offers, first being the left-click action, as of the last frame drawn, returned at once. Input takes the client a few frames to show (up to about 40 ms), so after a click or move, wait for the menu you expect instead of reading once. Submenu lines are in `Host.menu_layout().submenus`. Cancels async input.
 
 Example:
 ```luau
