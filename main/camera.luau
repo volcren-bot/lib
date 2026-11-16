@@ -2,6 +2,7 @@
 local Host = require("@lib/host")
 local game_state = Host.game_state
 local sleep = Host.sleep
+local sleep_async = Host.sleep_async
 local time = Host.time
 type CameraState = Host.CameraState
 type Tile = Host.Tile
@@ -26,11 +27,21 @@ Camera.PITCH_MIN = 1024
 Camera.PITCH_MAX = 3064
 Camera.ZOOM_MIN = 128
 Camera.ZOOM_MAX = 896
-Camera.ZOOM_STEP = 24
+Camera.ZOOM_STEP = 25
 
 Camera.method = "mouse" :: Method
 Camera.tolerance = 64
 Camera.zoom_tolerance = 12
+
+Camera.ZOOM_BURST = { 6, 11 }
+Camera.ZOOM_NOTCH_MS = { 8, 40 }
+Camera.ZOOM_PAUSE_MS = { 400, 1000 }
+Camera.ZOOM_SETTLE_MS = { 40, 70 }
+Camera.ZOOM_SPIN_NOTCHES = 12
+Camera.ZOOM_SPIN_CHANCE = { 0.01, 0.06 }
+Camera.ZOOM_SPIN_MS = { 3, 9 }
+Camera.ZOOM_SPIN_START_MS = { 15, 25 }
+Camera.ZOOM_OVERSHOOT = { 1, 4 }
 
 Camera.FACE_LIMIT = 70
 Camera.LOOK_SPREAD = 12
@@ -344,56 +355,125 @@ local function scroll_spot(): (boolean, Point?)
 	return true, Point.random(spot, 30)
 end
 
-function Camera.set_zoom_async(zoom: number): boolean
-	local target = math.clamp(zoom, Camera.ZOOM_MIN, Camera.ZOOM_MAX)
-	local current = Camera.zoom()
-	if current == nil then
+local function between(range: { number }, lean: number): number
+	return Random.mode(range[1] + (range[2] - range[1]) * lean, range[1], range[2])
+end
+
+local function zoom_pace(): number
+	return Biometrics.get_probability(Biometrics.ZOOM_PACE)
+end
+
+local function zoom_spins(notches: number): boolean
+	if notches < Camera.ZOOM_SPIN_NOTCHES then
 		return false
 	end
-	local diff = target - current
-	if math.abs(diff) <= Camera.zoom_tolerance then
-		return true
+	local chance = Camera.ZOOM_SPIN_CHANCE
+	return Random.chance(chance[1] + (chance[2] - chance[1]) * Biometrics.get_probability(Biometrics.ZOOM_SPIN))
+end
+
+local function zoom_burst(): number
+	return math.round(between(Camera.ZOOM_BURST, zoom_pace()))
+end
+
+local function zoom_pause(): number
+	return math.round(between(Camera.ZOOM_PAUSE_MS, 1 - zoom_pace()))
+end
+
+local function zoom_notches(target: number, current: number, overshoot: number): number
+	local notches = math.max(1, math.round(math.abs(target - current) / Camera.ZOOM_STEP))
+	if target == Camera.ZOOM_MIN or target == Camera.ZOOM_MAX then
+		return notches + overshoot
+	end
+	return notches
+end
+
+local function queue_notches(count: number, down: boolean, spin: boolean)
+	local mean = if spin
+		then Random.float(Camera.ZOOM_SPIN_MS[1], Camera.ZOOM_SPIN_MS[2])
+		else between(Camera.ZOOM_NOTCH_MS, 1 - zoom_pace())
+	for i = 1, count do
+		if i > 1 then
+			local gap = if spin and i <= 3
+				then Random.float(Camera.ZOOM_SPIN_START_MS[1], Camera.ZOOM_SPIN_START_MS[2])
+				else mean * Random.float(0.6, 1.4)
+			sleep_async(math.max(1, math.round(gap)))
+		end
+		Mouse.scroll_async(1, down)
+	end
+end
+
+local function zoom_start(target: number): (number?, boolean)
+	local current = Camera.zoom()
+	if current == nil then
+		return nil, false
+	end
+	if math.abs(target - current) <= Camera.zoom_tolerance then
+		return current, true
 	end
 	local ok, over = scroll_spot()
 	if not ok then
-		return false
+		return nil, false
 	end
-	Mouse.scroll_async(math.max(1, math.round(math.abs(diff) / Camera.ZOOM_STEP)), diff < 0, over)
+	if over then
+		Mouse.move_async(over)
+	end
+	return current, false
+end
+
+function Camera.set_zoom_async(zoom: number): boolean
+	local target = math.clamp(zoom, Camera.ZOOM_MIN, Camera.ZOOM_MAX)
+	local current, done = zoom_start(target)
+	if current == nil or done then
+		return done
+	end
+	local down = target < current
+	local left = zoom_notches(target, current, math.random(Camera.ZOOM_OVERSHOOT[1], Camera.ZOOM_OVERSHOOT[2]))
+	if zoom_spins(left) then
+		queue_notches(left, down, true)
+		return true
+	end
+	while left > 0 do
+		local burst = math.min(left, zoom_burst())
+		queue_notches(burst, down, false)
+		left -= burst
+		if left > 0 then
+			sleep_async(zoom_pause())
+		end
+	end
 	return true
 end
 
 function Camera.set_zoom(zoom: number): boolean
 	local target = math.clamp(zoom, Camera.ZOOM_MIN, Camera.ZOOM_MAX)
-	local current = Camera.zoom()
-	if current == nil then
-		return false
+	local current, done = zoom_start(target)
+	if current == nil or done then
+		return done
 	end
-	if math.abs(target - current) <= Camera.zoom_tolerance then
-		return true
-	end
-	local ok, over = scroll_spot()
-	if not ok then
-		return false
-	end
-	if over then
-		Mouse.move(over)
-	end
-
+	local overshoot = math.random(Camera.ZOOM_OVERSHOOT[1], Camera.ZOOM_OVERSHOOT[2])
+	local spin = zoom_spins(zoom_notches(target, current, overshoot))
 	local stuck = 0
-	for _ = 1, 80 do
-		local diff = target - current
-		if math.abs(diff) <= Camera.zoom_tolerance then
+	for _ = 1, 20 do
+		if math.abs(target - current) <= Camera.zoom_tolerance then
 			return true
 		end
-		local notches = math.clamp(math.round(math.abs(diff) / Camera.ZOOM_STEP), 1, 4)
-		Mouse.scroll(notches, diff < 0)
-		Random.sleep(80, 180)
+		local left = zoom_notches(target, current, overshoot)
+		local burst = if spin then left else math.min(left, zoom_burst())
+		queue_notches(burst, target < current, spin)
+		if not Mouse.wait() then
+			return false
+		end
+		spin = false
+		if burst < left then
+			sleep(zoom_pause())
+		else
+			Random.sleep(Camera.ZOOM_SETTLE_MS[1], Camera.ZOOM_SETTLE_MS[2])
+		end
 		local now = Camera.zoom()
 		if now == nil then
 			return false
 		end
 		stuck = if now == current then stuck + 1 else 0
-		if stuck >= 3 then
+		if stuck >= 2 then
 			Log.log("Camera", `the zoom stopped at {now}`)
 			return false
 		end

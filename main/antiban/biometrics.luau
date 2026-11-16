@@ -33,8 +33,10 @@ Biometrics.BANK_CONSUME = 17
 Biometrics.RATING = 18
 Biometrics.LIKES = 19
 Biometrics.DISLIKES = 20
+Biometrics.ZOOM_SPIN = 21
+Biometrics.ZOOM_PACE = 22
 
-local COUNT = 21
+local COUNT = 23
 
 local HOUR = 3600000
 local MINUTE = 60000

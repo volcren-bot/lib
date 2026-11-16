@@ -32,6 +32,8 @@ Biometrics.BANK_CONSUME = 17
 Biometrics.RATING = 18
 Biometrics.LIKES = 19
 Biometrics.DISLIKES = 20
+Biometrics.ZOOM_SPIN = 21
+Biometrics.ZOOM_PACE = 22
 ```
 
 Trait indices (`Biometric`) for `get_biometric`, `get_probability` and `biometric_boolean`. Each trait is 0 to 255.

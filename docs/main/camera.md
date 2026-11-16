@@ -17,7 +17,7 @@ Camera.PITCH_MIN = 1024
 Camera.PITCH_MAX = 3064
 Camera.ZOOM_MIN = 128
 Camera.ZOOM_MAX = 896
-Camera.ZOOM_STEP = 24
+Camera.ZOOM_STEP = 25
 ```
 Full turn, pitch range, zoom range (farthest to closest) and the approximate zoom per wheel notch.
 
@@ -30,6 +30,20 @@ Camera.tolerance = 64
 Camera.zoom_tolerance = 12
 ```
 Default turning method, and how close an angle or zoom must be to count as reached.
+
+Definition:
+```luau
+Camera.ZOOM_BURST = { 6, 11 }
+Camera.ZOOM_NOTCH_MS = { 8, 40 }
+Camera.ZOOM_PAUSE_MS = { 400, 1000 }
+Camera.ZOOM_SETTLE_MS = { 40, 70 }
+Camera.ZOOM_SPIN_NOTCHES = 12
+Camera.ZOOM_SPIN_CHANCE = { 0.01, 0.06 }
+Camera.ZOOM_SPIN_MS = { 3, 9 }
+Camera.ZOOM_SPIN_START_MS = { 15, 25 }
+Camera.ZOOM_OVERSHOOT = { 1, 4 }
+```
+How zooming turns the wheel, measured from a person's mouse. Each notch is its own wheel event. Most zooms ratchet: bursts of `ZOOM_BURST` notches, `ZOOM_NOTCH_MS` apart, with a `ZOOM_PAUSE_MS` finger reset between bursts. A zoom of at least `ZOOM_SPIN_NOTCHES` is now and then one free-wheel spin instead: the first three notches `ZOOM_SPIN_START_MS` apart, then the rest `ZOOM_SPIN_MS` apart. A zoom to `ZOOM_MIN` or `ZOOM_MAX` scrolls `ZOOM_OVERSHOOT` notches past the limit, as a person scrolls until it stops. The account's biometrics place it in these ranges: `ZOOM_PACE` sets burst size, notch gap and pause together (bigger, quicker, shorter), and `ZOOM_SPIN` its spin chance within `ZOOM_SPIN_CHANCE`. `ZOOM_SETTLE_MS` is the wait after the last burst before `set_zoom` reads the result.
 
 Definition:
 ```luau
@@ -281,7 +295,7 @@ Definition:
 ```luau
 function Camera.set_zoom(zoom: number): boolean
 ```
-Scrolls the wheel until the zoom is within `zoom_tolerance` of `zoom` (clamped to the zoom range). `false` when unreadable, out of room, or the zoom stops changing.
+Scrolls the wheel like a person (see the zoom settings) until the zoom is within `zoom_tolerance` of `zoom` (clamped to the zoom range), reading it back after each burst. `false` when unreadable, out of room, or the zoom stops changing.
 
 Example:
 ```luau
@@ -360,7 +374,7 @@ Definition:
 ```luau
 function Camera.set_zoom_async(zoom: number): boolean
 ```
-Queues the wheel notches (`ZOOM_STEP` each) towards `zoom`, clamped to the zoom range, moving the mouse into the game view first if needed.
+Queues the same bursts, pauses or spin as `set_zoom` for the notches (`ZOOM_STEP` each) towards `zoom`, clamped to the zoom range, moving the mouse into the game view first if needed. A long zoom keeps the input queue busy for its pauses.
 
 Example:
 ```luau
