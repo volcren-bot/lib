@@ -12,7 +12,7 @@ Definition:
 ```luau
 function Login.login(): boolean
 ```
-Clicks the current login screen's next button once: Play Now, or Try again after a disconnect, error or invalid credentials. `false` when not on the login screen, its layout is unknown, or the screen has no such button.
+Clicks the current login screen's next button once: Play Now, Sign in with Steam on the welcome screen of a client that signs in through Steam, or Try again after a disconnect, error or invalid credentials. The screens Steam shows after that aren't handled. `false` when not on the login screen, its layout is unknown, or the screen has no such button.
 
 Example:
 ```luau

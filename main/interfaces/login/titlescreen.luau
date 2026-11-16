@@ -110,6 +110,20 @@ local SCREENS: { [number]: Screen } = {
 	},
 }
 
+local STEAM_WELCOME: Screen = {
+	name = "welcome",
+	buttons = {
+		sign_in_with_steam = spec("center_x", -142, 143, 58, 99, "Sign in with Steam"),
+	},
+}
+
+local function screen_of(login: LoginLayout): Screen?
+	if login.screen == TitleScreen.WELCOME and login.steam then
+		return STEAM_WELCOME
+	end
+	return SCREENS[login.screen]
+end
+
 local function box(login: LoginLayout, name: string, button: Spec): Button
 	local base = if button.base == "box_x" then login.box_x else login.center_x
 	local scale = login.scale or 1
@@ -137,7 +151,7 @@ end
 
 function TitleScreen.buttons(login: LoginLayout): { [string]: Button }
 	local buttons: { [string]: Button } = {}
-	local known: Screen? = SCREENS[login.screen]
+	local known = screen_of(login)
 	if known then
 		for name, button in pairs(known.buttons) do
 			buttons[name] = box(login, name, button)
@@ -147,7 +161,7 @@ function TitleScreen.buttons(login: LoginLayout): { [string]: Button }
 end
 
 function TitleScreen.button(login: LoginLayout, name: string): Button?
-	local known: Screen? = SCREENS[login.screen]
+	local known = screen_of(login)
 	local button: Spec? = known and known.buttons[name]
 	if button == nil then
 		return nil

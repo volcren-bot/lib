@@ -15,7 +15,7 @@ All are plain tables; see `host.luau` for every field.
 | `ClientState` | Position, name, skills, run energy, weight, camera, minimap zoom, destination. Any field may be `nil` (e.g. logged out). |
 | `PositionData` | World tile `x`, `y`, `plane` (0 ground, `nil` if unreadable) and scene tile `local_x`, `local_y`. |
 | `Skill` | `name`, boosted `level`, `real_level`, `xp`. |
-| `LoginLayout` | Where the login screen's parts are drawn. |
+| `LoginLayout` | Where the login screen's parts are drawn, and `steam`: whether the client signs in through Steam, which changes the welcome screen (`nil` if the agent couldn't tell). |
 | `CameraState` | Position, `pitch`, `yaw`, focal point, `zoom`. Positions in 128ths of a tile; angles 0 to 16383 per turn. |
 | `MinimapState` | `zoom` in pixels per tile (2 to 8). |
 | `Connection` | Client `version`, `protocol`, window `width`/`height`, mouse position. |

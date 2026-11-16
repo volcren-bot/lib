@@ -103,6 +103,7 @@ export type LoginLayout = {
 	center_x: number,
 	y: number,
 	scale: number,
+	steam: boolean?,
 }
 
 export type CameraState = {

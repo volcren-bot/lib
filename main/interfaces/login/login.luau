@@ -13,6 +13,7 @@ local WelcomeScreen = require("@lib/main/interfaces/login/welcome_screen")
 local Login = {}
 
 local NEXT: { [number]: string } = {
+	[TitleScreen.WELCOME] = "sign_in_with_steam",
 	[TitleScreen.PLAY_NOW] = "play_now",
 	[TitleScreen.DISCONNECTED] = "try_again",
 	[TitleScreen.ERROR] = "try_again",

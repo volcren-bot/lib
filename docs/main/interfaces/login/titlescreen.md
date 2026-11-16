@@ -60,7 +60,7 @@ Definition:
 ```luau
 function TitleScreen.buttons(login: LoginLayout): { [string]: Button }
 ```
-Every button on the current screen by name. Empty for an unknown screen.
+Every button on the current screen by name. Empty for an unknown screen. When the client signs in through Steam (`login.steam`), the welcome screen has only `sign_in_with_steam` instead of `new_user` and `existing_user`.
 
 Example:
 ```luau
