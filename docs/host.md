@@ -40,6 +40,7 @@ All are plain tables; see `host.luau` for every field.
 | `SubInterface` | An interface opened inside another. |
 | `World` / `WorldSelect` | World list and switcher state. |
 | `Tile` / `NavTile` / `Area` / `Corners` / `ScreenPoint` / `FinePoint` | Coordinate shapes. |
+| `CameraView` | A camera yaw and zoom to project with (`project`). |
 | `SceneRoute` / `WorldRoute` / `NavPlan` / `NavOptions` / `SceneRouteOptions` | Pathing results and options. |
 | `Shape` | A `rect`, `line` or `clear` for `Host.draw_batch`. |
 | `FormSpec` / `FormField` | A settings window. |
@@ -226,10 +227,11 @@ Definition:
 ```luau
 Host.project: (
 	points: { FinePoint },
-	shift: { x: number, y: number, plane: number? }?
+	shift: { x: number, y: number, plane: number? }?,
+	view: CameraView?
 ) -> { ScreenPoint }?
 ```
-Projects fine world points to the screen. `shift` (fine units, optional landing `plane`) projects as the camera will be once the player has moved that far.
+Projects fine world points to the screen. `shift` (fine units, optional landing `plane`) projects as the camera will be once the player has moved that far. `view` (`{ yaw: number?, zoom: number? }`, in `Camera.yaw` and `Camera.zoom` units) projects as if the camera had turned to `yaw` around its focal point and zoomed to `zoom`, keeping its pitch, so a script can work out a camera move before making it.
 
 Example:
 ```luau

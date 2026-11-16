@@ -48,8 +48,12 @@ local function tile_of(value: number, low: boolean): number
 	return math.floor((value + (if low then 1 else -1)) / Projection.TILE)
 end
 
-local function screen_points(points: { FinePoint }, shift: { x: number, y: number, plane: number? }?): { Point }?
-	local screen = project(points, shift)
+local function screen_points(
+	points: { FinePoint },
+	shift: { x: number, y: number, plane: number? }?,
+	view: Host.CameraView?
+): { Point }?
+	local screen = project(points, shift, view)
 	if screen == nil then
 		return nil
 	end
@@ -60,19 +64,19 @@ local function screen_points(points: { FinePoint }, shift: { x: number, y: numbe
 	return out
 end
 
-function Projection.shifted(points: { FinePoint }, shift: FinePoint, plane: number?): { Point }?
-	return screen_points(points, { x = math.round(shift.x), y = math.round(shift.y), plane = plane })
+function Projection.shifted(points: { FinePoint }, shift: FinePoint, plane: number?, view: Host.CameraView?): { Point }?
+	return screen_points(points, { x = math.round(shift.x), y = math.round(shift.y), plane = plane }, view)
 end
 
-function Projection.points(points: { FinePoint }, at: Tile?): { Point }?
+function Projection.points(points: { FinePoint }, at: Tile?, view: Host.CameraView?): { Point }?
 	if at then
 		local shift = Projection.arrival(at)
 		if shift == nil then
 			return nil
 		end
-		return Projection.shifted(points, shift, (at :: any).plane)
+		return Projection.shifted(points, shift, (at :: any).plane, view)
 	end
-	return screen_points(points)
+	return screen_points(points, nil, view)
 end
 
 function Projection.tile(tile: Tile, height: number?, at: Tile?): Quad?
@@ -107,7 +111,8 @@ function Projection.cuboid(
 	size: number?,
 	height: number?,
 	at: Tile?,
-	shift: FinePoint?
+	shift: FinePoint?,
+	view: Host.CameraView?
 ): Cuboid?
 	local half = (size or 1) * Projection.TILE / 2
 	local up = -(height or 200)
@@ -126,7 +131,7 @@ function Projection.cuboid(
 			)
 		end
 	end
-	local screen = if shift then Projection.shifted(points, shift) else Projection.points(points, at)
+	local screen = if shift then Projection.shifted(points, shift, nil, view) else Projection.points(points, at, view)
 	if screen == nil then
 		return nil
 	end

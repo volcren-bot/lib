@@ -34,9 +34,9 @@ print(base and `{base.x}, {base.y}`)
 
 Definition:
 ```luau
-function Projection.points(points: { FinePoint }, at: Tile?): { Point }?
+function Projection.points(points: { FinePoint }, at: Tile?, view: Host.CameraView?): { Point }?
 ```
-Screen pixels of fine points, optionally as seen from `at` (via `arrival` and `shifted`).
+Screen pixels of fine points, optionally as seen from `at` (via `arrival` and `shifted`) and with the camera turned or zoomed to `view` (see [Host.project](../../host.md#hostproject)).
 
 Example:
 ```luau
@@ -70,10 +70,11 @@ function Projection.cuboid(
 	size: number?,
 	height: number?,
 	at: Tile?,
-	shift: FinePoint?
+	shift: FinePoint?,
+	view: Host.CameraView?
 ): Cuboid?
 ```
-A ground-standing box centred on the fine point, as `bottom` and `top` quads. `size` in tiles (default 1), `height` in fine units (default 200). `shift`, when given, wins over `at`.
+A ground-standing box centred on the fine point, as `bottom` and `top` quads. `size` in tiles (default 1), `height` in fine units (default 200). `shift`, when given, wins over `at`; `view` projects it with the camera turned or zoomed.
 
 Example:
 ```luau
@@ -152,9 +153,14 @@ print(Projection.arrival({ x = here.x + 5, y = here.y }))
 
 Definition:
 ```luau
-function Projection.shifted(points: { FinePoint }, shift: FinePoint, plane: number?): { Point }?
+function Projection.shifted(
+	points: { FinePoint },
+	shift: FinePoint,
+	plane: number?,
+	view: Host.CameraView?
+): { Point }?
 ```
-`points` as seen after the camera moves by `shift` (x, y), optionally on `plane`. The camera also follows the ground height under the player while points keep their own. Pair with `Walker.ahead` to predict positions while walking.
+`points` as seen after the camera moves by `shift` (x, y), optionally on `plane` and with the camera turned or zoomed to `view`. The camera also follows the ground height under the player while points keep their own. Pair with `Walker.ahead` to predict positions while walking.
 
 Example:
 ```luau

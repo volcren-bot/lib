@@ -11,6 +11,8 @@ local Triangle = Geometry.Triangle
 type Point = Geometry.Point
 type Polygon = Geometry.Polygon
 type Quad = Geometry.Quad
+local Box = Geometry.Box
+type Box = Geometry.Box
 local Camera = require("@lib/main/camera")
 local Draw = require("@lib/utils/draw")
 local Interact = require("@lib/main/interact")
@@ -408,10 +410,128 @@ local function aim(clickbox: Aim, what: string): Point?
 end
 
 Clickbox.CAMERA_RANGE = 15 :: number?
+Clickbox.REVEAL_YAW_STEP = 5
+Clickbox.REVEAL_ZOOM_STEPS = 6
+Clickbox.REVEAL_ZOOM_COST = 8
+Clickbox.REVEAL_SLACK = 12
+Clickbox.REVEAL_MARGIN = 0.08
+Clickbox.REVEAL_SHOWN = 0.85
 
 local function on_screen(clickbox: Aim, what: string): boolean
 	local box = clickbox()
 	return box ~= nil and Clickbox.target(box, what) ~= nil
+end
+
+local function overlap(a: Box, b: Box): Box?
+	local x1, y1 = math.max(a.x1, b.x1), math.max(a.y1, b.y1)
+	local x2, y2 = math.min(a.x2, b.x2), math.min(a.y2, b.y2)
+	return if x2 > x1 and y2 > y1 then Box.new(x1, y1, x2, y2) else nil
+end
+
+local function area(b: Box?): number
+	return if b then (b.x2 - b.x1) * (b.y2 - b.y1) else 0
+end
+
+local function shown_share(box: Box, view: Box, blockers: { Box }): number
+	local whole = area(box)
+	local inside = overlap(box, view)
+	if whole <= 0 or inside == nil then
+		return 0
+	end
+	local clear = area(inside)
+	for _, blocker in ipairs(blockers) do
+		clear -= area(overlap(inside, blocker))
+	end
+	return math.max(0, clear) / whole
+end
+
+local function predicted_box(fine_x: number, fine_y: number, view: Host.CameraView): Box?
+	local cuboid = Projection.cuboid(fine_x, fine_y, 1, Clickbox.ANCHOR_HEIGHT, nil, nil, view)
+	if cuboid == nil then
+		return nil
+	end
+	local box = Projection.bounds(cuboid)
+	local far = 1e6
+	if math.abs(box.x1) > far or math.abs(box.y1) > far or math.abs(box.x2) > far or math.abs(box.y2) > far then
+		return nil
+	end
+	return box
+end
+
+local function lerp_box(a: Box, b: Box, t: number): Box
+	return Box.new(
+		a.x1 + (b.x1 - a.x1) * t,
+		a.y1 + (b.y1 - a.y1) * t,
+		a.x2 + (b.x2 - a.x2) * t,
+		a.y2 + (b.y2 - a.y2) * t
+	)
+end
+
+type Framing = { yaw: number, zoom: number, turn: number, cost: number, share: number }
+
+local function framings(at: Tile, yaw: number, zoom: number): { Framing }?
+	local base, view, blockers = Projection.base(), Toplevel.viewport(), Toplevel.blockers()
+	if base == nil or view == nil or blockers == nil then
+		return nil
+	end
+	local margin_x = (view.x2 - view.x1) * Clickbox.REVEAL_MARGIN
+	local margin_y = (view.y2 - view.y1) * Clickbox.REVEAL_MARGIN
+	local inset = Box.new(view.x1 + margin_x, view.y1 + margin_y, view.x2 - margin_x, view.y2 - margin_y)
+	local fine_x = (at.x - base.x) * Projection.TILE + Projection.TILE / 2
+	local fine_y = (at.y - base.y) * Projection.TILE + Projection.TILE / 2
+	local farthest = math.min(zoom, Camera.ZOOM_MIN)
+	local steps = if farthest < zoom - Camera.zoom_tolerance then Clickbox.REVEAL_ZOOM_STEPS else 0
+	local step = Clickbox.REVEAL_YAW_STEP
+	local turns = { 0 }
+	for degrees = step - Random.int(0, step - 1), 180, step do
+		table.insert(turns, degrees)
+		table.insert(turns, -degrees)
+	end
+	local out: { Framing } = {}
+	for _, turn in ipairs(turns) do
+		local target = (yaw + math.round(turn * Camera.TURN / 360)) % Camera.TURN
+		local near = predicted_box(fine_x, fine_y, { yaw = target })
+		local far = if steps > 0 then predicted_box(fine_x, fine_y, { yaw = target, zoom = farthest }) else near
+		if near and far then
+			for k = 0, steps do
+				local t = if steps > 0 then k / steps else 0
+				local to = zoom + (farthest - zoom) * t
+				table.insert(out, {
+					yaw = target,
+					zoom = math.round(to),
+					turn = turn,
+					cost = math.abs(turn) + Clickbox.REVEAL_ZOOM_COST * (zoom - to) / Camera.ZOOM_STEP,
+					share = shown_share(lerp_box(near, far, t), inset, blockers),
+				})
+			end
+		end
+	end
+	return out
+end
+
+local function pick_framing(options: { Framing }): Framing?
+	local cheapest: number? = nil
+	for _, f in ipairs(options) do
+		if f.share >= Clickbox.REVEAL_SHOWN and (cheapest == nil or f.cost < cheapest) then
+			cheapest = f.cost
+		end
+	end
+	if cheapest == nil then
+		local best: Framing? = nil
+		for _, f in ipairs(options) do
+			if best == nil or f.share > best.share or (f.share == best.share and f.cost < best.cost) then
+				best = f
+			end
+		end
+		return best
+	end
+	local close: { Framing } = {}
+	for _, f in ipairs(options) do
+		if f.share >= Clickbox.REVEAL_SHOWN and f.cost <= cheapest + Clickbox.REVEAL_SLACK then
+			table.insert(close, f)
+		end
+	end
+	return close[Random.int(1, #close)]
 end
 
 function Clickbox.reveal(clickbox: Aim, tile: () -> Tile?, what: string): boolean
@@ -424,50 +544,30 @@ function Clickbox.reveal(clickbox: Aim, tile: () -> Tile?, what: string): boolea
 	end
 	local state = game_state()
 	local me, at = state.position, tile()
-	if me == nil or at == nil then
+	local yaw, zoom = Camera.yaw(), Camera.zoom()
+	if me == nil or at == nil or yaw == nil or zoom == nil then
 		return false
 	end
 	local away = math.max(math.abs(at.x - me.x), math.abs(at.y - me.y))
 	if away > range then
 		return false
 	end
-
-	Camera.face(at, true)
-	if on_screen(clickbox, what) then
-		return true
+	local options = framings(at, yaw, zoom)
+	local framing = if options then pick_framing(options) else nil
+	if framing == nil then
+		Log.log("Clickbox", `can't frame {what}: the view isn't readable`)
+		return false
 	end
-	local zoom = Camera.zoom()
-	if zoom then
-		local farthest = Camera.ZOOM_MIN + Random.int(0, 40)
-		for _, to in ipairs({ math.round((zoom + farthest) / 2), farthest }) do
-			if to < zoom - Camera.zoom_tolerance then
-				Camera.set_zoom(to)
-				zoom = Camera.zoom() or to
-				if on_screen(clickbox, what) then
-					return true
-				end
-			end
-		end
+	if framing.turn ~= 0 then
+		Camera.set_yaw(framing.yaw)
 	end
-
-	Camera.look_at(at)
-	if on_screen(clickbox, what) then
-		return true
+	if framing.zoom < zoom - Camera.zoom_tolerance then
+		Camera.set_zoom(framing.zoom)
 	end
-	local pitch = Camera.pitch()
-	if pitch then
-		local lowest = Camera.PITCH_MIN + Random.int(0, 200)
-		for _, to in ipairs({ math.round((pitch + lowest) / 2), lowest }) do
-			if to < pitch - Camera.tolerance then
-				Camera.set_pitch(to)
-				pitch = Camera.pitch() or to
-				if on_screen(clickbox, what) then
-					return true
-				end
-			end
-		end
+	if framing.share < Clickbox.REVEAL_SHOWN then
+		Log.log("Clickbox", `no yaw or zoom shows {what}; turned to the closest view`)
 	end
-	return false
+	return on_screen(clickbox, what)
 end
 
 Clickbox.ATTEMPTS = 5

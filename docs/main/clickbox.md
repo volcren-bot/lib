@@ -18,6 +18,12 @@ Clickbox.FOLLOW_AREA = 25
 Clickbox.CENTER_SPREAD = 0.45
 Clickbox.MOUSE_PULL = 2
 Clickbox.CAMERA_RANGE = 15
+Clickbox.REVEAL_YAW_STEP = 5
+Clickbox.REVEAL_ZOOM_STEPS = 6
+Clickbox.REVEAL_ZOOM_COST = 8
+Clickbox.REVEAL_SLACK = 12
+Clickbox.REVEAL_MARGIN = 0.08
+Clickbox.REVEAL_SHOWN = 0.85
 Clickbox.ATTEMPTS = 5
 Clickbox.MISCLICK_ATTEMPTS = 3
 Clickbox.ANCHOR_HEIGHT = 200
@@ -38,6 +44,12 @@ Clickbox.APPROACH_TIMEOUT_MS = 30000
 - `CENTER_SPREAD`: width of the bell curve around the shape's middle, as a share of its spread (smaller is tighter).
 - `MOUSE_PULL`: weakness of the lean towards the mouse, in spreads (bigger is weaker).
 - `CAMERA_RANGE`: off-screen things within this many tiles get the camera moved to show them; `nil` disables it.
+- `REVEAL_YAW_STEP`: degrees between the yaws `reveal` considers.
+- `REVEAL_ZOOM_STEPS`: zoom levels `reveal` considers between the current zoom and `Camera.ZOOM_MIN`.
+- `REVEAL_ZOOM_COST`: degrees of turning one `Camera.ZOOM_STEP` of zooming out costs when `reveal` compares views.
+- `REVEAL_SLACK`: `reveal` picks at random among the views that show the thing and cost at most this much more than the cheapest.
+- `REVEAL_MARGIN`: share of the viewport's width and height kept clear around a view's box.
+- `REVEAL_SHOWN`: share of the thing's predicted box that must be inside that inset and clear of interfaces.
 - `ATTEMPTS`: aims before `hover` gives up; confirmation waits are [Track](../utils/input/track.md)'s `CONFIRM_MS`.
 - `MISCLICK_ATTEMPTS`: retries when the client did something else.
 - `ANCHOR_HEIGHT`: default anchor height (fine units) for `walking`.
@@ -89,7 +101,7 @@ Definition:
 ```luau
 function Clickbox.reveal(clickbox: Aim, tile: () -> Tile?, what: string): boolean
 ```
-Brings an off-screen thing within `CAMERA_RANGE` into view, stopping once it shows: forced `Camera.face`, zoom out, `Camera.look_at`, then up to two pitch steps towards `Camera.PITCH_MIN`. True when visible; false when nothing worked, so the caller can walk closer.
+Brings an off-screen thing within `CAMERA_RANGE` into view with one camera move, worked out before moving. It projects a one-tile box `ANCHOR_HEIGHT` tall on `tile()` for every yaw and zoom in its search (`Host.project` with a view), keeping the pitch, then turns and zooms once to one of the cheapest views that show it. Zoom only scales the view about its centre, so each yaw needs two projections, at the current and farthest zoom, and the zooms between are interpolated. When no view shows it, it turns to the one that shows the most and logs it. True when the thing can then be targeted; false otherwise, so the caller can walk closer.
 
 Example:
 ```luau
