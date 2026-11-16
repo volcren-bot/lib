@@ -37,7 +37,10 @@ export type Aim = (lead_ms: number?) -> Clickbox?
 
 export type Anchor = { x: number, y: number, size: number?, height: number? }
 
-export type ActTarget = { model: Host.ActModel, entry: { kind: number?, id: number?, index: number? } }
+export type ActTarget = {
+	model: Host.ActModel,
+	entry: { kind: number?, id: number?, index: number?, x: number?, y: number? },
+}
 
 export type Approach = {
 	near: number?,

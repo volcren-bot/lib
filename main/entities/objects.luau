@@ -89,7 +89,7 @@ end
 local MENU_LOC = 3
 
 function Objects.owns(loc: Loc, entry: MenuEntry): boolean
-	return entry.kind == MENU_LOC and entry.id == loc.id
+	return entry.kind == MENU_LOC and entry.id == loc.id and entry.x == loc.x and entry.y == loc.y
 end
 
 function Objects.hovered(loc: Loc): boolean
@@ -160,7 +160,7 @@ end
 local function act_of(loc: Loc): Clickbox.ActTarget
 	return {
 		model = { target = "loc", kind = loc.kind, scene_x = loc.scene_x, scene_y = loc.scene_y, id = loc.id },
-		entry = { kind = MENU_LOC, id = loc.id },
+		entry = { kind = MENU_LOC, id = loc.id, x = loc.x, y = loc.y },
 	}
 end
 

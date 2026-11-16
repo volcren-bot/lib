@@ -286,6 +286,8 @@ export type MenuEntry = {
 	index: number,
 	action: number,
 	priority: number,
+	x: number,
+	y: number,
 	kind: number,
 	submenu: boolean,
 }
@@ -629,7 +631,7 @@ export type ActRect = { x1: number, y1: number, x2: number, y2: number }
 
 export type ActSpec = {
 	model: ActModel,
-	entry: { kind: number?, id: number?, index: number? },
+	entry: { kind: number?, id: number?, index: number?, x: number?, y: number? },
 	options: { string },
 	right: boolean?,
 	near: number?,

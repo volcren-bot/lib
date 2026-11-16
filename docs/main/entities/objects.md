@@ -120,7 +120,7 @@ Definition:
 function Objects.owns(loc: Loc, entry: MenuEntry): boolean
 ```
 
-Whether a menu entry is a loc entry for this object's id. The menu doesn't carry the tile, so same-id objects elsewhere also match.
+Whether a menu entry is a loc entry for this object: same id and the entry's `x`, `y` on its origin tile, so same-id objects on other tiles don't match.
 
 Example:
 
