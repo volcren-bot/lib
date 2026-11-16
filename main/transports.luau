@@ -2118,7 +2118,7 @@ function Transports.ride(choice: Choice): (boolean, boolean?)
 	local clicked = picked
 	local function click_target(): boolean
 		for _, option in ipairs(options) do
-			local done = if npc ~= nil then Npcs.interact(npc, option) else Objects.interact(loc, option)
+			local done = if npc ~= nil then Npcs.interact(npc, option) else Objects.approach(loc, option)
 			if done then
 				return true
 			end

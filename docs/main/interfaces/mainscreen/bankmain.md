@@ -79,7 +79,29 @@ Bankmain.PLAN_CANDIDATES = 6
 function Bankmain.nearest(): Source?
 ```
 
-The bank that is the fewest steps to walk to, as a `Source` holding either a `loc` or an `npc`. It looks at every loaded "Bank booth", "Bank chest" and "Banker", plans a walk (`Walker.plan`, through doors, stairs and ladders, to within `Clickbox.APPROACH_NEAR` tiles) to the `PLAN_CANDIDATES` closest by straight distance, and takes the shortest plan; a plan that stops short counts the straight distance left. This costs one plan per candidate. When none can be planned it returns the closest by straight distance. `nil` when none is loaded or the position is unknown.
+The bank that is the fewest steps to walk to, as a `Source` holding either a `loc` or an `npc`. It looks at every loaded "Bank booth" and "Bank chest" and every NPC that `is_banker`, plans a walk (`Walker.plan`, through doors, stairs and ladders, to within `Clickbox.APPROACH_NEAR` tiles) to the `PLAN_CANDIDATES` closest by straight distance, and takes the shortest plan; a plan that stops short counts the straight distance left. This costs one plan per candidate. When none can be planned it returns the closest by straight distance. `nil` when none is loaded or the position is unknown.
+
+## Bankmain.is_banker
+
+Definition:
+
+```luau
+function Bankmain.is_banker(npc: Npc): boolean
+```
+
+Whether the NPC's menu offers "Bank" ([Npcs.options](../../entities/npcs.md#npcsoptions)), so named bankers such as Emerald Benedict count, not only those called "Banker".
+
+Example:
+
+```luau
+local Npcs = require("@lib/main/entities/npcs")
+
+for _, npc in ipairs(Npcs.find() or {}) do
+	if Bankmain.is_banker(npc) then
+		print(npc.name)
+	end
+end
+```
 
 ## Bankmain.hover
 

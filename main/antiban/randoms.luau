@@ -8,6 +8,7 @@ local ChatOptions = require("@lib/main/interfaces/chatbox/chat_options")
 local Lamp = require("@lib/main/interfaces/mainscreen/lamp")
 local Log = require("@lib/utils/log")
 local Npcs = require("@lib/main/entities/npcs")
+local Pinball = require("@lib/main/pinball")
 local Stats = require("@lib/main/interfaces/gametabs/stats")
 local SurpriseExam = require("@lib/main/interfaces/mainscreen/surprise_exam")
 local Widgets = require("@lib/main/interfaces/widgets")
@@ -152,6 +153,7 @@ end
 Randoms.HANDLERS = {
 	[Randoms.GENIE] = handle_genie,
 	[SurpriseExam.DUNCE] = SurpriseExam.accept,
+	[Pinball.FLIPPA] = Pinball.accept,
 	[Randoms.NILES] = handle_certer,
 	[Randoms.MILES] = handle_certer,
 	[Randoms.GILES] = handle_certer,
@@ -183,6 +185,10 @@ function Randoms.handle(): boolean
 			Randoms.use_lamps()
 		end
 		return done
+	end
+	if Pinball.inside() then
+		Log.log("Randoms", "in the pinball game")
+		return Pinball.complete()
 	end
 	local npc = Randoms.find()
 	if npc == nil then

@@ -696,7 +696,9 @@ local function hover_random<T>(
 end
 
 function Tasks.hover_random_npc(async: boolean?)
-	hover_random(async, Npcs.find(), "NPC", Npcs.hover, Npcs.hover_async)
+	hover_random(async, Npcs.find(), "NPC", Npcs.hover, function(npc: Host.Npc): boolean
+		return Npcs.hover_async(npc)
+	end)
 end
 
 function Tasks.hover_random_player(async: boolean?)

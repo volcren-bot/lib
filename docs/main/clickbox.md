@@ -229,9 +229,10 @@ export type Approach = {
 	settle: boolean?,
 	closer: number?,
 	spam: number?,
+	stand: { Tile }?,
 }
 ```
-Walks to within `near` tiles (`APPROACH_NEAR`) and picks `option` as `interact` does. When the thing is on screen now and at the lead, and `Walker.plain_walk` reports no door, climb or shortcut left, it picks without walking, or early during the walk every `EARLY_RETRY_MS`; `settle` instead waits for the walk to stop. On failure, `closer` walks to that many tiles and picks once more. Returns after arriving (`arrive_ms`, false returns right after the pick). `walk.on_step` or `walk.before_click` returning false stops it with false; `timeout_ms` defaults to `APPROACH_TIMEOUT_MS`.
+Walks to within `near` tiles (`APPROACH_NEAR`) and picks `option` as `interact` does. `stand` lists the tiles the thing can be used from: then the goal is the nearest of them the planner reaches (trying `STAND_CANDIDATES`), with `near` 0, so being a tile away across a wall doesn't count as close and a closed door on the way is opened; standing on any of them counts as arrived. When none is reached, `near` applies as before. When the thing is on screen now and at the lead, and `Walker.plain_walk` reports no door, climb or shortcut left, it picks without walking, or early during the walk every `EARLY_RETRY_MS`; `settle` instead waits for the walk to stop. On failure, `closer` walks to that many tiles and picks once more. Returns after arriving (`arrive_ms`, false returns right after the pick). `walk.on_step` or `walk.before_click` returning false stops it with false; `timeout_ms` defaults to `APPROACH_TIMEOUT_MS`.
 
 Example:
 ```luau

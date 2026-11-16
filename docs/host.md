@@ -290,6 +290,21 @@ while not Host.finish_requested() do
 end
 ```
 
+## Host.script_debugging
+
+Definition:
+```luau
+Host.script_debugging: () -> boolean
+```
+True while Script debugging is on in the loader's Development tab; it can change during a run. Debug drawing in the lib and scripts happens only then, since it clears and repaints the overlay. The MCP reads the loader's saved setting when a run starts.
+
+Example:
+```luau
+if Host.script_debugging() then
+	print("drawing debug shapes")
+end
+```
+
 ## Host.report_exit
 
 Definition:

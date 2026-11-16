@@ -73,6 +73,24 @@ Example:
 print(Npcs.distance({ x = 3200, y = 3200 }, { x = 3203, y = 3201 })) -- 3
 ```
 
+## Npcs.options
+
+Definition:
+
+```luau
+Npcs.CONFIG_INDEX = 2
+Npcs.CONFIG_ARCHIVE = 9
+function Npcs.options(id: number): { string }?
+```
+
+The menu options an NPC type offers ("Talk-to", "Bank", "Collect"), read from its cache definition (`Host.cache_file(2, 9, id)`, opcodes 30 to 34) and kept per id. The definition's fields come in no fixed order, so the reader skips the other known fields; on a field it doesn't know it stops and returns the options found so far. Nil when the cache can't be read. Options a varbit changes at run time, and those of a transformed NPC, aren't seen.
+
+Example:
+
+```luau
+print(table.concat(Npcs.options(3194) or {}, "/"))
+```
+
 ## Npcs.find
 
 Definition:
@@ -229,10 +247,10 @@ Npcs.hover(npc)
 Definition:
 
 ```luau
-function Npcs.hover_async(npc: Npc): boolean
+function Npcs.hover_async(npc: Npc, at: Tile?): boolean
 ```
 
-Queues the move as async input and returns at once, without turning the camera or checking the menu. False if the NPC isn't on screen.
+Queues the move as async input and returns at once, without turning the camera or checking the menu. Pass `at`, the tile you'll stand on when clicking, to aim at where the NPC will be drawn after a walk. False if there's nothing on screen to aim at.
 
 Example:
 

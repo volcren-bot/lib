@@ -390,6 +390,9 @@ function Player.wait_walk(timeout_ms: number?): boolean
 			break
 		end
 		walked = true
+		if Host.script_debugging() then
+			(require :: any)("@lib/main/walker").show_route()
+		end
 		if time() - started >= timeout then
 			Log.log("Player", `the player was still walking to {to.x}, {to.y} after {timeout} ms`)
 			return false

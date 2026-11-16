@@ -11,6 +11,7 @@ Handled events:
 - **Genie**: `Talk-to`, continue any dialogue, wait for the lamp, then `use_lamps`.
 - **Certers** (Niles, Miles, Giles): open the quiz and answer it with `Certer.solve`; if no answer fits, it is closed unanswered and logged.
 - **Dunce**: accept the exam (`SurpriseExam.accept`); `handle` finishes an exam already under way first (`SurpriseExam.complete`), then `use_lamps` on the Book of Knowledge.
+- **Flippa** (pinball): accept the game (`Pinball.accept`), tag the lit post until the score is 10, then leave by the cave exit; `handle` finishes a game already under way first (`Pinball.complete`).
 
 Lamps can't be banked and break deposit-all restocks, so lamp events always spend them on the skill set on the loader's Accounts page. `handle` has only run against a stubbed game; events can't be triggered on demand.
 
@@ -99,7 +100,7 @@ Definition:
 function Randoms.handle(): boolean
 ```
 
-Finishes an exam in progress, or handles the event interacting with you, spending lamps afterwards for lamp events. Returns true when one was dealt with.
+Finishes an exam or a pinball game in progress, or handles the event interacting with you, spending lamps afterwards for lamp events. Returns true when one was dealt with.
 
 Example:
 

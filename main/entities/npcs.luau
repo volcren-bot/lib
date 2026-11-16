@@ -26,6 +26,91 @@ local function matches(npc: Npc, what: string | number): boolean
 	return string.lower(Npcs.clean_name(npc.name)) == string.lower(what)
 end
 
+local FIXED_FIELDS: { [number]: number } = {
+	[12] = 1,
+	[13] = 2,
+	[14] = 2,
+	[15] = 2,
+	[16] = 2,
+	[17] = 8,
+	[18] = 2,
+	[74] = 2,
+	[75] = 2,
+	[76] = 2,
+	[77] = 2,
+	[78] = 2,
+	[79] = 2,
+	[93] = 0,
+	[95] = 2,
+	[97] = 2,
+	[98] = 2,
+	[99] = 0,
+	[100] = 1,
+	[101] = 1,
+	[103] = 2,
+	[107] = 0,
+	[109] = 0,
+	[111] = 0,
+	[114] = 2,
+	[115] = 8,
+	[116] = 2,
+	[117] = 8,
+	[122] = 0,
+	[123] = 0,
+	[124] = 2,
+	[125] = 1,
+	[126] = 2,
+	[128] = 1,
+	[129] = 0,
+	[130] = 0,
+	[145] = 0,
+	[146] = 2,
+	[147] = 0,
+}
+local LIST_FIELDS: { [number]: number } = { [1] = 2, [40] = 4, [41] = 4, [60] = 2, [61] = 4, [62] = 4 }
+local options_by_id: { [number]: { string } } = {}
+
+local function read_options(data: string): { string }
+	local found: { string } = {}
+	local i = 1
+	while i <= #data do
+		local op = string.byte(data, i)
+		i += 1
+		if op == 0 then
+			break
+		elseif op == 2 or (op >= 30 and op <= 34) then
+			local stop = string.find(data, "\0", i, true) or (#data + 1)
+			if op ~= 2 then
+				table.insert(found, string.sub(data, i, stop - 1))
+			end
+			i = stop + 1
+		elseif FIXED_FIELDS[op] then
+			i += FIXED_FIELDS[op]
+		elseif LIST_FIELDS[op] then
+			i += 1 + string.byte(data, i) * LIST_FIELDS[op]
+		else
+			break
+		end
+	end
+	return found
+end
+
+function Npcs.options(id: number): { string }?
+	local cached = options_by_id[id]
+	if cached then
+		return cached
+	end
+	local data = Host.cache_file(Npcs.CONFIG_INDEX, Npcs.CONFIG_ARCHIVE, id)
+	if data == nil then
+		return nil
+	end
+	local found = read_options(data)
+	options_by_id[id] = found
+	return found
+end
+
+Npcs.CONFIG_INDEX = 2
+Npcs.CONFIG_ARCHIVE = 9
 Npcs.PRAYER_ICONS = 440
 Npcs.PRAYER_SPRITES = table.freeze({ [0] = "melee", [1] = "ranged", [2] = "magic" })
 
@@ -163,8 +248,13 @@ function Npcs.hover(npc: Npc): boolean
 	return Clickbox.hover(clickbox_of(npc), hovered_by(npc), npc.name, tile_of(npc))
 end
 
-function Npcs.hover_async(npc: Npc): boolean
-	return Clickbox.hover_async(clickbox_of(npc), npc.name)
+function Npcs.hover_async(npc: Npc, at: Tile?): boolean
+	if at == nil then
+		return Clickbox.hover_async(clickbox_of(npc), npc.name)
+	end
+	return Clickbox.hover_async(function()
+		return Npcs.projected(npc, at)
+	end, npc.name)
 end
 
 function Npcs.click(npc: Npc, button: Mouse.Button?, spam: number?): boolean

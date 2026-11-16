@@ -76,6 +76,56 @@ else
 end
 ```
 
+## Walker.show_route
+
+Definition:
+```luau
+function Walker.show_route()
+```
+While `Host.script_debugging()` is on, draws `Walker.route` from you to the tile of the last walk click: path tiles yellow, tiles a run jumps over faded, the end green (or red when the route stops short). The route is taken once, when the walker clicks, and stays fixed (tiles and which ones are faded) while you walk it; later calls only reproject it and drop the tiles up to where you stand, and a new destination takes a new one. Walker calls it after each click and on every step of its waits, and `Walker.walk` and `Walker.wait_arrival` clear the drawing when they return; with debugging off or no walk flag it clears what it drew. It draws as the `walker route` layer of [DebugDraw](debug_draw.md), so a script's own debug layers stay on screen with it. Call it from your own wait loops to keep the drawing current.
+
+Example:
+```luau
+local Host = require("@lib/host")
+local Walker = require("@lib/main/walker")
+
+Walker.click_tile(assert(Walker.relative(5, 2)))
+for _ = 1, 20 do
+	Walker.show_route()
+	Host.sleep(100)
+end
+```
+
+## Walker.follow_destination
+
+Definition:
+```luau
+function Walker.follow_destination()
+```
+Forgets the walker's own last click and its frozen route, so the next `Walker.show_route` draws the route to the game's walk flag instead. `Clickbox.interact` calls it before clicking a thing, so the route the game takes to an object, NPC or item shows too.
+
+Example:
+```luau
+local Walker = require("@lib/main/walker")
+
+Walker.follow_destination()
+```
+
+## Walker.hide_route
+
+Definition:
+```luau
+function Walker.hide_route()
+```
+Clears what `Walker.show_route` drew, if anything. Call it when your own walk loop ends.
+
+Example:
+```luau
+local Walker = require("@lib/main/walker")
+
+Walker.hide_route()
+```
+
 ## Walker.click_tile
 
 Definition:

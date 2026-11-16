@@ -11,6 +11,8 @@ local sleep = Host.sleep
 local time = Host.time
 local Biometrics = require("@lib/main/antiban/biometrics")
 local Camera = require("@lib/main/camera")
+local DebugDraw = require("@lib/main/debug_draw")
+local Draw = require("@lib/utils/draw")
 local Geometry = require("@lib/utils/math/geometry")
 local Log = require("@lib/utils/log")
 local Minimap = require("@lib/main/interfaces/minimap")
@@ -87,6 +89,82 @@ function Walker.last_click(): Tile?
 		return flag
 	end
 	return clicked
+end
+
+Walker.ROUTE_COLOR = Draw.color(255, 214, 0, 255)
+Walker.ROUTE_JUMPED_COLOR = Draw.color(255, 214, 0, 70)
+Walker.ROUTE_END_COLOR = Draw.color(0, 230, 118, 255)
+Walker.ROUTE_SHORT_COLOR = Draw.color(255, 23, 68, 255)
+
+Walker.ROUTE_FLAG_MS = 1200
+Walker.ROUTE_REPAINT_MS = 100
+
+local shown_route: Tile? = nil
+local frozen_at = 0
+local painted_at = 0
+
+function Walker.hide_route()
+	shown_route = nil
+	DebugDraw.set("walker route", nil)
+end
+
+local function freeze_route(target: Tile)
+	local route = Walker.route(target)
+	if route == nil then
+		Walker.hide_route()
+		return
+	end
+	shown_route, frozen_at = target, Host.time()
+	local tiles = route.tiles
+	local last = #tiles
+	local running = Player.is_running()
+	local function jumped(i: number): boolean
+		return i < last and running and i % 2 == 0
+	end
+	local passed = 1
+	DebugDraw.set("walker route", function()
+		local me = Walker.position()
+		if me then
+			for i = passed + 1, last do
+				if tiles[i].x == me.x and tiles[i].y == me.y then
+					passed = i
+					break
+				end
+			end
+		end
+		for _, faded in ipairs({ true, false }) do
+			for i = passed + 1, last do
+				local quad = if jumped(i) == faded then Projection.tile(tiles[i]) else nil
+				if quad then
+					local color = if faded
+						then Walker.ROUTE_JUMPED_COLOR
+						elseif i < last then Walker.ROUTE_COLOR
+						elseif route.reached then Walker.ROUTE_END_COLOR
+						else Walker.ROUTE_SHORT_COLOR
+					Draw.quad(quad, color)
+				end
+			end
+		end
+	end)
+end
+
+function Walker.show_route()
+	local target = if DebugDraw.on() then Walker.last_click() else nil
+	if target == nil and shown_route ~= nil and Host.time() - frozen_at < Walker.ROUTE_FLAG_MS then
+		DebugDraw.render()
+	elseif target == nil then
+		Walker.hide_route()
+	elseif shown_route == nil or shown_route.x ~= target.x or shown_route.y ~= target.y then
+		freeze_route(target)
+	elseif Host.time() - painted_at >= Walker.ROUTE_REPAINT_MS then
+		painted_at = Host.time()
+		DebugDraw.render()
+	end
+end
+
+function Walker.follow_destination()
+	clicked_tile = nil
+	Walker.hide_route()
 end
 
 Walker.WALK_MS_PER_TILE = 600
@@ -315,6 +393,9 @@ local function click_projected(
 		end
 	end
 	clicked_tile = tile
+	if DebugDraw.on() then
+		freeze_route(tile)
+	end
 	return true, used
 end
 
@@ -383,7 +464,7 @@ function Walker.hover_tile_async(tile: Tile, at: Tile?): boolean
 	return true
 end
 
-function Walker.wait_arrival(tile: Tile, timeout_ms: number?): boolean
+local function wait_arrival(tile: Tile, timeout_ms: number?): boolean
 	local timeout = timeout_ms or 10000
 	local waited = 0
 	while waited < timeout do
@@ -391,6 +472,7 @@ function Walker.wait_arrival(tile: Tile, timeout_ms: number?): boolean
 		if me == nil then
 			return false
 		end
+		Walker.show_route()
 		if me.x == tile.x and me.y == tile.y then
 			return true
 		end
@@ -398,6 +480,12 @@ function Walker.wait_arrival(tile: Tile, timeout_ms: number?): boolean
 		waited += 100
 	end
 	return false
+end
+
+function Walker.wait_arrival(tile: Tile, timeout_ms: number?): boolean
+	local arrived = wait_arrival(tile, timeout_ms)
+	Walker.hide_route()
+	return arrived
 end
 
 function Walker.walk_tile(tile: Tile, timeout_ms: number?): boolean
@@ -479,6 +567,9 @@ function Walker.click_minimap(tile: Tile): boolean
 	for _ = 1, 24 do
 		if Player.destination() ~= nil then
 			clicked_tile = tile
+			if DebugDraw.on() then
+				freeze_route(tile)
+			end
 			return true
 		end
 		sleep(50)
@@ -1073,6 +1164,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 			return false
 		end
 		local here: NavTile = { x = position.x, y = position.y, plane = position.plane :: number }
+		Walker.show_route()
 		local spot = `{position.local_x},{position.local_y},{here.plane}`
 		if spot ~= last_spot then
 			last_spot, moved_ms = spot, time()
@@ -1376,7 +1468,7 @@ local function walk_plan(to: Tile, opts: WalkOptions): boolean
 	end
 end
 
-function Walker.walk(to: Tile, options: WalkOptions?): boolean
+local function walk(to: Tile, options: WalkOptions?): boolean
 	local opts: WalkOptions = options or {}
 	if opts.transports == false or opts.straight then
 		return walk_plan(to, opts)
@@ -1490,6 +1582,12 @@ function Walker.climb_toward(plane: number): boolean
 		Host.sleep(100)
 	end
 	return false
+end
+
+function Walker.walk(to: Tile, options: WalkOptions?): boolean
+	local reached = walk(to, options)
+	Walker.hide_route()
+	return reached
 end
 
 return Walker

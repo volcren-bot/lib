@@ -813,6 +813,7 @@ return {
 	) -> { ScreenPoint }?,
 	settings = g.settings :: () -> { [string]: any },
 	finish_requested = g.finish_requested :: () -> boolean,
+	script_debugging = g.script_debugging :: () -> boolean,
 	form_update = g.form_update :: () -> { [string]: any }?,
 	menu = g.menu :: () -> { MenuEntry }?,
 	menu_click = g.menu_click :: () -> MenuClick?,

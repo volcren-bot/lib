@@ -233,6 +233,42 @@ Example:
 local box = Objects.projected(loc, { x = loc.x, y = loc.y })
 ```
 
+## Objects.stand_tiles
+
+Definition:
+
+```luau
+function Objects.stand_tiles(loc: Loc): { Tile }?
+```
+
+The walkable tiles beside an object's footprint (north, south, east and west of it) with no wall between them and the object, read from live collision: where a player can stand to use it. A ground decoration (a trapdoor, say) also counts its own tiles when they are walkable. Nil for walls and wall decorations, whose reach works differently, and for an object on another plane.
+
+Example:
+
+```luau
+for _, t in ipairs(Objects.stand_tiles(loc) or {}) do
+	print(t.x, t.y)
+end
+```
+
+## Objects.plain_walk
+
+Definition:
+
+```luau
+function Objects.plain_walk(loc: Loc): boolean
+```
+
+Whether one click on the object walks all the way to it: one of its `stand_tiles` (the `Clickbox.STAND_CANDIDATES` nearest) is reached with no door, climb or shortcut (`Walker.plain_walk`). A tile next to the object across a wall doesn't count. For objects without stand tiles it is `Walker.plain_walk` to within 1 tile of the object.
+
+Example:
+
+```luau
+if Objects.plain_walk(loc) then
+	Objects.interact(loc, "Cook")
+end
+```
+
 ## Objects.approach
 
 Definition:
@@ -241,7 +277,7 @@ Definition:
 function Objects.approach(loc: Loc, options: string | { string }, opts: Clickbox.Approach?): boolean
 ```
 
-Walks towards the object and picks the first available of `options`, clicking early once close (see `Clickbox.approach`).
+Walks towards the object and picks the first available of `options`, clicking early once close (see `Clickbox.approach`). Unless `opts.stand` is given, it passes `Objects.stand_tiles(loc)`, so a game object or ground decoration behind a wall or a counter is walked round to, through doors.
 
 Example:
 

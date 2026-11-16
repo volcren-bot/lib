@@ -66,7 +66,26 @@ function Draw.line(a: Point, b: Point, color: Color?)
 	end
 end
 
-function Draw.lines(segments: { { Point } }, color: Color?)
+local function widened(segments: { { Point } }, width: number): { { Point } }
+	local reach = math.floor((width - 1) / 2)
+	local out = {}
+	for dx = -reach, width - 1 - reach do
+		for dy = -reach, width - 1 - reach do
+			for _, s in ipairs(segments) do
+				table.insert(out, {
+					{ x = s[1].x + dx, y = s[1].y + dy },
+					{ x = s[2].x + dx, y = s[2].y + dy },
+				})
+			end
+		end
+	end
+	return out
+end
+
+function Draw.lines(segments: { { Point } }, color: Color?, width: number?)
+	if width and width > 1 then
+		segments = widened(segments, width)
+	end
 	local c = color or Draw.RED
 	if batch then
 		for _, s in ipairs(segments) do

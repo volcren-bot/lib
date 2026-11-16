@@ -100,9 +100,9 @@ Draw.line({ x = 0, y = 0 }, { x = 200, y = 100 }, Draw.MAGENTA)
 
 Definition:
 ```luau
-function Draw.lines(segments: { { Point } }, color: Color?)
+function Draw.lines(segments: { { Point } }, color: Color?, width: number?)
 ```
-Many point-pair segments in one call; much faster than looping `Draw.line`.
+Many point-pair segments in one call; much faster than looping `Draw.line`. A `width` above 1 draws each segment that many pixels thick (as width × width offset copies).
 
 Example:
 ```luau

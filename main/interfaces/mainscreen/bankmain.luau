@@ -125,7 +125,6 @@ local OPEN_TIMEOUT_MS = 2400
 local POLL_MS = 50
 local OBJECT_NAMES = table.freeze({ "Bank booth", "Bank chest" })
 local OBJECT_OPTIONS = table.freeze({ "Bank", "Use" })
-local NPC_NAMES = table.freeze({ "Banker" })
 local NPC_OPTIONS = table.freeze({ "Bank" })
 
 export type Button =
@@ -289,6 +288,15 @@ local function walk_cost(at: Tile, plane: number?): number?
 	return cost
 end
 
+function Bankmain.is_banker(npc: Npc): boolean
+	for _, option in ipairs(Npcs.options(npc.id) or {}) do
+		if table.find(NPC_OPTIONS, option) then
+			return true
+		end
+	end
+	return false
+end
+
 function Bankmain.nearest(): Source?
 	local me = Walker.position()
 	if me == nil then
@@ -304,8 +312,8 @@ function Bankmain.nearest(): Source?
 			)
 		end
 	end
-	for _, name in ipairs(NPC_NAMES) do
-		for _, npc in ipairs(Npcs.find(name) or {}) do
+	for _, npc in ipairs(Npcs.find() or {}) do
+		if Bankmain.is_banker(npc) then
 			table.insert(
 				candidates,
 				{ source = { loc = nil, npc = npc }, straight = Npcs.distance(npc, me), plane = nil }
