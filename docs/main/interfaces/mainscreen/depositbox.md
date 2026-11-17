@@ -246,7 +246,7 @@ Definition:
 ```luau
 function DepositBox.deposit(item: Item, quantity: number?, use_quantity_buttons: boolean?): boolean
 ```
-Deposits `quantity` (all when `nil` or 0 or less) of `item` from a random one of its slots. With `use_quantity_buttons` (default) it sets the quantity button then clicks; otherwise it uses the slot menu (`Deposit-N`, `Deposit-All`, or `Deposit-X` and types the amount). `false` when none is held.
+Deposits `quantity` (all when `nil` or 0 or less) of `item` from a random one of its slots. With `use_quantity_buttons` (default) it sets the quantity button then clicks; otherwise it uses the slot menu (`Deposit-N`, `Deposit-All`, or `Deposit-X` and types the amount). A typed amount is checked against the inventory, because keystrokes can be lost when the client window isn't focused: whatever didn't deposit is then deposited in steps of 10, 5 and 1 with no typing. `false` when none is held or a step fails.
 
 Example:
 ```luau

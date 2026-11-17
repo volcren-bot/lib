@@ -60,6 +60,12 @@ local POLL_MS = 50
 local SELECT_TIMEOUT_MS = 1800
 local CLOSE_TIMEOUT_MS = 600
 local ENTER_AMOUNT_TIMEOUT_MS = 2500
+local DEPOSITED_TIMEOUT_MS = 1800
+local STEPS: { { amount: number, quantity: Quantity } } = {
+	{ amount = 10, quantity = "TEN" },
+	{ amount = 5, quantity = "FIVE" },
+	{ amount = 1, quantity = "ONE" },
+}
 
 export type Deposit = {
 	item: Item,
@@ -328,16 +334,59 @@ local function deposit_slot(slot: number, amount: number, use_quantity_buttons: 
 	return Chat.answer_query("Enter amount", tostring(amount), ENTER_AMOUNT_TIMEOUT_MS) or false
 end
 
+local function wait_deposited(item: Item, from: number, wanted: number): number
+	local left = from
+	Widgets.wait_until(function(): boolean
+		left = items.count_ex(item) or 0
+		return from - left >= wanted
+	end, DEPOSITED_TIMEOUT_MS)
+	return from - left
+end
+
+local function deposit_in_steps(item: Item, amount: number, use_quantity_buttons: boolean): boolean
+	local remaining = amount
+	for _, step in ipairs(STEPS) do
+		while remaining >= step.amount do
+			local slots = items.indices_of(item)
+			if slots == nil or #slots == 0 then
+				return false
+			end
+			local before = items.count_ex(item) or 0
+			if not deposit_slot(slots[math.random(1, #slots)], step.amount, use_quantity_buttons) then
+				return false
+			end
+			local done = wait_deposited(item, before, math.min(step.amount, before))
+			if done <= 0 then
+				return false
+			end
+			remaining -= done
+		end
+	end
+	return true
+end
+
 function DepositBox.deposit(item: Item, quantity: number?, use_quantity_buttons: boolean?): boolean
 	local slots = items.indices_of(item)
 	if slots == nil or #slots == 0 then
 		return false
 	end
-	return deposit_slot(
-		slots[math.random(1, #slots)],
-		quantity or DepositBox.QUANTITY_ALL,
-		use_quantity_buttons ~= false
-	)
+	local amount = quantity or DepositBox.QUANTITY_ALL
+	local buttons = use_quantity_buttons ~= false
+	local slot = slots[math.random(1, #slots)]
+	if DepositBox.quantity_of(amount) ~= "CUSTOM" then
+		return deposit_slot(slot, amount, buttons)
+	end
+	local before = items.count_ex(item) or 0
+	local wanted = math.min(amount, before)
+	if deposit_slot(slot, amount, buttons) then
+		local done = wait_deposited(item, before, wanted)
+		if done >= wanted then
+			return true
+		end
+		wanted -= done
+	end
+	Log.log("DepositBox", `depositing {amount} didn't take, depositing the last {wanted} in steps of 10, 5 and 1`)
+	return deposit_in_steps(item, wanted, buttons)
 end
 
 local function as_deposit(entry: Entry): Deposit
