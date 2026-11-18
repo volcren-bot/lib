@@ -1,6 +1,5 @@
 --!strict
 local Host = require("@lib/host")
-local widget = Host.widget
 local widget_children = Host.widget_children
 type Widget = Host.Widget
 type Loc = Host.Loc
@@ -17,12 +16,13 @@ local Widgets = require("@lib/main/interfaces/widgets")
 
 local Spirittree = {}
 
-Spirittree.GROUP = 187
-Spirittree.TITLE = 0
-Spirittree.TITLE_INDEX = 1
+Spirittree.GROUP = 947
+Spirittree.TITLE = 3
+Spirittree.TITLE_INDEX = 3
 Spirittree.TITLE_TEXT = "Spirit Tree Locations"
-Spirittree.LIST = 3
-Spirittree.CLOSE = 4
+Spirittree.LIST = 9
+Spirittree.CLOSE = 3
+Spirittree.CLOSE_INDEX = 4
 Spirittree.LOCKED_COLOUR = "5f5f5f"
 Spirittree.CANCEL = "Cancel"
 Spirittree.OBJECT = "Spirit tree"
@@ -224,11 +224,15 @@ function Spirittree.select(place: Place, key_probability: number?): string?
 end
 
 function Spirittree.close_button(): Widget?
-	local w = widget(Spirittree.GROUP, Spirittree.CLOSE)
-	if w == nil or w.hidden or not Spirittree.is_open() then
+	if not Spirittree.is_open() then
 		return nil
 	end
-	return w
+	for _, child in ipairs(widget_children(Spirittree.GROUP, Spirittree.CLOSE) or {}) do
+		if child.index == Spirittree.CLOSE_INDEX and not child.hidden then
+			return child
+		end
+	end
+	return nil
 end
 
 function Spirittree.close(key_probability: number?): boolean

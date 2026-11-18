@@ -15,9 +15,10 @@ local Widgets = require("@lib/main/interfaces/widgets")
 
 local Obelisk = {}
 
-Obelisk.GROUP = 187
-Obelisk.LIST = 3
-Obelisk.CLOSE = 4
+Obelisk.GROUP = 947
+Obelisk.LIST = 9
+Obelisk.CLOSE = 3
+Obelisk.CLOSE_INDEX = 4
 Obelisk.OBJECT = "Obelisk"
 Obelisk.SET = "Set Destination"
 Obelisk.TELEPORT = "Teleport to Destination"
@@ -123,7 +124,12 @@ end
 
 function Obelisk.close(): boolean
 	return Toplevel.close(Obelisk.GROUP, function(): Widget?
-		return Host.widget(Obelisk.GROUP, Obelisk.CLOSE)
+		for _, child in ipairs(widget_children(Obelisk.GROUP, Obelisk.CLOSE) or {}) do
+			if child.index == Obelisk.CLOSE_INDEX and not child.hidden then
+				return child
+			end
+		end
+		return nil
 	end)
 end
 

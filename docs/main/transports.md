@@ -93,7 +93,7 @@ Usable means the row's varbit tests hold, its skills, quests and items are met (
 | `UNLOCK_DRAGONTOOTH` | Taken as met until refused: paying the ghost captain 500 tokens sets nothing visible under any variable name found. |
 | `UNLOCK_XERICS_HONOUR` | The same, for an ancient tablet used on a talisman. The talisman itself is still needed. |
 
-A trip taken on that assumption and refused is left out for `RETRY_AFTER_MS`, and a walk with no other way then raises its error. `UNLOCK_CANOE_AXE` has its own rule (`Transports.canoe`), and `UNLOCK_BALLOON_LOG_BASKET` stays unmet: balloons use logs held, or `BALLOON_STORAGE`.
+A trip taken on that assumption and refused is left out for `RETRY_AFTER_MS`, and a walk with no other way then raises its error. An unlock in `Transports.UNLOCK_REFUSALS` is refused by its own text: when a teleport item's row needs it and a dialogue shows that text, `Transports.use_item` closes the dialogue and every row needing the unlock is left out for the rest of the run. Xeric's talisman lists Xeric's Honour whether it is unlocked or not (the "Rub" submenu, and the list "Rub" opens); picking it without the unlock does nothing but open the message box (`Chatbox.MESSAGEBOX`) "The talisman does not have the power to take you there." a tick later, and the box stays until dismissed. `UNLOCK_CANOE_AXE` has its own rule (`Transports.canoe`), and `UNLOCK_BALLOON_LOG_BASKET` stays unmet: balloons use logs held, or `BALLOON_STORAGE`.
 
 Example:
 ```luau
@@ -424,10 +424,10 @@ Uses a teleport item (`kind = "item"`: jewellery, capes, crystals, tablets; the 
 
 1. The item's own menu names it (a crystal's "Lletya"): that option is clicked.
 2. A submenu of the item's right-click menu lists it (the minimenu's "Rub" > "Burthorpe"): picked there. This is the quicker way, so it is taken with probability `ITEM_SUBMENU_BASE` (0.7) plus the rest weighted by the account's `Biometrics.CHOOSEOPTION`.
-3. Otherwise, or when the biometrics say so, the submenu's option is clicked and the dialogue it opens is answered (by key, else by click if the key doesn't take). If the option opens no dialogue within `ITEM_DIALOGUE_MS` (the max cape's list), the submenu is used after all.
+3. Otherwise, or when the biometrics say so, the submenu's option is clicked and the dialogue it opens is answered (by key, else by click if the key doesn't take), or the place is clicked in the list it opens (the generic `menu_new` list read by `Mounted`: Xeric's talisman's, the Construction cape's). If the option opens neither within `ITEM_DIALOGUE_MS` (the max cape's list), the submenu is used after all.
 4. An item with no destination to name ("Teleport", "Break", "Weiss") has its option clicked.
 
-Waits `ITEM_TIMEOUT_MS` to land. The second result is true when trying again is pointless (item not held, destination not offered). The planner (`choose`) prices an item by the data's `Duration`, `ITEM_SLACK_TICKS`, and for a consumable one `ITEM_CHARGE_TICKS` more, so a charge isn't spent on a short hop; items are off with `Transports.ITEMS = false` or `exclude = { items = true }` (or an item's name). The player's house teleports are left out, the Wilderness follows the rule under `Transports.choose`, and the capes' `Max ...` skill rows are not tested (holding the cape is the proof).
+Waits `ITEM_TIMEOUT_MS` to land. The second result is true when trying again is pointless (item not held, destination not offered, or an unlock in `UNLOCK_REFUSALS` was refused, see **Unlocks** under `Transports.choose`). The planner (`choose`) prices an item by the data's `Duration`, `ITEM_SLACK_TICKS`, and for a consumable one `ITEM_CHARGE_TICKS` more, so a charge isn't spent on a short hop; items are off with `Transports.ITEMS = false` or `exclude = { items = true }` (or an item's name). The player's house teleports are left out, the Wilderness follows the rule under `Transports.choose`, and the capes' `Max ...` skill rows are not tested (holding the cape is the proof).
 
 Example:
 ```luau

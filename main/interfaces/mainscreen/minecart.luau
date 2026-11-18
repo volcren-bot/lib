@@ -1,6 +1,5 @@
 --!strict
 local Host = require("@lib/host")
-local widget = Host.widget
 local widget_children = Host.widget_children
 type Widget = Host.Widget
 type Loc = Host.Loc
@@ -17,12 +16,13 @@ local Widgets = require("@lib/main/interfaces/widgets")
 
 local Minecart = {}
 
-Minecart.GROUP = 187
-Minecart.TITLE = 0
-Minecart.TITLE_INDEX = 1
+Minecart.GROUP = 947
+Minecart.TITLE = 3
+Minecart.TITLE_INDEX = 3
 Minecart.TITLE_PREFIX = "Minecart rides"
-Minecart.LIST = 3
-Minecart.CLOSE = 4
+Minecart.LIST = 9
+Minecart.CLOSE = 3
+Minecart.CLOSE_INDEX = 4
 Minecart.LOCKED_COLOUR = "5f5f5f"
 Minecart.CANCEL = "(Cancel)"
 Minecart.OBJECT = "Minecart"
@@ -216,11 +216,15 @@ function Minecart.select(stop: Stop, key_probability: number?): string?
 end
 
 function Minecart.close_button(): Widget?
-	local w = widget(Minecart.GROUP, Minecart.CLOSE)
-	if w == nil or w.hidden or not Minecart.is_open() then
+	if not Minecart.is_open() then
 		return nil
 	end
-	return w
+	for _, child in ipairs(widget_children(Minecart.GROUP, Minecart.CLOSE) or {}) do
+		if child.index == Minecart.CLOSE_INDEX and not child.hidden then
+			return child
+		end
+	end
+	return nil
 end
 
 function Minecart.close(key_probability: number?): boolean

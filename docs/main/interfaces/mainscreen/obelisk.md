@@ -1,6 +1,6 @@
 # Main.Interfaces.Mainscreen.Obelisk
 
-The Wilderness obelisks: four stones around a 3 x 3 grid; activating one teleports everyone on the grid. A known landing needs "Set Destination" (Wilderness hard diary), a row of the list (group 187, the generic `menu` list), then "Teleport to Destination" from the grid; plain "Activate" is random, so the chooser skips the network without the diary. Another player activating first decides for everyone. House obelisks aren't supported.
+The Wilderness obelisks: four stones around a 3 x 3 grid; activating one teleports everyone on the grid. A known landing needs "Set Destination" (Wilderness hard diary), a row of the list (group 947, the generic `menu_new` list), then "Teleport to Destination" from the grid; plain "Activate" is random, so the chooser skips the network without the diary. Another player activating first decides for everyone. House obelisks aren't supported.
 
 ```luau
 local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
@@ -10,9 +10,10 @@ local Obelisk = require("@lib/main/interfaces/mainscreen/obelisk")
 
 Definition:
 ```luau
-Obelisk.GROUP = 187
-Obelisk.LIST = 3
-Obelisk.CLOSE = 4
+Obelisk.GROUP = 947
+Obelisk.LIST = 9
+Obelisk.CLOSE = 3
+Obelisk.CLOSE_INDEX = 4
 Obelisk.OBJECT = "Obelisk"
 Obelisk.SET = "Set Destination"
 Obelisk.TELEPORT = "Teleport to Destination"

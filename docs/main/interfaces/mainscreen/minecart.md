@@ -1,6 +1,6 @@
 # Main.Interfaces.Mainscreen.Minecart
 
-The Lovakengj minecart stop list, opened by "Travel" on a minecart. It is the generic list group 187, told apart by a title starting "Minecart rides" (the rest is the fare). Rows read `<col=735a28>K</col>: Name` followed by a Cancel row, and are chosen by click or by key (1 to 9, then A, B, ...); keys depend on the list, so pick stops by name. The current stop is listed and isn't told apart; no locked stop has been observed, but rows in `LOCKED_COLOUR` are marked unavailable.
+The Lovakengj minecart stop list, opened by "Travel" on a minecart. It is the generic list group 947 (`menu_new`), told apart by a title starting "Minecart rides" (the rest is the fare). Rows read `<col=ffffff>K</col>: Name` in two columns, followed by a Cancel row, and are chosen by click or by key (1 to 9, then A, B, ...); keys depend on the list, so pick stops by name. The current stop is listed and isn't told apart; no locked stop has been observed, but rows in `LOCKED_COLOUR` are marked unavailable.
 
 ```luau
 local Minecart = require("@lib/main/interfaces/mainscreen/minecart")
@@ -12,12 +12,13 @@ A `Destination` has `key`, `name`, `available` and `row` (the row widget).
 
 Definition:
 ```luau
-Minecart.GROUP = 187
-Minecart.TITLE = 0
-Minecart.TITLE_INDEX = 1
+Minecart.GROUP = 947
+Minecart.TITLE = 3
+Minecart.TITLE_INDEX = 3
 Minecart.TITLE_PREFIX = "Minecart rides"
-Minecart.LIST = 3
-Minecart.CLOSE = 4
+Minecart.LIST = 9
+Minecart.CLOSE = 3
+Minecart.CLOSE_INDEX = 4
 Minecart.LOCKED_COLOUR = "5f5f5f"
 Minecart.CANCEL = "(Cancel)"
 Minecart.OBJECT = "Minecart"
@@ -36,7 +37,7 @@ Definition:
 ```luau
 function Minecart.is_open(): boolean
 ```
-Whether group 187 is open with the minecart title.
+Whether group 947 is open with the minecart title.
 
 ## Minecart.wait_open
 
