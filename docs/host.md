@@ -184,15 +184,29 @@ print(Host.wait_item_change(30000))
 
 Definition:
 ```luau
-Host.on_packet: (opcodes: { number }, callback: (packet: Packet) -> (), sent: boolean?) -> number
+Host.on_packet: (packets: { number | PacketName }, callback: (packet: Packet) -> (), sent: boolean?) -> number
 ```
-Calls `callback` for each received server packet with an opcode (0 to 255) in `opcodes`, or each sent client packet when `sent` is true; returns an id for `Host.off_packet`. A packet has `opcode`, `sent`, `length`, `payload` (first 104 bytes as a string), `time_ms`, `sequence`. Callbacks run only while sleeping or waiting; the client keeps the last 4096 packets, so long busy stretches drop some. Server packet 2 is the game tick.
+Calls `callback` for each received server packet in `packets`, or each sent client packet when `sent` is true; returns an id for `Host.off_packet`. Give a packet by name or by opcode (0 to 255). Game updates change opcodes and the order of the bytes inside a packet, so use names; raw opcodes are for exploring. A name this client doesn't have is an error: check `Host.packet_opcode` first when a script can go on without it. Names are server packets only.
+
+A packet has `opcode`, `sent`, `length`, `payload` (first 104 bytes as a string), `time_ms`, `sequence`, and for a named received packet its `name` and decoded `fields` (`nil` if the payload is cut short):
+
+| Name | `fields` |
+| --- | --- |
+| `TICK` | none; one per game tick |
+| `VARP_SMALL`, `VARP_LARGE` | `id`, `value` |
+| `SYNTH_SOUND` | `id`, `loops`, `delay` |
+| `MESSAGE_GAME` | `type`, `name` (only when the message has one), `text`; text past the first 104 payload bytes is cut |
+
+Callbacks run only while sleeping or waiting; the client keeps the last 4096 packets, so long busy stretches drop some.
 
 Example:
 ```luau
 local ticks = 0
-Host.on_packet({ 2 }, function()
+Host.on_packet({ "TICK" }, function()
 	ticks += 1
+end)
+Host.on_packet({ "SYNTH_SOUND" }, function(packet)
+	print(`sound {(packet.fields :: { [string]: number }).id}`)
 end)
 Host.sleep(6000)
 print(ticks) -- about 10
@@ -210,14 +224,29 @@ Removes a callback from `Host.on_packet`; returns whether it existed.
 
 Definition:
 ```luau
-Host.wait_packet: (opcodes: { number }, ms: number, sent: boolean?) -> Packet?
+Host.wait_packet: (packets: { number | PacketName }, ms: number, sent: boolean?) -> Packet?
 ```
-Waits up to `ms` for a packet in `opcodes` that arrives after the call and returns it; nil on timeout. Runs pending callbacks while waiting.
+Waits up to `ms` for a packet in `packets` (names or opcodes, as in `Host.on_packet`) that arrives after the call and returns it; nil on timeout. Runs pending callbacks while waiting.
 
 Example:
 ```luau
-if Host.wait_packet({ 2 }, 1200) then
+if Host.wait_packet({ "TICK" }, 1200) then
 	print("new tick")
+end
+```
+
+## Host.packet_opcode
+
+Definition:
+```luau
+Host.packet_opcode: (name: PacketName) -> number?
+```
+This client's opcode for a named server packet, or nil when the agent couldn't find it in this client. Errors without a client or before the agent has read the client's packets.
+
+Example:
+```luau
+if Host.packet_opcode("SYNTH_SOUND") == nil then
+	print("no sound packets in this client")
 end
 ```
 
@@ -928,7 +957,7 @@ Your server tile and whether the server moved you this tick, tracked per packet 
 
 Example:
 ```luau
-while Host.wait_packet({ 2 }, 1200) do
+while Host.wait_packet({ "TICK" }, 1200) do
 	print((Host.movement() or {}).moving)
 end
 ```

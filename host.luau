@@ -424,6 +424,8 @@ export type ItemChange = {
 	new_quantity: number,
 }
 
+export type PacketName = "TICK" | "VARP_SMALL" | "VARP_LARGE" | "SYNTH_SOUND" | "MESSAGE_GAME"
+
 export type Packet = {
 	sequence: number,
 	time_ms: number,
@@ -431,6 +433,8 @@ export type Packet = {
 	opcode: number,
 	length: number,
 	payload: string,
+	name: PacketName?,
+	fields: { [string]: number | string }?,
 }
 
 export type ServerTile = {
@@ -803,9 +807,14 @@ return {
 	on_item_change = g.on_item_change :: ((change: ItemChange) -> ()) -> number,
 	off_item_change = g.off_item_change :: (id: number) -> boolean,
 	wait_item_change = g.wait_item_change :: (ms: number) -> boolean,
-	on_packet = g.on_packet :: (opcodes: { number }, callback: (packet: Packet) -> (), sent: boolean?) -> number,
+	on_packet = g.on_packet :: (
+		packets: { number | PacketName },
+		callback: (packet: Packet) -> (),
+		sent: boolean?
+	) -> number,
 	off_packet = g.off_packet :: (id: number) -> boolean,
-	wait_packet = g.wait_packet :: (opcodes: { number }, ms: number, sent: boolean?) -> Packet?,
+	wait_packet = g.wait_packet :: (packets: { number | PacketName }, ms: number, sent: boolean?) -> Packet?,
+	packet_opcode = g.packet_opcode :: (name: PacketName) -> number?,
 	project = g.project :: (
 		points: { FinePoint },
 		shift: { x: number, y: number, plane: number? }?,

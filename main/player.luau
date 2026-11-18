@@ -142,8 +142,6 @@ local function fine(): (number?, number?)
 	return p.local_x, p.local_y
 end
 
-local TICK_PACKET = 2
-
 function Player.is_moving(sample_ms: number?): boolean
 	local movement = Host.movement()
 	if movement ~= nil then
@@ -359,6 +357,9 @@ function Player.wait_still(timeout_ms: number?): boolean
 	end
 end
 
+local TICK_MS = 600
+local TICK_WAIT_MS = 2 * TICK_MS
+
 function Player.wait_server_still(timeout_ms: number?): boolean
 	local timeout = timeout_ms or Player.WALK_TIMEOUT
 	local started = time()
@@ -375,7 +376,11 @@ function Player.wait_server_still(timeout_ms: number?): boolean
 			Log.log("Player", `the server was still moving the player after {timeout} ms`)
 			return false
 		end
-		Host.wait_packet({ TICK_PACKET }, math.min(left, 1200))
+		if Host.packet_opcode("TICK") then
+			Host.wait_packet({ "TICK" }, math.min(left, TICK_WAIT_MS))
+		else
+			sleep(math.min(left, TICK_MS))
+		end
 	end
 end
 

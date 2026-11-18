@@ -2,7 +2,7 @@
 local Host = require("@lib/host")
 
 local last: number? = nil
-Host.on_packet({ 2 }, function(packet)
+Host.on_packet({ "TICK" }, function(packet)
 	local since = if last then ` (+{packet.time_ms - last} ms)` else ""
 	last = packet.time_ms
 	local m = Host.movement()
