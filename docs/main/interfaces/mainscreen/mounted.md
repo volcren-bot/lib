@@ -1,6 +1,6 @@
 # Main.Interfaces.Mainscreen.Mounted
 
-Teleports from house-mounted pieces, named by `Kind`: `"glory"`, `"cape"` (mythical cape), `"talisman"` (Xeric's) and `"digsite"` (pendant). Trips are free. The glory offers places as options and the cape's "Teleport" has one place; the talisman and pendant list theirs under "Teleport menu" (group 187, the generic `menu` list). Configurable first options and "Remove" are never used. `Transports.house` builds on this.
+Teleports from house-mounted pieces, named by `Kind`: `"glory"`, `"cape"` (mythical cape), `"talisman"` (Xeric's) and `"digsite"` (pendant). Trips are free. The glory offers places as options and the cape's "Teleport" has one place; the talisman and pendant list theirs under "Teleport menu" (group 947, the generic `menu_new` list). Configurable first options and "Remove" are never used. `Transports.house` builds on this, and `Transports.use_item` reads the same list when a teleport item opens it (Xeric's talisman's "Rub", the Construction cape's "Teleport").
 
 ```luau
 local Mounted = require("@lib/main/interfaces/mainscreen/mounted")
@@ -12,7 +12,7 @@ Definition:
 ```luau
 function Mounted.is_open(): boolean
 ```
-Whether group 187 is open. Other lists share it, so this is only meaningful after opening one of these.
+Whether group 947 is open. Other lists share it, so this is only meaningful after opening one of these.
 
 Example:
 ```luau

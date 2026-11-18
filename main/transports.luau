@@ -46,6 +46,9 @@ Transports.UNLOCKS = {
 	UNLOCK_DRAGONTOOTH = true,
 	UNLOCK_XERICS_HONOUR = true,
 } :: { [string]: { varbit: number, at_least: number } | true }
+Transports.UNLOCK_REFUSALS = {
+	UNLOCK_XERICS_HONOUR = "The talisman does not have the power to take you there.",
+} :: { [string]: string }
 Transports.WORN_GROUPS = { "CROSSBOW", "MITH_GRAPPLE", "CLIMBING_BOOTS" }
 Transports.WEAR_OPTIONS = { "Wield", "Wear", "Equip" }
 Transports.WEAR_TIMEOUT_MS = 2500
@@ -390,13 +393,16 @@ local function warn_note(text: string)
 	end
 end
 
+local refused_unlocks: { [string]: boolean } = {}
+
 local function unlocked(token: ItemToken): boolean?
-	local unlock = Transports.UNLOCKS[string.match(token.text, "^[%w_]+") or ""]
+	local key = string.match(token.text, "^[%w_]+") or ""
+	local unlock = Transports.UNLOCKS[key]
 	if unlock == nil then
 		return nil
 	end
 	if unlock == true then
-		return true
+		return not refused_unlocks[key]
 	end
 	local now = Host.varbit(unlock.varbit)
 	return now ~= nil and now >= unlock.at_least
@@ -2475,17 +2481,30 @@ end
 
 local function close_dialogue(): boolean
 	local ChatOptions = lib("@lib/main/interfaces/chatbox/chat_options")
+	local Chatbox = lib("@lib/main/interfaces/chatbox/chatbox")
 	local Keyboard = lib("@lib/utils/input/keyboard")
-	for _ = 1, 3 do
+	local function closed(): boolean
 		local lines = ChatOptions.get()
-		if lines == nil or #lines == 0 then
+		return (lines == nil or #lines == 0) and not Chatbox.is_open(Chatbox.MESSAGEBOX)
+	end
+	for _ = 1, 3 do
+		if closed() then
 			return true
 		end
 		Keyboard.key_press(Keyboard.keys.ESCAPE)
 		sleep(600)
 	end
-	local lines = ChatOptions.get()
-	return lines == nil or #lines == 0
+	return closed()
+end
+
+local function refused_unlock(t: Transport): string?
+	local Chatbox = lib("@lib/main/interfaces/chatbox/chatbox")
+	for key, text in pairs(Transports.UNLOCK_REFUSALS) do
+		if string.find(t.items, key, 1, true) ~= nil and string.find(Chatbox.text() or "", text, 1, true) ~= nil then
+			return key
+		end
+	end
+	return nil
 end
 
 local function find_in_submenus(module: any, slot: number, label: string): (string?, string?)
@@ -2523,6 +2542,8 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 	local Player = lib("@lib/main/player")
 	local ChatOptions = lib("@lib/main/interfaces/chatbox/chat_options")
 	local Interact = lib("@lib/main/interact")
+	local Mounted = lib("@lib/main/interfaces/mainscreen/mounted")
+	local Toplevel = lib("@lib/main/interfaces/mainscreen/toplevel")
 	local t = choice.transport
 	local to = t.destination :: Host.TransportTile
 	local label = choice.option
@@ -2609,6 +2630,31 @@ function Transports.use_item(choice: Choice): (boolean, boolean?)
 				return true, nil
 			end
 			last = now
+		end
+		local refused = refused_unlock(t)
+		if refused ~= nil then
+			refused_unlocks[refused] = true
+			Log.log("Transports", `{t.name}: refused, {refused} isn't unlocked, left out for this run`)
+			close_dialogue()
+			return false, true
+		end
+		if label ~= nil and Mounted.is_open() then
+			seen_dialogue = true
+			local names: { string } = {}
+			local destinations: { { name: string } } = Mounted.destinations() or {}
+			for _, d in ipairs(destinations) do
+				table.insert(names, d.name)
+			end
+			local name = best_line(names, parts[#parts])
+			if name == nil then
+				Log.log("Transports", `{t.name}: the list ({table.concat(names, ", ")}) has no "{label}"`)
+				Toplevel.escape_clear()
+				return false, true
+			end
+			if not Mounted.select(name) then
+				Toplevel.escape_clear()
+				return false, nil
+			end
 		end
 		local lines: { { text: string } }? = ChatOptions.get()
 		local shown = ChatOptions.to_string(lines) or ""

@@ -1,7 +1,6 @@
 --!strict
 local Host = require("@lib/host")
 local sleep = Host.sleep
-local widget = Host.widget
 local widget_children = Host.widget_children
 type Widget = Host.Widget
 local Chat = require("@lib/main/interfaces/chatbox/chat")
@@ -14,9 +13,10 @@ local Widgets = require("@lib/main/interfaces/widgets")
 
 local Mounted = {}
 
-Mounted.GROUP = 187
-Mounted.LIST = 3
-Mounted.CLOSE = 4
+Mounted.GROUP = 947
+Mounted.LIST = 9
+Mounted.CLOSE = 3
+Mounted.CLOSE_INDEX = 4
 Mounted.LOCKED_COLOUR = "5f5f5f"
 Mounted.MENU_OPTION = "Teleport menu"
 Mounted.CAPE_OPTION = "Teleport"
@@ -81,7 +81,12 @@ end
 
 function Mounted.close(): boolean
 	return Toplevel.close(Mounted.GROUP, function(): Widget?
-		return widget(Mounted.GROUP, Mounted.CLOSE)
+		for _, child in ipairs(widget_children(Mounted.GROUP, Mounted.CLOSE) or {}) do
+			if child.index == Mounted.CLOSE_INDEX and not child.hidden then
+				return child
+			end
+		end
+		return nil
 	end)
 end
 

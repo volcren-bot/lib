@@ -1,6 +1,6 @@
 # Main.Interfaces.Mainscreen.Spirittree
 
-The spirit tree travel list: group 187 (the generic `menu` list) titled "Spirit Tree Locations", opened with "Travel" on a spirit tree or "Tree" on a house Spiritual Fairy Tree. Each row reads `K: Name` and is chosen by click or by its key (1-9, then A, B, ...); keys depend on the list, so pick by name. Locked places are drawn grey but still clickable, so `available` comes from the colour. The list also shows your current place, which is not marked.
+The spirit tree travel list: group 947 (the generic `menu_new` list) titled "Spirit Tree Locations", opened with "Travel" on a spirit tree or "Tree" on a house Spiritual Fairy Tree. Each row reads `K: Name` and is chosen by click or by its key (1-9, then A, B, ...); keys depend on the list, so pick by name. Locked places are drawn grey but still clickable, so `available` comes from the colour. The list also shows your current place, which is not marked.
 
 A `Destination` has `key`, `name`, `available` and `row` (the widget to click).
 
@@ -12,12 +12,13 @@ local Spirittree = require("@lib/main/interfaces/mainscreen/spirittree")
 
 Definition:
 ```luau
-Spirittree.GROUP = 187
-Spirittree.TITLE = 0
-Spirittree.TITLE_INDEX = 1
+Spirittree.GROUP = 947
+Spirittree.TITLE = 3
+Spirittree.TITLE_INDEX = 3
 Spirittree.TITLE_TEXT = "Spirit Tree Locations"
-Spirittree.LIST = 3
-Spirittree.CLOSE = 4
+Spirittree.LIST = 9
+Spirittree.CLOSE = 3
+Spirittree.CLOSE_INDEX = 4
 Spirittree.LOCKED_COLOUR = "5f5f5f"
 Spirittree.CANCEL = "Cancel"
 Spirittree.OBJECT = "Spirit tree"
