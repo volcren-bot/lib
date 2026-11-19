@@ -60,6 +60,22 @@ local quad = Projection.tile(assert(Walker.relative(1, 0)))
 print(quad and quad.top.x)
 ```
 
+## Projection.tiles
+
+Definition:
+```luau
+function Projection.tiles(tiles: { Tile }, height: number?): { Quad? }
+```
+`Projection.tile` for many tiles in one projection call, in the same order; use it to draw areas, where projecting tile by tile costs a host call each. Empty when the scene base is unknown.
+
+Example:
+```luau
+local Walker = require("@lib/main/walker")
+
+local quads = Projection.tiles({ assert(Walker.relative(1, 0)), assert(Walker.relative(2, 0)) })
+print(#quads)
+```
+
 ## Projection.cuboid
 
 Definition:

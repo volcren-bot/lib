@@ -61,8 +61,9 @@ function DebugDraw.outline(tiles: { Tile }, color: Draw.Color, width: number?)
 		inside[key(t.x, t.y)] = true
 	end
 	local segments: { { Point } } = {}
-	for _, t in ipairs(tiles) do
-		local quad = Projection.tile(t)
+	local quads = Projection.tiles(tiles)
+	for i, t in ipairs(tiles) do
+		local quad = quads[i]
 		if quad then
 			local sw, nw, ne, se = quad.top, quad.right, quad.bottom, quad.left
 			if not inside[key(t.x - 1, t.y)] then

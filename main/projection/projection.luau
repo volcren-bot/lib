@@ -100,6 +100,34 @@ function Projection.tile(tile: Tile, height: number?, at: Tile?): Quad?
 	return Quad.new(corners[1], corners[2], corners[3], corners[4])
 end
 
+function Projection.tiles(tiles: { Tile }, height: number?): { Quad? }
+	local quads: { Quad? } = {}
+	local base = Projection.base()
+	if base == nil or #tiles == 0 then
+		return quads
+	end
+	local z = -(height or 0)
+	local points: { FinePoint } = {}
+	for _, tile in ipairs(tiles) do
+		local x = (tile.x - base.x) * Projection.TILE
+		local y = (tile.y - base.y) * Projection.TILE
+		local on = { x = tile.x - base.x, y = tile.y - base.y }
+		table.insert(points, { x = x, y = y, z = z, tile = on })
+		table.insert(points, { x = x, y = y + Projection.TILE, z = z, tile = on })
+		table.insert(points, { x = x + Projection.TILE, y = y + Projection.TILE, z = z, tile = on })
+		table.insert(points, { x = x + Projection.TILE, y = y, z = z, tile = on })
+	end
+	local corners = Projection.points(points)
+	if corners == nil then
+		return quads
+	end
+	for i = 1, #tiles do
+		local k = (i - 1) * 4
+		quads[i] = Quad.new(corners[k + 1], corners[k + 2], corners[k + 3], corners[k + 4])
+	end
+	return quads
+end
+
 export type Cuboid = {
 	bottom: Quad,
 	top: Quad,

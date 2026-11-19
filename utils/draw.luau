@@ -86,15 +86,13 @@ end
 
 local function widened(segments: { { Point } }, width: number): { { Point } }
 	local reach = math.floor((width - 1) / 2)
-	local out = {}
-	for dx = -reach, width - 1 - reach do
-		for dy = -reach, width - 1 - reach do
-			for _, s in ipairs(segments) do
-				table.insert(out, {
-					{ x = s[1].x + dx, y = s[1].y + dy },
-					{ x = s[2].x + dx, y = s[2].y + dy },
-				})
-			end
+	local out = table.create(#segments * width) :: { { Point } }
+	for _, s in ipairs(segments) do
+		local a, b = s[1], s[2]
+		local flat = math.abs(b.x - a.x) >= math.abs(b.y - a.y)
+		for d = -reach, width - 1 - reach do
+			local dx, dy = if flat then 0 else d, if flat then d else 0
+			table.insert(out, { { x = a.x + dx, y = a.y + dy }, { x = b.x + dx, y = b.y + dy } })
 		end
 	end
 	return out

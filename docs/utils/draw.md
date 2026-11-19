@@ -104,7 +104,7 @@ Definition:
 ```luau
 function Draw.lines(segments: { { Point } }, color: Color?, width: number?, layer: Layer?)
 ```
-Many point-pair segments in one call; much faster than looping `Draw.line`. A `width` above 1 draws each segment that many pixels thick (as width × width offset copies).
+Many point-pair segments in one call; much faster than looping `Draw.line`. A `width` above 1 draws each segment that many pixels thick, as `width` copies offset across the segment (vertically for flatter segments, horizontally for steeper ones).
 
 Example:
 ```luau
