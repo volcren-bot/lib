@@ -43,6 +43,7 @@ All are plain tables; see `host.luau` for every field.
 | `CameraView` | A camera yaw and zoom to project with (`project`). |
 | `SceneRoute` / `WorldRoute` / `NavPlan` / `NavOptions` / `SceneRouteOptions` | Pathing results and options. |
 | `Shape` | A `rect`, `line` or `clear` for `Host.draw_batch`. |
+| `Layer` | `"world"` or `"ui"`: the overlay layer of a drawing. |
 | `FormSpec` / `FormField` | A settings window. |
 | `LayoutItem` | An item of a layout: `id`, `ids`, `name`, `stackable`, `min`/`max` (equal: exact, both 0: any), `doses`, `locked`. See [LayoutItem](main/layout_item.md). |
 | `EquipmentLayout` / `EquipmentLayoutSlot` / `EquipmentSpell` | An `equipment` field's value. See [EquipmentLayout](main/equipment_layout.md). |
@@ -1489,9 +1490,9 @@ print(prices and prices[1] and prices[1].high)
 
 Definition:
 ```luau
-Host.draw_rect: (x1: number, y1: number, x2: number, y2: number, r: number, g: number, b: number, a: number?) -> ()
+Host.draw_rect: (x1: number, y1: number, x2: number, y2: number, r: number, g: number, b: number, a: number?, layer: Layer?) -> ()
 ```
-Draws a rectangle on the overlay (colors 0 to 255).
+Draws a rectangle on the overlay (colors 0 to 255). `layer` is `"world"` (default), which hides under game interfaces, or `"ui"`, which never does; use `"ui"` for things that mark interfaces. Any other value is an error.
 
 Example:
 ```luau
@@ -1502,9 +1503,9 @@ Host.draw_rect(50, 50, 150, 100, 255, 0, 0)
 
 Definition:
 ```luau
-Host.draw_line: (x1: number, y1: number, x2: number, y2: number, r: number, g: number, b: number, a: number?) -> ()
+Host.draw_line: (x1: number, y1: number, x2: number, y2: number, r: number, g: number, b: number, a: number?, layer: Layer?) -> ()
 ```
-Draws a line on the overlay.
+Draws a line on the overlay, on `layer` as in `Host.draw_rect`.
 
 Example:
 ```luau
@@ -1515,9 +1516,9 @@ Host.draw_line(0, 0, 200, 200, 0, 255, 0)
 
 Definition:
 ```luau
-Host.draw_lines: (lines: { { number } }, r: number, g: number, b: number, a: number?) -> ()
+Host.draw_lines: (lines: { { number } }, r: number, g: number, b: number, a: number?, layer: Layer?) -> ()
 ```
-Draws many `{ x1, y1, x2, y2 }` lines of one color.
+Draws many `{ x1, y1, x2, y2 }` lines of one color, on `layer` as in `Host.draw_rect`.
 
 Example:
 ```luau
@@ -1543,7 +1544,7 @@ Definition:
 ```luau
 Host.draw_batch: (shapes: { Shape }) -> ()
 ```
-Draws shapes in order as one atomic overlay update. A shape is `{ kind = "rect" | "line", x1, y1, x2, y2, r, g, b, a? }` or `{ kind = "clear" }`. `Draw.batch` builds the list.
+Draws shapes in order as one atomic overlay update. A shape is `{ kind = "rect" | "line", x1, y1, x2, y2, r, g, b, a?, layer? }` or `{ kind = "clear" }`, with `layer` as in `Host.draw_rect`. `Draw.batch` builds the list.
 
 Example:
 ```luau

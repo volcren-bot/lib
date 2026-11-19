@@ -47,7 +47,7 @@ local function paint(
 				Draw.text(tostring(i), at.x - 6, at.y - 6, 12, shade(i, #order))
 			end
 		end
-	end)
+	end, "ui")
 end
 
 if ACCOUNT_HABIT then

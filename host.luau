@@ -752,6 +752,8 @@ export type Corners = {
 	y2: number,
 }
 
+export type Layer = "world" | "ui"
+
 export type Shape =
 	{
 		kind: "rect" | "line",
@@ -763,6 +765,7 @@ export type Shape =
 		g: number,
 		b: number,
 		a: number?,
+		layer: Layer?,
 	}
 	| { kind: "clear" }
 
@@ -917,7 +920,8 @@ return {
 		r: number,
 		g: number,
 		b: number,
-		a: number?
+		a: number?,
+		layer: Layer?
 	) -> (),
 	draw_line = g.draw_line :: (
 		x1: number,
@@ -927,9 +931,17 @@ return {
 		r: number,
 		g: number,
 		b: number,
-		a: number?
+		a: number?,
+		layer: Layer?
 	) -> (),
-	draw_lines = g.draw_lines :: (lines: { { number } }, r: number, g: number, b: number, a: number?) -> (),
+	draw_lines = g.draw_lines :: (
+		lines: { { number } },
+		r: number,
+		g: number,
+		b: number,
+		a: number?,
+		layer: Layer?
+	) -> (),
 	clear_overlay = g.clear_overlay :: () -> (),
 	draw_batch = g.draw_batch :: (shapes: { Shape }) -> (),
 	sleep = g.sleep :: (ms: number) -> (),

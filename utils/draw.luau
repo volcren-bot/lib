@@ -11,9 +11,11 @@ type Quad = Geometry.Quad
 type Area = Host.Area
 type Corners = Host.Corners
 type Shape = Host.Shape
+export type Layer = Host.Layer
 local Draw = {}
 
 local batch: { Shape }? = nil
+local batch_layer: Layer? = nil
 
 export type Color = {
 	r: number,
@@ -35,34 +37,50 @@ Draw.MAGENTA = Draw.color(255, 0, 255)
 Draw.WHITE = Draw.color(255, 255, 255)
 Draw.BLACK = Draw.color(0, 0, 0)
 
-local function shape(shapes: { Shape }, kind: "rect" | "line", x1: number, y1: number, x2: number, y2: number, c: Color)
-	table.insert(shapes, { kind = kind, x1 = x1, y1 = y1, x2 = x2, y2 = y2, r = c.r, g = c.g, b = c.b, a = c.a })
+local function shape(
+	shapes: { Shape },
+	kind: "rect" | "line",
+	x1: number,
+	y1: number,
+	x2: number,
+	y2: number,
+	c: Color,
+	layer: Layer?
+)
+	table.insert(
+		shapes,
+		{ kind = kind, x1 = x1, y1 = y1, x2 = x2, y2 = y2, r = c.r, g = c.g, b = c.b, a = c.a, layer = layer }
+	)
 end
 
-function Draw.rect(x1: number, y1: number, x2: number, y2: number, color: Color?)
+local function layer_of(layer: Layer?): Layer?
+	return layer or batch_layer
+end
+
+function Draw.rect(x1: number, y1: number, x2: number, y2: number, color: Color?, layer: Layer?)
 	local c = color or Draw.RED
 	x1, y1, x2, y2 = math.round(x1), math.round(y1), math.round(x2), math.round(y2)
 	if batch then
-		shape(batch, "rect", x1, y1, x2, y2, c)
+		shape(batch, "rect", x1, y1, x2, y2, c, layer_of(layer))
 	else
-		draw_rect(x1, y1, x2, y2, c.r, c.g, c.b, c.a or 255)
+		draw_rect(x1, y1, x2, y2, c.r, c.g, c.b, c.a or 255, layer)
 	end
 end
 
-function Draw.box(box: Area, color: Color?)
-	Draw.rect(box.x, box.y, box.x + box.width - 1, box.y + box.height - 1, color)
+function Draw.box(box: Area, color: Color?, layer: Layer?)
+	Draw.rect(box.x, box.y, box.x + box.width - 1, box.y + box.height - 1, color, layer)
 end
 
-function Draw.button(button: Corners, color: Color?)
-	Draw.rect(button.x1, button.y1, button.x2, button.y2, color)
+function Draw.button(button: Corners, color: Color?, layer: Layer?)
+	Draw.rect(button.x1, button.y1, button.x2, button.y2, color, layer)
 end
 
-function Draw.line(a: Point, b: Point, color: Color?)
+function Draw.line(a: Point, b: Point, color: Color?, layer: Layer?)
 	local c = color or Draw.RED
 	if batch then
-		shape(batch, "line", a.x, a.y, b.x, b.y, c)
+		shape(batch, "line", a.x, a.y, b.x, b.y, c, layer_of(layer))
 	else
-		draw_line(math.round(a.x), math.round(a.y), math.round(b.x), math.round(b.y), c.r, c.g, c.b, c.a or 255)
+		draw_line(math.round(a.x), math.round(a.y), math.round(b.x), math.round(b.y), c.r, c.g, c.b, c.a or 255, layer)
 	end
 end
 
@@ -82,14 +100,15 @@ local function widened(segments: { { Point } }, width: number): { { Point } }
 	return out
 end
 
-function Draw.lines(segments: { { Point } }, color: Color?, width: number?)
+function Draw.lines(segments: { { Point } }, color: Color?, width: number?, layer: Layer?)
 	if width and width > 1 then
 		segments = widened(segments, width)
 	end
 	local c = color or Draw.RED
 	if batch then
+		local shape_layer = layer_of(layer)
 		for _, s in ipairs(segments) do
-			shape(batch, "line", s[1].x, s[1].y, s[2].x, s[2].y, c)
+			shape(batch, "line", s[1].x, s[1].y, s[2].x, s[2].y, c, shape_layer)
 		end
 		return
 	end
@@ -97,22 +116,22 @@ function Draw.lines(segments: { { Point } }, color: Color?, width: number?)
 	for i, s in ipairs(segments) do
 		lines[i] = { s[1].x, s[1].y, s[2].x, s[2].y }
 	end
-	draw_lines(lines, c.r, c.g, c.b, c.a or 255)
+	draw_lines(lines, c.r, c.g, c.b, c.a or 255, layer)
 end
 
-function Draw.polygon(points: { Point }, color: Color?)
+function Draw.polygon(points: { Point }, color: Color?, layer: Layer?)
 	local segments = table.create(#points) :: { { Point } }
 	for i, p in ipairs(points) do
 		segments[i] = { p, points[i % #points + 1] }
 	end
-	Draw.lines(segments, color)
+	Draw.lines(segments, color, nil, layer)
 end
 
-function Draw.quad(quad: Quad, color: Color?)
-	Draw.polygon(Geometry.Quad.corners(quad), color)
+function Draw.quad(quad: Quad, color: Color?, layer: Layer?)
+	Draw.polygon(Geometry.Quad.corners(quad), color, layer)
 end
 
-function Draw.cuboid(cuboid: { bottom: Quad, top: Quad }, color: Color?)
+function Draw.cuboid(cuboid: { bottom: Quad, top: Quad }, color: Color?, layer: Layer?)
 	local bottom, top = Geometry.Quad.corners(cuboid.bottom), Geometry.Quad.corners(cuboid.top)
 	local segments = {}
 	for i = 1, 4 do
@@ -121,7 +140,7 @@ function Draw.cuboid(cuboid: { bottom: Quad, top: Quad }, color: Color?)
 		table.insert(segments, { top[i], top[j] })
 		table.insert(segments, { bottom[i], top[i] })
 	end
-	Draw.lines(segments, color)
+	Draw.lines(segments, color, nil, layer)
 end
 
 local SEGMENTS: { [string]: string } = {
@@ -139,7 +158,7 @@ local SEGMENTS: { [string]: string } = {
 	["#"] = "bcgf",
 }
 
-function Draw.text(text: string, x: number, y: number, size: number?, color: Color?): number
+function Draw.text(text: string, x: number, y: number, size: number?, color: Color?, layer: Layer?): number
 	local h = size or 16
 	local w = h * 0.5
 	local gap = h * 0.3
@@ -147,10 +166,10 @@ function Draw.text(text: string, x: number, y: number, size: number?, color: Col
 	for i = 1, #text do
 		local ch = string.sub(text, i, i)
 		if ch == "/" then
-			Draw.line({ x = cx, y = y + h }, { x = cx + w, y = y }, color)
+			Draw.line({ x = cx, y = y + h }, { x = cx + w, y = y }, color, layer)
 			cx += w + gap
 		elseif ch == "." then
-			Draw.line({ x = cx + 1, y = y + h }, { x = cx + 2, y = y + h }, color)
+			Draw.line({ x = cx + 1, y = y + h }, { x = cx + 2, y = y + h }, color, layer)
 			cx += gap
 		else
 			local segs = SEGMENTS[ch]
@@ -166,7 +185,7 @@ function Draw.text(text: string, x: number, y: number, size: number?, color: Col
 				}
 				for k = 1, #segs do
 					local seg = pts[string.sub(segs, k, k)]
-					Draw.line(seg[1], seg[2], color)
+					Draw.line(seg[1], seg[2], color, layer)
 				end
 			end
 			cx += w + gap
@@ -185,15 +204,22 @@ function Draw.clear()
 	end
 end
 
-function Draw.batch(paint: () -> ())
+function Draw.batch(paint: () -> (), layer: Layer?)
+	local outer_layer = batch_layer
+	batch_layer = layer or outer_layer
 	if batch then
-		paint()
+		local ok, err = pcall(paint)
+		batch_layer = outer_layer
+		if not ok then
+			error(err, 0)
+		end
 		return
 	end
 	local shapes: { Shape } = {}
 	batch = shapes
 	local ok, err = pcall(paint)
 	batch = nil
+	batch_layer = outer_layer
 	if not ok then
 		error(err, 0)
 	end

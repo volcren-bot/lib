@@ -8,6 +8,7 @@ type Point = { x: number, y: number }
 local DebugDraw = {}
 
 local layers: { [string]: () -> () } = {}
+local kinds: { [string]: Draw.Layer } = {}
 local order: { string } = {}
 local shown = false
 
@@ -27,23 +28,25 @@ function DebugDraw.render()
 	Draw.batch(function()
 		Draw.clear()
 		for _, name in ipairs(order) do
-			layers[name]()
+			Draw.batch(layers[name], kinds[name])
 		end
 	end)
 end
 
-function DebugDraw.set(name: string, paint: (() -> ())?)
+function DebugDraw.set(name: string, paint: (() -> ())?, layer: Draw.Layer?)
 	if paint == nil then
 		if layers[name] == nil then
 			return
 		end
 		layers[name] = nil
+		kinds[name] = nil
 		table.remove(order, table.find(order, name) :: number)
 	else
 		if layers[name] == nil then
 			table.insert(order, name)
 		end
 		layers[name] = paint
+		kinds[name] = layer or "world"
 	end
 	DebugDraw.render()
 end

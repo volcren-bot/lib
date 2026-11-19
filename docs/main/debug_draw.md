@@ -21,9 +21,9 @@ print(DebugDraw.on())
 
 Definition:
 ```luau
-function DebugDraw.set(name: string, paint: (() -> ())?)
+function DebugDraw.set(name: string, paint: (() -> ())?, layer: Draw.Layer?)
 ```
-Adds or replaces the layer `name` (drawn in the order layers were first added) and repaints; `nil` removes it. `paint` runs inside a `Draw.batch`, so it calls `Draw` functions directly. With debugging off nothing is drawn, and what was shown is cleared.
+Adds or replaces the layer `name` (drawn in the order layers were first added) and repaints; `nil` removes it. `paint` runs inside a `Draw.batch` with `layer` (default `"world"`), so it calls `Draw` functions directly: world drawings hide under game interfaces; pass `"ui"` for a layer that marks interfaces. With debugging off nothing is drawn, and what was shown is cleared.
 
 Example:
 ```luau

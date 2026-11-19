@@ -8,6 +8,8 @@ local Draw = require("@lib/utils/draw")
 
 A `Color` is `{ r, g, b, a? }` (0 to 255). Every color argument defaults to red.
 
+A `Layer` is `"world"` (the default) or `"ui"`. World drawings hide under game interfaces (chatbox, minimap, side panel, open windows); use `"ui"` for things that mark interfaces, such as inventory slots or widgets. Every drawing function takes an optional trailing `layer`; inside `Draw.batch` a missing one takes the batch's layer.
+
 ## Colors
 
 Definition:
@@ -36,7 +38,7 @@ Draw.rect(20, 20, 120, 80, orange)
 
 Definition:
 ```luau
-function Draw.rect(x1: number, y1: number, x2: number, y2: number, color: Color?)
+function Draw.rect(x1: number, y1: number, x2: number, y2: number, color: Color?, layer: Layer?)
 ```
 Rectangle from top-left to bottom-right.
 
@@ -51,7 +53,7 @@ Draw.rect(50, 50, 200, 120, Draw.GREEN)
 
 Definition:
 ```luau
-function Draw.box(box: Area, color: Color?)
+function Draw.box(box: Area, color: Color?, layer: Layer?)
 ```
 Rectangle from `{ x, y, width, height }`, such as a widget's bounds.
 
@@ -62,7 +64,7 @@ local Host = require("@lib/host")
 
 local w = Host.widget(149, 0)
 if w then
-	Draw.box({ x = w.x, y = w.y, width = w.width, height = w.height }, Draw.YELLOW)
+	Draw.box({ x = w.x, y = w.y, width = w.width, height = w.height }, Draw.YELLOW, "ui")
 end
 ```
 
@@ -70,7 +72,7 @@ end
 
 Definition:
 ```luau
-function Draw.button(button: Corners, color: Color?)
+function Draw.button(button: Corners, color: Color?, layer: Layer?)
 ```
 Rectangle from `{ x1, y1, x2, y2 }`.
 
@@ -78,14 +80,14 @@ Example:
 ```luau
 local Draw = require("@lib/utils/draw")
 
-Draw.button({ x1 = 10, y1 = 10, x2 = 90, y2 = 40 }, Draw.CYAN)
+Draw.button({ x1 = 10, y1 = 10, x2 = 90, y2 = 40 }, Draw.CYAN, "ui")
 ```
 
 ## Draw.line
 
 Definition:
 ```luau
-function Draw.line(a: Point, b: Point, color: Color?)
+function Draw.line(a: Point, b: Point, color: Color?, layer: Layer?)
 ```
 Line between two points.
 
@@ -100,7 +102,7 @@ Draw.line({ x = 0, y = 0 }, { x = 200, y = 100 }, Draw.MAGENTA)
 
 Definition:
 ```luau
-function Draw.lines(segments: { { Point } }, color: Color?, width: number?)
+function Draw.lines(segments: { { Point } }, color: Color?, width: number?, layer: Layer?)
 ```
 Many point-pair segments in one call; much faster than looping `Draw.line`. A `width` above 1 draws each segment that many pixels thick (as width × width offset copies).
 
@@ -118,7 +120,7 @@ Draw.lines({
 
 Definition:
 ```luau
-function Draw.polygon(points: { Point }, color: Color?)
+function Draw.polygon(points: { Point }, color: Color?, layer: Layer?)
 ```
 Closed polygon outline.
 
@@ -133,7 +135,7 @@ Draw.polygon({ { x = 50, y = 50 }, { x = 150, y = 60 }, { x = 100, y = 140 } }, 
 
 Definition:
 ```luau
-function Draw.quad(quad: Quad, color: Color?)
+function Draw.quad(quad: Quad, color: Color?, layer: Layer?)
 ```
 Quad outline, such as a projected tile.
 
@@ -153,7 +155,7 @@ end
 
 Definition:
 ```luau
-function Draw.cuboid(cuboid: { bottom: Quad, top: Quad }, color: Color?)
+function Draw.cuboid(cuboid: { bottom: Quad, top: Quad }, color: Color?, layer: Layer?)
 ```
 3D box outline from its bottom and top quads.
 
@@ -189,9 +191,9 @@ Draw.clear()
 
 Definition:
 ```luau
-function Draw.batch(paint: () -> ())
+function Draw.batch(paint: () -> (), layer: Layer?)
 ```
-Runs `paint`, collecting its drawing calls (including `Draw.clear`) and sending them as one `Host.draw_batch` update, so the overlay is never shown half drawn. Nested batches join the outer one; if `paint` errors nothing is drawn.
+Runs `paint`, collecting its drawing calls (including `Draw.clear`) and sending them as one `Host.draw_batch` update, so the overlay is never shown half drawn. Nested batches join the outer one; if `paint` errors nothing is drawn. `layer` is the default for every drawing inside it that doesn't name one; a nested batch without one keeps the outer batch's.
 
 Example:
 ```luau
@@ -207,7 +209,7 @@ end)
 
 Definition:
 ```luau
-function Draw.text(text: string, x: number, y: number, size: number?, color: Color?): number
+function Draw.text(text: string, x: number, y: number, size: number?, color: Color?, layer: Layer?): number
 ```
 Draws digits and `.`, `-`, `#`, `/` (no letters) as lines from top-left (`x`, `y`), `size` px tall (default 16). Returns the end x.
 

@@ -49,7 +49,7 @@ while true do
 		Draw.batch(function()
 			Draw.clear()
 			draw()
-		end)
+		end, "ui")
 	end
 	sleep(1000)
 end
