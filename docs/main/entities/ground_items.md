@@ -1,6 +1,6 @@
 # Main.Entities.GroundItems
 
-Finding and picking up items on the ground. A `GroundItem` has `id`, `quantity`, `name` (may be nil), world `x`, `y`, `plane`, and scene `scene_x`, `scene_y`. A tile draws its top three items as one pile; the mouse points at the pile and the menu lists each item in it.
+Finding and picking up items on the ground. A `GroundItem` has `id`, `quantity`, `name` (may be nil), world `x`, `y`, `plane`, and scene `scene_x`, `scene_y`, plus its owner and timers (`ownership`, `public_tick`, `despawn_tick`, `never_public`, `op_flags`; see [Host.ground_items](../../host.md#hostground_items)). A tile draws its top three items as one pile; the mouse points at the pile and the menu lists each item in it.
 
 ```luau
 local GroundItems = require("@lib/main/entities/ground_items")

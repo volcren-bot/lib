@@ -867,12 +867,23 @@ Definition:
 ```luau
 Host.ground_items: () -> { GroundItem }?
 ```
-Ground items on your plane.
+Ground items on your plane. Besides the item and its tile, each carries what the server sent when it appeared; these fields are nil when the agent couldn't find them in this client:
+
+| Field | Meaning |
+| --- | --- |
+| `public_tick` | The `tick_count` (`Host.game_state`) from which everyone can see it; before that only its owner can. |
+| `despawn_tick` | The `tick_count` at which the server removes it. |
+| `ownership` | 0 nobody, 1 you, 2 another player, 3 your group (group ironman). |
+| `never_public` | True when it stays private to its owner. |
+| `op_flags` | Bit `n` set when ground option `n + 1` of the item's definition is enabled; 31 enables all five. |
+
+None of them change while the item lies there: `ownership` still says 1 after `public_tick` has passed, so compare the ticks with `tick_count` to know whether it is public or how long it has left.
 
 Example:
 ```luau
+local now = Host.game_state().tick_count or 0
 for _, item in ipairs(Host.ground_items() or {}) do
-	print(item.name, item.quantity, item.x, item.y)
+	print(item.name, item.quantity, item.x, item.y, item.ownership, item.despawn_tick and item.despawn_tick - now)
 end
 ```
 

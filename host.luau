@@ -541,6 +541,11 @@ export type GroundItem = {
 	plane: number,
 	scene_x: number,
 	scene_y: number,
+	public_tick: number?,
+	despawn_tick: number?,
+	ownership: number?,
+	never_public: boolean?,
+	op_flags: number?,
 }
 
 export type ChatMessage = {
