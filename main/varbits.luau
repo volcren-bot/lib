@@ -5,6 +5,7 @@ local Varbits = {}
 
 Varbits.SPELLBOOK = 4070
 Varbits.BUSY = 12393
+Varbits.GRICOLLER_CAN_CHARGES = 4908
 
 function Varbits.get(id: number): number?
 	return varbit(id)

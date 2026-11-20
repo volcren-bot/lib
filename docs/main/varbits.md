@@ -12,8 +12,9 @@ Definition:
 ```luau
 Varbits.SPELLBOOK = 4070
 Varbits.BUSY = 12393
+Varbits.GRICOLLER_CAN_CHARGES = 4908
 ```
-`SPELLBOOK`: 0 standard, 1 ancient, 2 lunar, 3 arceuus. `BUSY`: 1 during an uninterruptible action (knocked down, untying a rope); walk clicks do nothing until 0. `injector varbits-of <pid> <varp>` lists a varp's varbits by name.
+`SPELLBOOK`: 0 standard, 1 ancient, 2 lunar, 3 arceuus. `BUSY`: 1 during an uninterruptible action (knocked down, untying a rope); walk clicks do nothing until 0. `GRICOLLER_CAN_CHARGES`: the Gricoller's can's charges, 0 to 1000; the item id stays the same at every fill level. `injector varbits-of <pid> <varp>` lists a varp's varbits by name.
 
 ## Varbits.get
 
