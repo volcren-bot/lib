@@ -1,6 +1,6 @@
 # DebugDraw
 
-Debug drawing that shows only while Script debugging is on in the loader's Development tab (`Host.script_debugging`). Callers register named layers; every change repaints all layers in one batch, so the lib's drawings (such as `Walker.show_route`) and a script's own stay on screen together. Layers project tiles when painted, so re-setting a layer each step keeps it on the moving camera. Painting clears the whole overlay first, so don't mix it with a script's own `Draw` calls.
+Debug drawing that shows only while Script debugging is on in a client's development page in the loader (`Host.script_debugging`). Callers register named layers; every change repaints all layers in one batch, so the lib's drawings (such as `Walker.show_route`) and a script's own stay on screen together. Layers project tiles when painted, so re-setting a layer each step keeps it on the moving camera. Painting clears the whole overlay first, so don't mix it with a script's own `Draw` calls.
 
 ## DebugDraw.on
 

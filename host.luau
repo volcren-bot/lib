@@ -250,9 +250,17 @@ export type LayoutRequirement = {
 	doses: { number }?,
 }
 
+export type GridColumn = {
+	id: string,
+	label: string?,
+	summary: string?,
+	color: string?,
+	max: number?,
+}
+
 export type FormField = {
 	id: string?,
-	kind: ("label" | "check" | "number" | "text" | "choice" | "list" | "equipment" | "inventory" | "prayer")?,
+	kind: ("label" | "check" | "number" | "text" | "choice" | "list" | "grid" | "equipment" | "inventory" | "prayer")?,
 	label: string?,
 	text: string?,
 	default: any?,
@@ -261,7 +269,11 @@ export type FormField = {
 	max: number?,
 	step: number?,
 	integer: boolean?,
-	items: { { id: string, label: string?, default: boolean? } }?,
+	items: { { id: string, label: string?, detail: string?, default: (boolean | string)? } }?,
+	columns: { GridColumn }?,
+	colors: boolean?,
+	search: string?,
+	note: string?,
 	enabled_by: string?,
 	disabled_by: string?,
 	row: string?,

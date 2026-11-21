@@ -44,7 +44,7 @@ All are plain tables; see `host.luau` for every field.
 | `SceneRoute` / `WorldRoute` / `NavPlan` / `NavOptions` / `SceneRouteOptions` | Pathing results and options. |
 | `Shape` | A `rect`, `line` or `clear` for `Host.draw_batch`. |
 | `Layer` | `"world"` or `"ui"`: the overlay layer of a drawing. |
-| `FormSpec` / `FormField` | A settings window. |
+| `FormSpec` / `FormField` / `GridColumn` | A settings window. |
 | `LayoutItem` | An item of a layout: `id`, `ids`, `name`, `stackable`, `min`/`max` (equal: exact, both 0: any), `doses`, `locked`. See [LayoutItem](main/layout_item.md). |
 | `EquipmentLayout` / `EquipmentLayoutSlot` / `EquipmentSpell` | An `equipment` field's value. See [EquipmentLayout](main/equipment_layout.md). |
 | `InventoryLayout` / `InventoryLayoutSlot` | An `inventory` field's value, with rune pouch `pouch`. See [InventoryLayout](main/inventory_layout.md). |
@@ -282,7 +282,9 @@ The values the user set before the script started, by field id; an empty table w
 
 `manifest.json` holds `settings` (the form below), `queueable` (the loader's queue may run the script: it starts from any safe idle state, checks `Host.finish_requested` and reports `Host.report_exit`), `goals` (`[{ "id", "label" }]`, ids of `Host.report_counters` counters a queue entry can stop at) and `finish_grace_minutes` (1 to 120, default 5: how long the queue waits after `FINISH` before stopping the script). Unknown keys are refused at upload.
 
-Field kinds: `label`, `check`, `number`, `text`, `choice`, `list` (ticked rows, `items = [{ id, label, default }]` giving `{ id = true }`), `equipment`, `inventory`, `prayer`. The last three add a loader tab where the user captures and edits layouts; the value is the chosen `EquipmentLayout`, `InventoryLayout` or `PrayerLayout`, or nil. `equipment`/`inventory` take `required` (`LayoutRequirement`s padlocked into every layout); `prayer` takes `locked` (keys the script controls, excluded from layouts). Values and layouts are remembered per script title.
+Field kinds: `label`, `check`, `number`, `text`, `choice`, `list` (ticked rows, `items = [{ id, label, default }]` giving `{ id = true }`), `grid` (see below), `equipment`, `inventory`, `prayer`. The last three add a loader tab where the user captures and edits layouts; the value is the chosen `EquipmentLayout`, `InventoryLayout` or `PrayerLayout`, or nil. `equipment`/`inventory` take `required` (`LayoutRequirement`s padlocked into every layout); `prayer` takes `locked` (keys the script controls, excluded from layouts). Values and layouts are remembered per script title.
+
+A `grid` is a searchable, scrollable list where each row picks one of 2 to 5 columns, like radio buttons, giving `{ [item id] = column id }`. `label` heads the name column and `search` is the search box's placeholder. `columns = [{ id, label, summary, color, max }]`: `summary` is the word after the column's count in the footer (default its label); `color` is `#rrggbb`, defaulting by position to green, yellow, red, blue and purple, and `colors = false` draws plain radios instead; `max` caps how many rows the column holds, shown as `n/max` and leaving its empty radios unclickable once full. A column without `max` gets an "all" link that moves every row the search shows into it. `items = [{ id, label, detail, default }]`: `detail` is dim text after the name and `default` a column id, falling back to the field's `default`, then the first column. `note` is dim text in the footer. The defaults must fit every `max`; remembered picks that no longer do reset to the defaults.
 
 Field options: `enabled_by`/`disabled_by` (a check id); `row` (fields with the same name share a line, `row_gap` apart, default 24, max 500); `box_first` for `number`; `heading = 1 | 2` for `label` (spaced by `heading_gap`, default 12, max 500); `visible_when = { id, equals }` or a list of them (`equals` may be a list). Hidden fields keep and return their values. `submit` names the start button.
 
@@ -326,7 +328,7 @@ Definition:
 ```luau
 Host.script_debugging: () -> boolean
 ```
-True while Script debugging is on in the loader's Development tab; it can change during a run. Debug drawing in the lib and scripts happens only then, since it clears and repaints the overlay. The MCP reads the loader's saved setting when a run starts.
+True while Script debugging is on in a client's development page in the loader; it can change during a run. Debug drawing in the lib and scripts happens only then, since it clears and repaints the overlay. The MCP reads the loader's saved setting when a run starts.
 
 Example:
 ```luau

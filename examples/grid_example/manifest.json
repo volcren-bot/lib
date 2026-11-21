@@ -1,0 +1,64 @@
+{
+	"settings": {
+		"fields": [
+			{
+				"kind": "label",
+				"text": "Assignments",
+				"heading": 1
+			},
+			{
+				"id": "tasks",
+				"kind": "grid",
+				"label": "Task",
+				"search": "Search tasks",
+				"note": "Blocks apply to every master",
+				"default": "do",
+				"columns": [
+					{ "id": "do", "label": "Do", "summary": "do" },
+					{ "id": "skip", "label": "Skip", "summary": "skip" },
+					{ "id": "block", "label": "Block", "summary": "blocked here", "max": 6 }
+				],
+				"items": [
+					{ "id": "aberrant_spectres", "label": "Aberrant spectres", "detail": "7" },
+					{ "id": "abyssal_demons", "label": "Abyssal demons", "detail": "12" },
+					{ "id": "adamant_dragons", "label": "Adamant dragons", "detail": "2", "default": "skip" },
+					{ "id": "ankou", "label": "Ankou", "detail": "5" },
+					{ "id": "aviansies", "label": "Aviansies", "detail": "8 · unlock" },
+					{ "id": "basilisks", "label": "Basilisks", "detail": "7 · unlock" },
+					{ "id": "black_demons", "label": "Black demons", "detail": "8" },
+					{ "id": "black_dragons", "label": "Black dragons", "detail": "9", "default": "block" },
+					{ "id": "bloodveld", "label": "Bloodveld", "detail": "8" },
+					{ "id": "blue_dragons", "label": "Blue dragons", "detail": "4" },
+					{ "id": "bosses", "label": "Bosses", "detail": "12 · unlock", "default": "skip" },
+					{ "id": "cave_horrors", "label": "Cave horrors", "detail": "4", "default": "skip" },
+					{ "id": "dagannoth", "label": "Dagannoth", "detail": "9" },
+					{ "id": "dust_devils", "label": "Dust devils", "detail": "6" },
+					{ "id": "gargoyles", "label": "Gargoyles", "detail": "8" }
+				]
+			},
+			{
+				"kind": "label",
+				"text": "Loot",
+				"heading": 2
+			},
+			{
+				"id": "loot",
+				"kind": "grid",
+				"label": "Item",
+				"search": "Search items",
+				"colors": false,
+				"default": "bank",
+				"columns": [
+					{ "id": "bank", "label": "Bank", "summary": "banked" },
+					{ "id": "drop", "label": "Drop", "summary": "dropped" }
+				],
+				"items": [
+					{ "id": "bones", "label": "Bones", "default": "drop" },
+					{ "id": "coins", "label": "Coins" },
+					{ "id": "herbs", "label": "Herbs" },
+					{ "id": "runes", "label": "Runes" }
+				]
+			}
+		]
+	}
+}
