@@ -212,13 +212,29 @@ local Inventory = require("@lib/main/interfaces/gametabs/inventory")
 print(table.concat((Inventory.pattern({ 3, 9, 14, 20 })), ","))
 ```
 
+## Inventory.DropOptions
+
+Definition:
+```luau
+export type DropOptions = {
+	attempts: number?,
+	shift_ms: { number }?,
+	gap_ms: { number }?,
+	confirm: boolean?,
+}
+Inventory.DROP_ATTEMPTS = 5
+Inventory.DROP_SHIFT_MS = { 95, 170 }
+Inventory.DROP_GAP_MS = { 0, 250 }
+```
+Options for `drop_slots` and `shift_drop_slots`; each falls back to the constant below it. `attempts` is the number of passes, `shift_ms` the `{ lo, hi }` pause after pressing Shift and `gap_ms` the pause after each drop click. Shorter pauses drop faster but look less like a person. `confirm = false` makes one pass and returns true once the clicks are made, without waiting for the server to empty the slots, so for about a tick the inventory still shows the dropped items; a caller that reads the inventory right after must allow for that.
+
 ## Inventory.drop_slots
 
 Definition:
 ```luau
-function Inventory.drop_slots(slots: { number }, attempts: number?): boolean
+function Inventory.drop_slots(slots: { number }, opts: DropOptions?): boolean
 ```
-Drops `slots` in order with "Drop", cancelling a selection first, then waits and retries slots still holding their item, up to `attempts` passes (5). True when all are gone.
+Drops `slots` in order with "Drop", cancelling a selection first, then waits and retries slots still holding their item, up to `opts.attempts` passes. True when all are gone.
 
 Example:
 ```luau
@@ -246,9 +262,9 @@ Inventory.drop({ "Logs", "Oak logs" })
 
 Definition:
 ```luau
-function Inventory.shift_drop_slots(slots: { number }, attempts: number?): boolean
+function Inventory.shift_drop_slots(slots: { number }, opts: DropOptions?): boolean
 ```
-Drops `slots` in order by Shift-clicking, checking before each click that "Drop" is the left-click option. If it isn't (the game's shift-drop setting is off), clears `shift_enabled` and finishes with `drop_slots`, as do later calls. Shift is always released.
+Drops `slots` in order by Shift-clicking, checking before each click that "Drop" is the left-click option. If it isn't (the game's shift-drop setting is off), clears `shift_enabled` and finishes with `drop_slots` and the same `opts`, as do later calls. Shift is always released.
 
 Example:
 ```luau

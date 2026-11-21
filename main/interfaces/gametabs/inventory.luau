@@ -480,7 +480,24 @@ local function start_drop(slots: { number }): { [number]: number }?
 	return holding(slots)
 end
 
-function Inventory.drop_slots(slots: { number }, attempts: number?): boolean
+export type DropOptions = {
+	attempts: number?,
+	shift_ms: { number }?,
+	gap_ms: { number }?,
+	confirm: boolean?,
+}
+
+Inventory.DROP_ATTEMPTS = 5
+Inventory.DROP_SHIFT_MS = { 95, 170 }
+Inventory.DROP_GAP_MS = { 0, 250 }
+
+local function pause(range: { number }?, default: { number })
+	local r = range or default
+	Random.sleep(r[1], r[2], "left")
+end
+
+function Inventory.drop_slots(slots: { number }, opts: DropOptions?): boolean
+	local o: DropOptions = opts or {}
 	if #slots == 0 then
 		return true
 	end
@@ -489,15 +506,15 @@ function Inventory.drop_slots(slots: { number }, attempts: number?): boolean
 		return false
 	end
 	local left: { number }? = still_held(targets, slots)
-	for _ = 1, attempts or 5 do
+	for _ = 1, o.attempts or Inventory.DROP_ATTEMPTS do
 		if left == nil or #left == 0 then
 			break
 		end
 		for _, slot in ipairs(left) do
 			Inventory.interact_slot(slot, "Drop")
-			Random.sleep(0, 250, "left")
+			pause(o.gap_ms, Inventory.DROP_GAP_MS)
 		end
-		left = wait_dropped(targets, slots)
+		left = if o.confirm == false then {} else wait_dropped(targets, slots)
 	end
 	if left == nil then
 		return false
@@ -526,12 +543,13 @@ local function shift_drops(slot: number): boolean
 	end, SHIFT_DROP_HOVER_MS)
 end
 
-function Inventory.shift_drop_slots(slots: { number }, attempts: number?): boolean
+function Inventory.shift_drop_slots(slots: { number }, opts: DropOptions?): boolean
+	local o: DropOptions = opts or {}
 	if #slots == 0 then
 		return true
 	end
 	if not Inventory.shift_enabled then
-		return Inventory.drop_slots(slots, attempts)
+		return Inventory.drop_slots(slots, o)
 	end
 	local targets = start_drop(slots)
 	if targets == nil then
@@ -539,7 +557,7 @@ function Inventory.shift_drop_slots(slots: { number }, attempts: number?): boole
 	end
 	local left: { number }? = still_held(targets, slots)
 	local fallback = false
-	for _ = 1, attempts or 5 do
+	for _ = 1, o.attempts or Inventory.DROP_ATTEMPTS do
 		if left == nil or #left == 0 or fallback then
 			break
 		end
@@ -548,7 +566,7 @@ function Inventory.shift_drop_slots(slots: { number }, attempts: number?): boole
 			return false
 		end
 		Keyboard.key_down(Keyboard.keys.LSHIFT)
-		Random.sleep(95, 170, "left")
+		pause(o.shift_ms, Inventory.DROP_SHIFT_MS)
 		local ok, pass_err = pcall(function()
 			for _, slot in ipairs(left :: { number }) do
 				local w = boxes[slot]
@@ -559,7 +577,7 @@ function Inventory.shift_drop_slots(slots: { number }, attempts: number?): boole
 						return
 					end
 					Biometrics.click("left", 3, 0.03)
-					Random.sleep(0, 250, "left")
+					pause(o.gap_ms, Inventory.DROP_GAP_MS)
 				end
 			end
 		end)
@@ -567,7 +585,7 @@ function Inventory.shift_drop_slots(slots: { number }, attempts: number?): boole
 		if not ok then
 			error(pass_err, 0)
 		end
-		left = wait_dropped(targets, slots)
+		left = if o.confirm == false and not fallback then {} else wait_dropped(targets, slots)
 	end
 	if left == nil then
 		return false
@@ -578,7 +596,7 @@ function Inventory.shift_drop_slots(slots: { number }, attempts: number?): boole
 			"Shift click to drop items is off, dropping through the menu (turn it on for faster drops)"
 		)
 		Inventory.shift_enabled = false
-		return Inventory.drop_slots(left, attempts)
+		return Inventory.drop_slots(left, o)
 	end
 	if #left > 0 then
 		return false
